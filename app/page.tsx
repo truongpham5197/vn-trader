@@ -40,6 +40,12 @@ export default async function Home() {
         <Badge ok={scanEnabled}>scanner {scanEnabled ? "ON" : "OFF"}</Badge>
         <Badge ok={paper}>paper {paper ? "ON" : "OFF"}</Badge>
         <Badge ok={!kill}>kill {kill ? "ON 🛑" : "off"}</Badge>
+        <Link href="/backtest" className="rounded bg-neutral-800 px-2 py-1 underline">
+          backtest
+        </Link>
+        <Link href="/journal" className="rounded bg-neutral-800 px-2 py-1 underline">
+          journal
+        </Link>
       </div>
 
       <div className="mb-3 flex items-center justify-between">

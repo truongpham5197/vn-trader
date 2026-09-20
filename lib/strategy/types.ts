@@ -17,3 +17,17 @@ export interface StrategyContext {
 }
 
 export type StrategyFn = (ctx: StrategyContext) => SignalCandidate | null;
+
+/** Exit rule bổ sung ngoài stop/target — backtest + watcher dùng. */
+export type ExitCheckFn = (ctx: {
+  bars: Bar[]; // tới ngày hiện tại
+  entryPrice: number;
+  daysHeld: number;
+  params: Record<string, number>;
+}) => string | null; // trả về exitReason hoặc null
+
+export interface StrategyDef {
+  fn: StrategyFn;
+  defaults: Record<string, number>;
+  shouldExit?: ExitCheckFn;
+}

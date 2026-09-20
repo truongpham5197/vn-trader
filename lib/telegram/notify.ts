@@ -54,7 +54,8 @@ export async function notifySignal(s: {
   ].join("\n");
   return sendTelegram(text, [
     [
-      { text: "✅ Đã vào lệnh", callback_data: `taken:${s.signalId}` },
+      { text: "📈 Đặt lệnh", callback_data: `order:${s.signalId}` },
+      { text: "✅ Đã vào tay", callback_data: `taken:${s.signalId}` },
       { text: "⏭ Bỏ qua", callback_data: `skip:${s.signalId}` },
     ],
   ]);

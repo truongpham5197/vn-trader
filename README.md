@@ -25,10 +25,44 @@ npm run db:push        # tạo SQLite schema
 npm run dev            # http://localhost:3000 — cron + bot polling tự chạy
 ```
 
-## Cron jobs (Asia/Ho_Chi_Minh, T2–T6)
+## Cron jobs (Asia/Ho_Chi_Minh)
 
-- `15:20` — EOD sync bars (lần đầu chạy tay với lookback dài, xem dưới)
-- `15:40` — scan chiến lược → Signal → Telegram
+- `15:20 T2–T6` — EOD sync bars (lần đầu chạy tay với lookback dài, xem dưới)
+- `15:40 T2–T6` — scan chiến lược → Signal → Telegram
+- `* 9:00–14:59 T2–T6` — stop-loss watcher + sync lệnh pending (TCBS live)
+- `20:00 CN` — báo cáo tuần qua Telegram (P&L, win rate, adherence)
+
+## Trang
+
+- `/` — dashboard + tín hiệu hôm nay
+- `/signals` — tất cả tín hiệu (`?date=YYYY-MM-DD`)
+- `/backtest` — chạy + xem backtest (`?run=N` chi tiết)
+- `/journal` — trades, win rate, adherence
+
+## Backtest
+
+```bash
+curl -X POST localhost:3100/api/backtest -d '{
+  "strategyType": "breakout-20",   # | pullback-ma20 | rsi2-revert
+  "universe": "liquid",           # | vn30 | all
+  "fromDate": "2025-01-01",
+  "toDate": "2026-09-18"
+}'
+```
+
+Engine tôn trọng luật VN: T+2 (tiền & cổ phiếu), lot 100, biên độ ±7/10/15%,
+phí mua 0.15% + phí bán 0.15% + thuế bán 0.1%, slippage 0.2%, fill LO phiên
+sau nếu chạm giá, sizing risk% NAV cap theo tiền mặt.
+
+## TCBS (phase 3 — semi-auto)
+
+`.env`: `TCBS_API_KEY` (tạo trong app TCInvest → iFlash OpenAPI) +
+`TCBS_ACCOUNT_NO`. Flow auth: bot `/otp <mã iOTP>` → JWT cache trong DB.
+Nút 📈 Đặt lệnh trong alert → LO order (tôn trọng `PAPER_TRADING`).
+
+Endpoints: `POST /api/tcbs/auth` `{otp}` · `POST /api/tcbs/order` `{signalId}`
+· `POST /api/tcbs/positions` (sync). Client chưa test live — verify response
+shape theo `docs/tcbs-openapi.json` trước khi tắt `PAPER_TRADING`.
 
 Trigger tay:
 
@@ -48,7 +82,7 @@ curl -X POST localhost:3000/api/telegram/test
 
 ## Telegram bot commands
 
-`/status` `/signals` `/positions` `/pause` `/resume` `/kill`
+`/status` `/signals` `/positions` `/pause` `/resume` `/kill` `/auth` `/otp <mã>`
 
 ## Test
 

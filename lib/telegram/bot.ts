@@ -87,17 +87,58 @@ export function startTelegramBot(): void {
     await ctx.reply("🛑 KILL SWITCH ON — scanner dừng, mọi order bị chặn. /resume để bật lại scan.");
   });
 
+  bot.command("otp", async (ctx) => {
+    if (!allowed(ctx)) return;
+    const otp = ctx.match?.trim();
+    if (!otp) return void (await ctx.reply("Dùng: /otp <mã iOTP từ app TCInvest>"));
+    try {
+      const { authenticate } = await import("../tcbs/client");
+      const ok = await authenticate(otp);
+      await ctx.reply(ok ? "🔓 TCBS auth OK — token đã cache" : "❌ OTP sai hoặc từ chối");
+    } catch (e) {
+      await ctx.reply(`❌ ${e instanceof Error ? e.message : "lỗi auth"}`);
+    }
+  });
+
+  bot.command("auth", async (ctx) => {
+    if (!allowed(ctx)) return;
+    const { tcbsConfigured } = await import("../tcbs/client");
+    const row = await prisma.setting.findUnique({ where: { key: "tcbsToken" } });
+    await ctx.reply(
+      `TCBS configured: ${tcbsConfigured() ? "✅" : "❌ (thiếu TCBS_API_KEY/TCBS_ACCOUNT_NO)"}\ntoken: ${row?.value ? "có" : "chưa có — /otp <mã>"}`,
+    );
+  });
+
   bot.on("callback_query:data", async (ctx) => {
     if (!allowed(ctx)) return;
     const data = ctx.callbackQuery.data;
     const [action, idStr] = data.split(":");
     const id = Number(idStr);
     if (action === "skip" || action === "taken") {
-      await prisma.signal.update({
+      const signal = await prisma.signal.update({
         where: { id },
         data: { status: action === "skip" ? "skipped" : "taken" },
       });
-      await ctx.answerCallbackQuery({ text: action === "skip" ? "Đã bỏ qua" : "Đã ghi nhận vào lệnh" });
+      if (action === "taken") {
+        // Lệnh đặt tay ngoài broker → vẫn mở Trade để watcher cắt lỗ + journal
+        await prisma.trade.create({
+          data: {
+            symbolId: signal.symbolId,
+            qty: signal.qty,
+            entryPrice: signal.entry,
+            stopPrice: signal.stop,
+            targetPrice: signal.target,
+            signalId: signal.id,
+            note: "manual",
+          },
+        });
+      }
+      await ctx.answerCallbackQuery({ text: action === "skip" ? "Đã bỏ qua" : "Đã mở trade + bật watcher" });
+    } else if (action === "order") {
+      await ctx.answerCallbackQuery({ text: "Đang đặt lệnh…" });
+      const { placeSignalOrder } = await import("../orders");
+      const r = await placeSignalOrder(id);
+      await ctx.reply(`${r.ok ? "✅" : "❌"} ${r.message}`);
     } else {
       await ctx.answerCallbackQuery();
     }

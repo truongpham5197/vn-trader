@@ -1,4 +1,4 @@
-import type { StrategyFn } from "./types";
+import type { ExitCheckFn, StrategyFn } from "./types";
 import { atr, highestHighBefore, sma } from "./indicators";
 
 export const BREAKOUT20_DEFAULTS = {
@@ -62,3 +62,10 @@ export function roundTick(price: number): number {
 export function floorTick(price: number): number {
   return Math.floor(price / tickSize(price)) * tickSize(price);
 }
+
+/** Trailing theo MA10: đóng cửa thủng MA10 → thoát. */
+export const breakout20Exit: ExitCheckFn = ({ bars }) => {
+  const ma10 = sma(bars.map((b) => b.close), 10);
+  if (ma10 !== null && bars[bars.length - 1].close < ma10) return "trailing-ma10";
+  return null;
+};

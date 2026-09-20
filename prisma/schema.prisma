@@ -85,21 +85,24 @@ model Order {
 }
 
 model Trade {
-  id         Int       @id @default(autoincrement())
-  symbolId   Int
-  symbol     Symbol    @relation(fields: [symbolId], references: [id])
-  qty        Int
-  entryPrice Float
-  exitPrice  Float?
-  pnl        Float?
-  status     String    @default("open") // open | closed
-  signalId   Int?
-  signal     Signal?   @relation(fields: [signalId], references: [id])
-  tags       String?
-  note       String?
-  openedAt   DateTime  @default(now())
-  closedAt   DateTime?
-  orders     Order[]
+  id          Int       @id @default(autoincrement())
+  symbolId    Int
+  symbol      Symbol    @relation(fields: [symbolId], references: [id])
+  qty         Int
+  entryPrice  Float
+  exitPrice   Float?
+  stopPrice   Float? // watcher dùng để cắt lỗ
+  targetPrice Float?
+  pnl         Float? // net sau phí+thuế
+  status      String    @default("open") // open | closed
+  exitReason  String? // stop | target | trailing | time-stop | manual
+  signalId    Int?
+  signal      Signal?   @relation(fields: [signalId], references: [id])
+  tags        String?
+  note        String?
+  openedAt    DateTime  @default(now())
+  closedAt    DateTime?
+  orders      Order[]
 }
 
 model Position {

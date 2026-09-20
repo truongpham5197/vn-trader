@@ -31,5 +31,27 @@ export function startJobs(): void {
     { timezone: TZ },
   );
 
-  console.log("[cron] scheduled eod-sync 15:20 + scan 15:40 (Asia/Ho_Chi_Minh, Mon-Fri)");
+  // Mỗi phút 9:00-14:59 T2-T6: stop-loss watcher + sync lệnh pending
+  cron.schedule(
+    "* 9-14 * * 1-5",
+    async () => {
+      const { runWatcher } = await import("./tcbs/watcher");
+      await runWatcher().catch((e) => console.error("[watcher]", e));
+    },
+    { timezone: TZ },
+  );
+
+  // 20:00 Chủ nhật: báo cáo tuần
+  cron.schedule(
+    "0 20 * * 0",
+    async () => {
+      const { weeklyReport } = await import("./journal/report");
+      await weeklyReport().catch((e) => console.error("[weekly-report]", e));
+    },
+    { timezone: TZ },
+  );
+
+  console.log(
+    "[cron] eod-sync 15:20 + scan 15:40 + watcher */1 9-14 + weekly-report 20:00 CN (Asia/Ho_Chi_Minh)",
+  );
 }

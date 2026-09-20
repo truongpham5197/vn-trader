@@ -32,6 +32,8 @@ export async function sendTelegram(
 
 const fmt = (n: number) => n.toFixed(2);
 const fmtVnd = (n: number) => `${(n / 1e6).toFixed(1)}tr`;
+/** Escape text động cho parse_mode=HTML — chuỗi có < MA10 / RSI>70 sẽ phá markup. */
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 export async function notifySignal(s: {
   signalId: number;
@@ -53,7 +55,7 @@ export async function notifySignal(s: {
   const riskVnd = (s.entry - s.stop) * s.qty * 1000;
   const text = [
     `🟢 <b>TÍN HIỆU MUA — ${s.ticker}</b>${s.sector ? ` · ${s.sector}` : ""}`,
-    `<i>${s.reason}</i>`,
+    `<i>${esc(s.reason)}</i>`,
     ``,
     `💰 Giá vào (LO): <b>${fmt(s.entry)}</b>`,
     ...(s.buyZone
@@ -65,7 +67,7 @@ export async function notifySignal(s: {
     `📐 R:R <b>${s.rr.toFixed(1)}</b> — lãi kỳ vọng gấp ${s.rr.toFixed(1)}× rủi ro`,
     `📦 Khối lượng: <b>${s.qty}cp</b> ≈ ${fmtVnd(s.valueVnd)}`,
     `⚠️ Nếu chạm stop: lỗ ~${fmtVnd(riskVnd)} (~1% NAV)`,
-    ...(s.plan ? [``, `🗓 <i>${s.plan}</i>`] : []),
+    ...(s.plan ? [``, `🗓 <i>${esc(s.plan)}</i>`] : []),
   ].join("\n");
   return sendTelegram(text, [
     [

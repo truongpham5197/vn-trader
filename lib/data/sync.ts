@@ -44,6 +44,7 @@ export async function syncDailyBars(opts?: {
   delayMs?: number;
   offset?: number;
   limit?: number;
+  deadlineMs?: number;
   onProgress?: (done: number, total: number, ticker: string) => void;
 }): Promise<{ synced: number; failed: string[]; total: number; nextOffset: number | null }> {
   const lookbackDays = opts?.lookbackDays ?? 10;
@@ -58,13 +59,23 @@ export async function syncDailyBars(opts?: {
   });
   const offset = opts?.offset ?? 0;
   const symbols = opts?.limit ? all.slice(offset, offset + opts.limit) : all.slice(offset);
-  const nextOffset = offset + symbols.length < all.length ? offset + symbols.length : null;
+  const t0 = Date.now();
+  const deadlineMs = opts?.deadlineMs ?? 0;
 
   const failed: string[] = [];
   let done = 0;
   for (const s of symbols) {
+    // Vượt ngân sách thời gian → dừng sớm, trả nextOffset để chain tiếp
+    const budget = deadlineMs ? deadlineMs - (Date.now() - t0) : Infinity;
+    if (budget <= 0) break;
     try {
-      const bars = await fetchDailyBars(s.ticker, from, to);
+      // Race fetch với budget còn lại — 1 mã treo không được giết cả batch
+      const bars = await Promise.race([
+        fetchDailyBars(s.ticker, from, to),
+        sleep(Math.max(budget, 0)).then(() => {
+          throw new Error("deadline");
+        }),
+      ]);
       if (bars.length) {
         await prisma.dailyBar.createMany({
           data: bars.map((b) => ({
@@ -99,5 +110,6 @@ export async function syncDailyBars(opts?: {
     opts?.onProgress?.(offset + done, all.length, s.ticker);
     if (delayMs > 0) await sleep(delayMs);
   }
-  return { synced: symbols.length - failed.length, failed, total: all.length, nextOffset };
+  const nextOffset = offset + done < all.length ? offset + done : null;
+  return { synced: done - failed.length, failed, total: all.length, nextOffset };
 }

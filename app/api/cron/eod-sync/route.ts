@@ -19,7 +19,7 @@ async function handle(req: Request, body: Record<string, unknown>) {
   const lookbackDays = Number(body.lookbackDays ?? 10);
   const onlyTickers = body.onlyTickers as string[] | undefined;
 
-  const r = await syncDailyBars({ lookbackDays, onlyTickers, offset, limit });
+  const r = await syncDailyBars({ lookbackDays, onlyTickers, offset, limit, deadlineMs: 40_000 });
 
   // Còn batch sau → tự chain 1 invocation mới (Vercel function chỉ sống ~60s)
   if (r.nextOffset !== null && !onlyTickers) {

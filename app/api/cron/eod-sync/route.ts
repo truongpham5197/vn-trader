@@ -45,7 +45,16 @@ async function handle(req: Request, body: Record<string, unknown>) {
         });
       }
     } catch (e) {
-      console.error("[eod-sync] batch/chain error", e);
+      // Lỗi thoáng qua (Neon/DNSE hiccup) → retry cùng offset, tối đa 3 lần
+      const attempt = Number(body.attempt ?? 0);
+      console.error(`[eod-sync] offset=${offset} attempt=${attempt} error`, e);
+      if (attempt < 3 && !onlyTickers) {
+        await fetch(selfUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ lookbackDays, offset, limit, attempt: attempt + 1 }),
+        }).catch((e2) => console.error("[eod-sync] retry chain failed", e2));
+      }
     }
   });
 

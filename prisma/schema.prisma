@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Symbol {
+  id          Int        @id @default(autoincrement())
+  ticker      String     @unique
+  exchange    String // HOSE | HNX | UPCOM
+  companyName String?
+  bandPct     Float // 0.07 | 0.10 | 0.15
+  active      Boolean    @default(true)
+  bars        DailyBar[]
+  signals     Signal[]
+  trades      Trade[]
+  position    Position?
+}
+
+model DailyBar {
+  id       Int    @id @default(autoincrement())
+  symbolId Int
+  symbol   Symbol @relation(fields: [symbolId], references: [id], onDelete: Cascade)
+  date     String // YYYY-MM-DD, giờ VN
+  open     Float // nghìn đồng
+  high     Float
+  low      Float
+  close    Float
+  volume   Int
+  value    Float // close * volume * 1000, đơn vị VND
+
+  @@unique([symbolId, date])
+  @@index([symbolId, date])
+}
+
+model Strategy {
+  id      Int     @id @default(autoincrement())
+  name    String  @unique
+  type    String // "breakout-20" | "pullback-ma20" | "rsi2-revert"
+  params  String // JSON
+  enabled Boolean @default(true)
+  signals Signal[]
+}
+
+model Signal {
+  id         Int      @id @default(autoincrement())
+  strategyId Int
+  strategy   Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  symbolId   Int
+  symbol     Symbol   @relation(fields: [symbolId], references: [id], onDelete: Cascade)
+  date       String // phiên phát sinh tín hiệu
+  entry      Float
+  stop       Float
+  target     Float
+  qty        Int
+  rr         Float
+  reason     String?
+  status     String   @default("new") // new | notified | taken | skipped | expired | filled
+  createdAt  DateTime @default(now())
+  orders     Order[]
+  trades     Trade[]
+
+  @@unique([strategyId, symbolId, date])
+  @@index([date, status])
+}
+
+model Order {
+  id          Int       @id @default(autoincrement())
+  signalId    Int?
+  signal      Signal?   @relation(fields: [signalId], references: [id])
+  side        String // BUY | SELL
+  qty         Int
+  price       Float
+  type        String // LO | MP
+  status      String // pending | filled | cancelled | rejected
+  mode        String   @default("paper") // paper | live
+  tcbsOrderId String?
+  placedAt    DateTime  @default(now())
+  filledAt    DateTime?
+  tradeId     Int?
+  trade       Trade?    @relation(fields: [tradeId], references: [id])
+}
+
+model Trade {
+  id         Int       @id @default(autoincrement())
+  symbolId   Int
+  symbol     Symbol    @relation(fields: [symbolId], references: [id])
+  qty        Int
+  entryPrice Float
+  exitPrice  Float?
+  pnl        Float?
+  status     String    @default("open") // open | closed
+  signalId   Int?
+  signal     Signal?   @relation(fields: [signalId], references: [id])
+  tags       String?
+  note       String?
+  openedAt   DateTime  @default(now())
+  closedAt   DateTime?
+  orders     Order[]
+}
+
+model Position {
+  id          Int      @id @default(autoincrement())
+  symbolId    Int      @unique
+  symbol      Symbol   @relation(fields: [symbolId], references: [id])
+  qty         Int
+  sellableQty Int
+  avgPrice    Float
+  syncedAt    DateTime @default(now())
+}
+
+model BacktestRun {
+  id            Int      @id @default(autoincrement())
+  strategyType  String
+  params        String
+  universe      String
+  periodStart   String
+  periodEnd     String
+  metrics       String // JSON
+  equity        String // JSON
+  trades        String // JSON
+  createdAt     DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+model DataGap {
+  id        Int      @id @default(autoincrement())
+  symbolId  Int?
+  date      String
+  reason    String
+  createdAt DateTime @default(now())
+}

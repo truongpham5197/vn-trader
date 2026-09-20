@@ -59,6 +59,9 @@ model Signal {
   qty        Int
   rr         Float
   reason     String?
+  plan       String? // vì sao target đó + kỳ vọng số phiên
+  buyLow     Float?  // vùng mua an toàn [buyLow, buyHigh]
+  buyHigh    Float?
   status     String   @default("new") // new | notified | taken | skipped | expired | filled
   createdAt  DateTime @default(now())
   orders     Order[]

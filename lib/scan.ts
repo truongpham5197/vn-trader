@@ -119,6 +119,9 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
           qty: size.qty,
           rr: cand.rr,
           reason: cand.reason,
+          plan: cand.plan,
+          buyLow: cand.buyZone?.[0],
+          buyHigh: cand.buyZone?.[1],
           status: "new",
         },
         include: { symbol: true },
@@ -138,6 +141,8 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
           valueVnd: size.valueVnd,
           rr: cand.rr,
           reason: cand.reason,
+          plan: cand.plan,
+          buyZone: cand.buyZone,
         });
         if (ok) {
           await prisma.signal.update({ where: { id: signal.id }, data: { status: "notified" } });

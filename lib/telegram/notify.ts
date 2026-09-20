@@ -45,6 +45,8 @@ export async function notifySignal(s: {
   valueVnd: number;
   rr: number;
   reason: string;
+  plan?: string;
+  buyZone?: [number, number];
 }): Promise<boolean> {
   const stopPct = ((s.entry - s.stop) / s.entry) * 100;
   const targetPct = ((s.target - s.entry) / s.entry) * 100;
@@ -54,12 +56,16 @@ export async function notifySignal(s: {
     `<i>${s.reason}</i>`,
     ``,
     `💰 Giá vào (LO): <b>${fmt(s.entry)}</b>`,
+    ...(s.buyZone
+      ? [`🛡 Vùng mua an toàn: <b>${fmt(s.buyZone[0])} – ${fmt(s.buyZone[1])}</b> — đặt trong vùng này, không đuổi giá cao hơn`]
+      : []),
     `🛑 Cắt lỗ: ${fmt(s.stop)} (−${stopPct.toFixed(1)}%)`,
     `🎯 Chốt lãi: ${fmt(s.target)} (<b>+${targetPct.toFixed(1)}%</b> tiềm năng)`,
     ``,
     `📐 R:R <b>${s.rr.toFixed(1)}</b> — lãi kỳ vọng gấp ${s.rr.toFixed(1)}× rủi ro`,
     `📦 Khối lượng: <b>${s.qty}cp</b> ≈ ${fmtVnd(s.valueVnd)}`,
     `⚠️ Nếu chạm stop: lỗ ~${fmtVnd(riskVnd)} (~1% NAV)`,
+    ...(s.plan ? [``, `🗓 <i>${s.plan}</i>`] : []),
   ].join("\n");
   return sendTelegram(text, [
     [

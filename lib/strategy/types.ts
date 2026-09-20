@@ -5,7 +5,9 @@ export interface SignalCandidate {
   stop: number;
   target: number;
   rr: number;
-  reason: string;
+  reason: string; // vì sao có tín hiệu
+  plan?: string; // vì sao target đó + kỳ vọng bao nhiêu phiên
+  buyZone?: [number, number]; // dải giá còn được phép vào — không đuổi ngoài vùng
 }
 
 export interface StrategyContext {

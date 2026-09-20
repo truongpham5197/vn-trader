@@ -39,6 +39,16 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
     select: { id: true, ticker: true, exchange: true, bandPct: true },
   });
 
+  // Mã đang nắm giữ luôn được scan — bypass filter thanh khoản
+  const heldTickers = new Set(
+    (
+      await prisma.trade.findMany({
+        where: { status: "open" },
+        include: { symbol: { select: { ticker: true } } },
+      })
+    ).map((t) => t.symbol.ticker),
+  );
+
   let filtered = 0;
   let signals = 0;
   let notified = 0;
@@ -62,7 +72,7 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
     // Universe filter: GTGD TB 20 phiên gần nhất
     const last20 = rows.slice(0, 20);
     const avgValue = last20.reduce((s, r) => s + r.value, 0) / last20.length;
-    if (avgValue < minValue) continue;
+    if (avgValue < minValue && !heldTickers.has(sym.ticker)) continue;
     filtered++;
 
     for (const st of strategies) {

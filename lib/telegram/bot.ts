@@ -119,6 +119,65 @@ export function startTelegramBot(): void {
     );
   });
 
+  // /add GAS 1000 95.5 [stop] — log vị thế mua tay → watcher canh stop + journal
+  bot.command("add", async (ctx) => {
+    if (!allowed(ctx)) return;
+    const [ticker, qtyStr, entryStr, stopStr] = (ctx.match ?? "").trim().split(/\s+/);
+    const qty = Number(qtyStr);
+    const entry = Number(entryStr);
+    if (!ticker || !qty || !entry) {
+      return void (await ctx.reply("Dùng: /add <MÃ> <qty> <giá vốn> [stop] — vd: /add GAS 1000 95.5 90"));
+    }
+    const sym = await prisma.symbol.findUnique({ where: { ticker: ticker.toUpperCase() } });
+    if (!sym) return void (await ctx.reply(`❌ không tìm thấy mã ${ticker.toUpperCase()}`));
+    const trade = await prisma.trade.create({
+      data: {
+        symbolId: sym.id,
+        qty,
+        entryPrice: entry,
+        stopPrice: stopStr ? Number(stopStr) : null,
+        note: "manual-add",
+      },
+    });
+    await ctx.reply(
+      `✅ Đã mở trade #${trade.id}: <b>${sym.ticker}</b> ${qty}cp @ ${entry}` +
+        (stopStr ? ` | stop ${stopStr} — watcher đang canh` : " (chưa có stop — thêm stop để watcher canh)"),
+    );
+  });
+
+  // /close GAS [giá] — đóng trade mở, tính P&L net
+  bot.command("close", async (ctx) => {
+    if (!allowed(ctx)) return;
+    const [ticker, exitStr] = (ctx.match ?? "").trim().split(/\s+/);
+    if (!ticker) return void (await ctx.reply("Dùng: /close <MÃ> [giá bán]"));
+    const sym = await prisma.symbol.findUnique({ where: { ticker: ticker.toUpperCase() } });
+    if (!sym) return void (await ctx.reply(`❌ không tìm thấy mã ${ticker.toUpperCase()}`));
+    const trade = await prisma.trade.findFirst({
+      where: { symbolId: sym.id, status: "open" },
+      orderBy: { id: "desc" },
+    });
+    if (!trade) return void (await ctx.reply(`❌ ${sym.ticker} không có trade đang mở`));
+    let exit = Number(exitStr);
+    if (!exit) {
+      const last = await prisma.dailyBar.findFirst({
+        where: { symbolId: sym.id },
+        orderBy: { date: "desc" },
+      });
+      if (!last) return void (await ctx.reply("❌ không có giá tham chiếu — truyền giá: /close GAS 92"));
+      exit = last.close;
+    }
+    const proceeds = exit * trade.qty * 1000 * (1 - 0.0025);
+    const cost = trade.entryPrice * trade.qty * 1000 * 1.0015;
+    const pnl = proceeds - cost;
+    await prisma.trade.update({
+      where: { id: trade.id },
+      data: { status: "closed", exitPrice: exit, pnl, exitReason: "manual", closedAt: new Date() },
+    });
+    await ctx.reply(
+      `🔒 Đóng <b>${sym.ticker}</b> @ ${exit} — P&L ${(pnl / 1e6).toFixed(2)}tr (net phí+thuế)`,
+    );
+  });
+
   bot.on("callback_query:data", async (ctx) => {
     if (!allowed(ctx)) return;
     const data = ctx.callbackQuery.data;

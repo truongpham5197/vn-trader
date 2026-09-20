@@ -41,6 +41,20 @@ export function startJobs(): void {
     { timezone: TZ },
   );
 
+  // Mỗi 30 phút 9:00–14:30 T2–T6: báo cáo vị thế theo % lãi/lỗ live
+  cron.schedule(
+    "*/30 9-14 * * 1-5",
+    async () => {
+      const { positionsReport, formatPositionsReport } = await import("./report/positions");
+      const lines = await positionsReport();
+      if (lines.length) {
+        const { sendTelegram } = await import("./telegram/notify");
+        await sendTelegram(formatPositionsReport(lines));
+      }
+    },
+    { timezone: TZ },
+  );
+
   // 20:00 Chủ nhật: báo cáo tuần
   cron.schedule(
     "0 20 * * 0",

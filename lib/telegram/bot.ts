@@ -66,16 +66,8 @@ export function startTelegramBot(): void {
 
   bot.command("positions", async (ctx) => {
     if (!allowed(ctx)) return;
-    const trades = await prisma.trade.findMany({
-      where: { status: "open" },
-      include: { symbol: true },
-    });
-    if (!trades.length) return void (await ctx.reply("Không có vị thế mở."));
-    await ctx.reply(
-      trades
-        .map((t) => `${t.symbol.ticker} ${t.qty}cp @ ${t.entryPrice} — mở ${t.openedAt.toISOString().slice(0, 10)}`)
-        .join("\n"),
-    );
+    const { positionsReport, formatPositionsReport } = await import("../report/positions");
+    await ctx.reply(formatPositionsReport(await positionsReport()));
   });
 
   bot.command("pause", async (ctx) => {

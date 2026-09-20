@@ -40,6 +40,20 @@ export async function fetchDailyBars(
   return bars.sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/** Nến 1 phút trong phiên — giá gần realtime (~1 phút trễ), public, không auth. */
+export async function fetchMinuteBars(
+  ticker: string,
+  fromDate: Date,
+  toDate: Date,
+): Promise<{ time: Date; close: number }[]> {
+  const from = Math.floor(fromDate.getTime() / 1000);
+  const to = Math.floor(toDate.getTime() / 1000);
+  const url = `${BASE}/stock?from=${from}&to=${to}&symbol=${encodeURIComponent(ticker)}&resolution=1`;
+  const json = await fetchJson<OhlcResponse>(url, 1); // 1 retry — giá live, chậm thì fallback daily
+  if (!json.t?.length) return [];
+  return json.t.map((t, i) => ({ time: new Date(t * 1000), close: json.c[i] }));
+}
+
 /** OHLC chỉ số (VNINDEX...) */
 export async function fetchIndexBars(
   index: string,

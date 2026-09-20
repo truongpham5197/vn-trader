@@ -15,7 +15,7 @@ async function handle(req: Request, body: Record<string, unknown>) {
   }
 
   const offset = Number(body.offset ?? 0);
-  const limit = Number(body.limit ?? 80);
+  const limit = Number(body.limit ?? 50);
   const lookbackDays = Number(body.lookbackDays ?? 10);
   const onlyTickers = body.onlyTickers as string[] | undefined;
 

@@ -65,18 +65,9 @@ export async function syncDailyBars(opts?: {
   for (const s of symbols) {
     try {
       const bars = await fetchDailyBars(s.ticker, from, to);
-      for (const b of bars) {
-        await prisma.dailyBar.upsert({
-          where: { symbolId_date: { symbolId: s.id, date: b.date } },
-          update: {
-            open: b.open,
-            high: b.high,
-            low: b.low,
-            close: b.close,
-            volume: b.volume,
-            value: b.close * b.volume * 1000,
-          },
-          create: {
+      if (bars.length) {
+        await prisma.dailyBar.createMany({
+          data: bars.map((b) => ({
             symbolId: s.id,
             date: b.date,
             open: b.open,
@@ -85,7 +76,8 @@ export async function syncDailyBars(opts?: {
             close: b.close,
             volume: b.volume,
             value: b.close * b.volume * 1000,
-          },
+          })),
+          skipDuplicates: true,
         });
       }
       if (bars.length === 0) {

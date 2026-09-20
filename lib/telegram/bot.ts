@@ -15,6 +15,16 @@ export function startTelegramBot(): void {
   const allowed = (ctx: { chat?: { id: number } }) =>
     !chatId || String(ctx.chat?.id) === chatId;
 
+  // Log chat.id của mọi update — tiện discover group chat_id khi bot mới vào group
+  bot.use(async (ctx, next) => {
+    console.log(
+      "[tg] update from chat",
+      ctx.chat?.id,
+      Object.keys(ctx.update).filter((k) => k !== "update_id"),
+    );
+    await next();
+  });
+
   bot.command("status", async (ctx) => {
     if (!allowed(ctx)) return;
     const [symbols, bars, todaySignals, openTrades] = await Promise.all([

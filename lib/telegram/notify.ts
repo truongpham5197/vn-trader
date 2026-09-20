@@ -45,12 +45,20 @@ export async function notifySignal(s: {
   rr: number;
   reason: string;
 }): Promise<boolean> {
-  const stopPct = (((s.entry - s.stop) / s.entry) * 100).toFixed(1);
+  const stopPct = ((s.entry - s.stop) / s.entry) * 100;
+  const targetPct = ((s.target - s.entry) / s.entry) * 100;
+  const riskVnd = (s.entry - s.stop) * s.qty * 1000;
   const text = [
-    `<b>${s.ticker}</b> — ${s.strategy}`,
-    `Entry <b>${fmt(s.entry)}</b> (LO) | Stop ${fmt(s.stop)} (-${stopPct}%) | Target ${fmt(s.target)}`,
-    `Size <b>${s.qty}cp</b> ≈ ${fmtVnd(s.valueVnd)} | R:R ${s.rr}`,
+    `🟢 <b>TÍN HIỆU MUA — ${s.ticker}</b>`,
     `<i>${s.reason}</i>`,
+    ``,
+    `💰 Giá vào (LO): <b>${fmt(s.entry)}</b>`,
+    `🛑 Cắt lỗ: ${fmt(s.stop)} (−${stopPct.toFixed(1)}%)`,
+    `🎯 Chốt lãi: ${fmt(s.target)} (<b>+${targetPct.toFixed(1)}%</b> tiềm năng)`,
+    ``,
+    `📐 R:R <b>${s.rr.toFixed(1)}</b> — lãi kỳ vọng gấp ${s.rr.toFixed(1)}× rủi ro`,
+    `📦 Khối lượng: <b>${s.qty}cp</b> ≈ ${fmtVnd(s.valueVnd)}`,
+    `⚠️ Nếu chạm stop: lỗ ~${fmtVnd(riskVnd)} (~1% NAV)`,
   ].join("\n");
   return sendTelegram(text, [
     [

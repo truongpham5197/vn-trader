@@ -68,6 +68,33 @@ export function createBot(): Bot {
     await ctx.reply(formatPositionsReport(await positionsReport()));
   });
 
+  // /orders — tín hiệu chờ xử lý hôm nay + vị thế đang giữ (live %)
+  bot.command("orders", async (ctx) => {
+    if (!allowed(ctx)) return;
+    const pending = await prisma.signal.findMany({
+      where: { date: vnToday(), status: { in: ["new", "notified"] } },
+      include: { symbol: true, strategy: true },
+      orderBy: { id: "desc" },
+      take: 15,
+    });
+    const { positionsReport, formatPositionsReport } = await import("../report/positions");
+
+    const parts: string[] = [];
+    if (pending.length) {
+      parts.push("📋 <b>Tín hiệu chờ xử lý</b>");
+      for (const s of pending) {
+        const up = (((s.target - s.entry) / s.entry) * 100).toFixed(1);
+        const dn = (((s.entry - s.stop) / s.entry) * 100).toFixed(1);
+        parts.push(
+          `• <b>${s.symbol.ticker}</b> [${s.strategy.name}] vào ${s.entry} | TP ${s.target} (+${up}%) | SL ${s.stop} (−${dn}%) | ${s.qty}cp`,
+        );
+      }
+      parts.push("");
+    }
+    parts.push(formatPositionsReport(await positionsReport()));
+    await ctx.reply(parts.join("\n"));
+  });
+
   bot.command("pause", async (ctx) => {
     if (!allowed(ctx)) return;
     await setSetting("scanEnabled", "false");

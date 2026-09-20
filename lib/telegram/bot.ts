@@ -5,12 +5,10 @@ import { vnToday } from "../vn-time";
 
 let started = false;
 
-export function startTelegramBot(): void {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+/** Bot đã đăng ký đủ handlers — dùng cho cả polling (local) lẫn webhook (Vercel). */
+export function createBot(): Bot {
+  const token = process.env.TELEGRAM_BOT_TOKEN ?? "";
   const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || started) return;
-  started = true;
-
   const bot = new Bot(token);
   const allowed = (ctx: { chat?: { id: number } }) =>
     !chatId || String(ctx.chat?.id) === chatId;
@@ -131,9 +129,58 @@ export function startTelegramBot(): void {
         note: "manual-add",
       },
     });
+    if (stopStr) {
+      return void (await ctx.reply(
+        `✅ Đã mở trade #${trade.id}: <b>${sym.ticker}</b> ${qty}cp @ ${entry} | stop ${stopStr} — watcher đang canh`,
+      ));
+    }
+    // Không có stop → gợi ý tự động theo target +5%
+    const { suggestForTrade } = await import("../risk/suggest");
+    const sg = await suggestForTrade(trade.id, 5);
+    if (!sg) {
+      return void (await ctx.reply(
+        `✅ Đã mở trade #${trade.id}: <b>${sym.ticker}</b> ${qty}cp @ ${entry} (chưa có stop — thiếu data để gợi ý)`,
+      ));
+    }
     await ctx.reply(
-      `✅ Đã mở trade #${trade.id}: <b>${sym.ticker}</b> ${qty}cp @ ${entry}` +
-        (stopStr ? ` | stop ${stopStr} — watcher đang canh` : " (chưa có stop — thêm stop để watcher canh)"),
+      `✅ Đã mở trade #${trade.id}: <b>${sym.ticker}</b> ${qty}cp @ ${entry}\n\n` +
+        `💡 Gợi ý chốt +5%: TP <b>${sg.target}</b> | SL <b>${sg.stop}</b> (R:R ${sg.rr.toFixed(1)})\n` +
+        `<i>${sg.note}</i>`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: `✅ Áp dụng SL ${sg.stop} / TP ${sg.target}`, callback_data: `setplan:${trade.id}:${sg.stop}:${sg.target}` }],
+          ],
+        },
+      },
+    );
+  });
+
+  // /plan GAS [pct] — gợi ý lại stop/target cho trade đang mở (default +5%)
+  bot.command("plan", async (ctx) => {
+    if (!allowed(ctx)) return;
+    const [ticker, pctStr] = (ctx.match ?? "").trim().split(/\s+/);
+    if (!ticker) return void (await ctx.reply("Dùng: /plan <MÃ> [%lãi mục tiêu] — vd: /plan GAS 5"));
+    const sym = await prisma.symbol.findUnique({ where: { ticker: ticker.toUpperCase() } });
+    if (!sym) return void (await ctx.reply(`❌ không tìm thấy mã ${ticker.toUpperCase()}`));
+    const trade = await prisma.trade.findFirst({
+      where: { symbolId: sym.id, status: "open" },
+      orderBy: { id: "desc" },
+    });
+    if (!trade) return void (await ctx.reply(`❌ ${sym.ticker} không có trade đang mở`));
+    const { suggestForTrade } = await import("../risk/suggest");
+    const sg = await suggestForTrade(trade.id, Number(pctStr) || 5);
+    if (!sg) return void (await ctx.reply("❌ thiếu data để gợi ý"));
+    await ctx.reply(
+      `💡 <b>${sym.ticker}</b> @ ${trade.entryPrice} → TP <b>${sg.target}</b> | SL <b>${sg.stop}</b> (R:R ${sg.rr.toFixed(1)})\n` +
+        `<i>${sg.note}</i>`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: `✅ Áp dụng SL ${sg.stop} / TP ${sg.target}`, callback_data: `setplan:${trade.id}:${sg.stop}:${sg.target}` }],
+          ],
+        },
+      },
     );
   });
 
@@ -195,6 +242,14 @@ export function startTelegramBot(): void {
         });
       }
       await ctx.answerCallbackQuery({ text: action === "skip" ? "Đã bỏ qua" : "Đã mở trade + bật watcher" });
+    } else if (action === "setplan") {
+      const [stopStr, targetStr] = data.split(":").slice(2);
+      await prisma.trade.update({
+        where: { id },
+        data: { stopPrice: Number(stopStr), targetPrice: Number(targetStr) },
+      });
+      await ctx.answerCallbackQuery({ text: "Đã áp dụng plan" });
+      await ctx.reply(`🛡 Trade #${id}: stop ${stopStr} | target ${targetStr} — watcher đang canh`);
     } else if (action === "order") {
       await ctx.answerCallbackQuery({ text: "Đang đặt lệnh…" });
       const { placeSignalOrder } = await import("../orders");
@@ -206,6 +261,12 @@ export function startTelegramBot(): void {
   });
 
   bot.catch((e) => console.error("[telegram-bot]", e));
-  void bot.start();
+  return bot;
+}
+
+export function startTelegramBot(): void {
+  if (!process.env.TELEGRAM_BOT_TOKEN || started) return;
+  started = true;
+  void createBot().start();
   console.log("[telegram-bot] polling started");
 }

@@ -42,17 +42,23 @@ export async function syncDailyBars(opts?: {
   lookbackDays?: number;
   onlyTickers?: string[];
   delayMs?: number;
+  offset?: number;
+  limit?: number;
   onProgress?: (done: number, total: number, ticker: string) => void;
-}): Promise<{ synced: number; failed: string[] }> {
+}): Promise<{ synced: number; failed: string[]; total: number; nextOffset: number | null }> {
   const lookbackDays = opts?.lookbackDays ?? 10;
   const delayMs = opts?.delayMs ?? 120;
   const to = new Date();
   const from = new Date(to.getTime() - lookbackDays * 24 * 3600 * 1000);
 
-  const symbols = await prisma.symbol.findMany({
+  const all = await prisma.symbol.findMany({
     where: { active: true, ...(opts?.onlyTickers ? { ticker: { in: opts.onlyTickers } } : {}) },
     select: { id: true, ticker: true },
+    orderBy: { id: "asc" },
   });
+  const offset = opts?.offset ?? 0;
+  const symbols = opts?.limit ? all.slice(offset, offset + opts.limit) : all.slice(offset);
+  const nextOffset = offset + symbols.length < all.length ? offset + symbols.length : null;
 
   const failed: string[] = [];
   let done = 0;
@@ -98,8 +104,8 @@ export async function syncDailyBars(opts?: {
       });
     }
     done++;
-    opts?.onProgress?.(done, symbols.length, s.ticker);
+    opts?.onProgress?.(offset + done, all.length, s.ticker);
     if (delayMs > 0) await sleep(delayMs);
   }
-  return { synced: symbols.length - failed.length, failed };
+  return { synced: symbols.length - failed.length, failed, total: all.length, nextOffset };
 }

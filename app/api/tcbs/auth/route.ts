@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { authenticate, tcbsConfigured } from "@/lib/tcbs/client";
+import { cronAuthorized, cronForbidden } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  if (!cronAuthorized(req)) return cronForbidden();
   if (!tcbsConfigured()) {
     return NextResponse.json(
       { error: "Chưa cấu hình TCBS_API_KEY/TCBS_ACCOUNT_NO trong .env" },

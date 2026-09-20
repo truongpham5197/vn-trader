@@ -49,16 +49,25 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
     ).map((t) => t.symbol.ticker),
   );
 
+  // Batch-load bars 1 query (serverless-friendly) thay vì query per-symbol
+  const cutoff = new Date(Date.now() - 100 * 86400e3).toISOString().slice(0, 10);
+  const allRows = await prisma.dailyBar.findMany({
+    where: { symbolId: { in: symbols.map((s) => s.id) }, date: { gte: cutoff } },
+    orderBy: [{ symbolId: "asc" }, { date: "desc" }],
+  });
+  const rowsBySymbol = new Map<number, typeof allRows>();
+  for (const r of allRows) {
+    const arr = rowsBySymbol.get(r.symbolId) ?? [];
+    arr.push(r);
+    rowsBySymbol.set(r.symbolId, arr);
+  }
+
   let filtered = 0;
   let signals = 0;
   let notified = 0;
 
   for (const sym of symbols) {
-    const rows = await prisma.dailyBar.findMany({
-      where: { symbolId: sym.id },
-      orderBy: { date: "desc" },
-      take: BARS_NEEDED,
-    });
+    const rows = (rowsBySymbol.get(sym.id) ?? []).slice(0, BARS_NEEDED);
     if (rows.length < BARS_NEEDED) continue;
     const bars: Bar[] = rows.reverse().map((r) => ({
       date: r.date,

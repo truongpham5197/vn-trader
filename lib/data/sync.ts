@@ -1,11 +1,12 @@
 import { prisma } from "../prisma";
-import { listListedSymbols, BAND_PCT } from "./vndirect";
+import { listListedSymbols, listSectors, BAND_PCT } from "./vndirect";
 import { fetchDailyBars } from "./dnse";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export async function syncSymbols(): Promise<number> {
   const listed = await listListedSymbols();
+  const sectors = await listSectors().catch(() => new Map<string, string>());
   const tickers = listed.map((s) => s.ticker);
   // Mã rớt khỏi list niêm yết → đánh dấu ngừng theo dõi
   await prisma.symbol.updateMany({
@@ -19,6 +20,7 @@ export async function syncSymbols(): Promise<number> {
       update: {
         exchange: s.exchange,
         companyName: s.companyName,
+        sector: sectors.get(s.ticker) ?? null,
         bandPct: BAND_PCT[s.exchange],
         active: true,
       },
@@ -26,6 +28,7 @@ export async function syncSymbols(): Promise<number> {
         ticker: s.ticker,
         exchange: s.exchange,
         companyName: s.companyName,
+        sector: sectors.get(s.ticker) ?? null,
         bandPct: BAND_PCT[s.exchange],
       },
     });

@@ -82,17 +82,50 @@ export function createBot(): Bot {
     const parts: string[] = [];
     if (pending.length) {
       parts.push("📋 <b>Tín hiệu chờ xử lý</b>");
+      // Gom theo ngành
+      const bySector = new Map<string, typeof pending>();
       for (const s of pending) {
-        const up = (((s.target - s.entry) / s.entry) * 100).toFixed(1);
-        const dn = (((s.entry - s.stop) / s.entry) * 100).toFixed(1);
-        parts.push(
-          `• <b>${s.symbol.ticker}</b> [${s.strategy.name}] vào ${s.entry} | TP ${s.target} (+${up}%) | SL ${s.stop} (−${dn}%) | ${s.qty}cp`,
-        );
+        const k = s.symbol.sector ?? "Khác";
+        bySector.set(k, [...(bySector.get(k) ?? []), s]);
+      }
+      for (const [sector, sigs] of [...bySector.entries()].sort((a, b) => b[1].length - a[1].length)) {
+        parts.push(`\n<b>▸ ${sector}</b>`);
+        for (const s of sigs) {
+          const up = (((s.target - s.entry) / s.entry) * 100).toFixed(1);
+          const dn = (((s.entry - s.stop) / s.entry) * 100).toFixed(1);
+          parts.push(
+            `• <b>${s.symbol.ticker}</b> [${s.strategy.name}] vào ${s.entry} | TP ${s.target} (+${up}%) | SL ${s.stop} (−${dn}%) | ${s.qty}cp`,
+          );
+        }
       }
       parts.push("");
     }
     parts.push(formatPositionsReport(await positionsReport()));
     await ctx.reply(parts.join("\n"));
+  });
+
+  // /help — giải thích các chỉ báo trong alert
+  bot.command("help", async (ctx) => {
+    if (!allowed(ctx)) return;
+    await ctx.reply(
+      [
+        "📖 <b>Giải thích thuật ngữ trong tín hiệu</b>",
+        "",
+        "<b>Giá vào (LO)</b> — giá đặt lệnh Limit Order phiên mai. Giá tham khảo từ nghìn đồng.",
+        "<b>Cắt lỗ (SL)</b> — giá bán khi sai; app tự canh và cảnh báo/bán khi chạm.",
+        "<b>Chốt lãi (TP)</b> — giá mục tiêu bán chốt lãi.",
+        "<b>R:R (Risk:Reward)</b> — tỷ lệ lãi kỳ vọng / lỗ rủi ro. R:R 2.0 = mạo hiểm 1đ để ăn 2đ. Nên ≥ 1.5.",
+        "<b>vol ×</b> — khối lượng giao dịch so với trung bình 20 phiên. 2× = đông gấp đôi bình thường → breakout có lực.",
+        "<b>ATR</b> — biên độ dao động trung bình 14 phiên; dùng để đặt stop theo volatility.",
+        "<b>1R</b> — đơn vị rủi ro = (giá vào − stop) × số cp. Mỗi lệnh rủi ~1% NAV.",
+        "<b>⏳T+x</b> — cổ phiếu chưa về tài khoản (T+2): mới mua hôm nay thì T+2 mới bán được.",
+        "<b>Breakout-20</b> — mua khi giá đóng cửa vượt đỉnh cao nhất 20 phiên kèm vol bùng.",
+        "<b>Pullback-MA20</b> — mua khi giá trong uptrend hồi về đúng trung bình 20 phiên.",
+        "<b>RSI(2)</b> — chỉ báo quá bán ngắn hạn: RSI 2 phiên < 5 trong uptrend → hồi kỹ thuật.",
+        "",
+        "Lệnh: /status /signals /orders /positions /plan &lt;MÃ&gt; /add /close /pause /resume /kill /otp /auth",
+      ].join("\n"),
+    );
   });
 
   bot.command("pause", async (ctx) => {

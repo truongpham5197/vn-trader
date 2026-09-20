@@ -32,3 +32,23 @@ export async function listListedSymbols(): Promise<ListedSymbol[]> {
   }
   return [...byTicker.values()];
 }
+
+/** Map ticker → tên ngành ICB cấp 2 (fallback cấp 1) từ VNDirect. */
+export async function listSectors(): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  for (const level of [2, 1]) {
+    const json = await fetchJson<{
+      data: { industryLevel: string; vietnameseName: string; codeList: string }[];
+    }>(`${BASE}/industry_classification?q=industryLevel:${level}&size=500`).catch(() => null);
+    if (!json?.data?.length) continue;
+    for (const ind of json.data) {
+      const name = ind.vietnameseName.trim();
+      for (const t of ind.codeList.split(",")) {
+        const ticker = t.trim();
+        if (ticker) map.set(ticker, name);
+      }
+    }
+    if (map.size) break;
+  }
+  return map;
+}

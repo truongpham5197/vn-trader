@@ -36,6 +36,7 @@ const fmtVnd = (n: number) => `${(n / 1e6).toFixed(1)}tr`;
 export async function notifySignal(s: {
   signalId: number;
   ticker: string;
+  sector?: string;
   strategy: string;
   entry: number;
   stop: number;
@@ -49,7 +50,7 @@ export async function notifySignal(s: {
   const targetPct = ((s.target - s.entry) / s.entry) * 100;
   const riskVnd = (s.entry - s.stop) * s.qty * 1000;
   const text = [
-    `🟢 <b>TÍN HIỆU MUA — ${s.ticker}</b>`,
+    `🟢 <b>TÍN HIỆU MUA — ${s.ticker}</b>${s.sector ? ` · ${s.sector}` : ""}`,
     `<i>${s.reason}</i>`,
     ``,
     `💰 Giá vào (LO): <b>${fmt(s.entry)}</b>`,

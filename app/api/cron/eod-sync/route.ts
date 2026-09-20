@@ -16,9 +16,10 @@ async function handle(req: Request, body: Record<string, unknown>) {
 
   // URL của chính route này để chain — copy auth header cho hop sau
   const selfUrl = new URL(req.url).toString();
-  const auth = process.env.CRON_SECRET
-    ? { authorization: `Bearer ${process.env.CRON_SECRET}` }
-    : {};
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (process.env.CRON_SECRET) {
+    headers.authorization = `Bearer ${process.env.CRON_SECRET}`;
+  }
 
   // Respond NGAY; batch + chain chạy trong after() — parent không phải chờ con,
   // nên không bao giờ vượt 60s và chain không đứt giữa chừng.
@@ -39,7 +40,7 @@ async function handle(req: Request, body: Record<string, unknown>) {
       if (r.nextOffset !== null && !onlyTickers) {
         await fetch(selfUrl, {
           method: "POST",
-          headers: { "content-type": "application/json", ...auth },
+          headers,
           body: JSON.stringify({ lookbackDays, offset: r.nextOffset, limit }),
         });
       }

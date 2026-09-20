@@ -12,6 +12,7 @@ model Symbol {
   ticker      String     @unique
   exchange    String // HOSE | HNX | UPCOM
   companyName String?
+  sector      String?
   bandPct     Float // 0.07 | 0.10 | 0.15
   active      Boolean    @default(true)
   bars        DailyBar[]

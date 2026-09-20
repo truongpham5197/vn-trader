@@ -36,7 +36,7 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
 
   const symbols = await prisma.symbol.findMany({
     where: { active: true },
-    select: { id: true, ticker: true, exchange: true, bandPct: true },
+    select: { id: true, ticker: true, exchange: true, bandPct: true, sector: true },
   });
 
   // Mã đang nắm giữ luôn được scan — bypass filter thanh khoản
@@ -129,6 +129,7 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
         const ok = await notifySignal({
           signalId: signal.id,
           ticker: sym.ticker,
+          sector: sym.sector ?? undefined,
           strategy: st.name,
           entry: cand.entry,
           stop: cand.stop,

@@ -1,5 +1,5 @@
 import { prisma } from "../prisma";
-import { getBool } from "../settings";
+import { getBool, getSetting, setSetting } from "../settings";
 import { getLatestPrice } from "../price";
 import { getOrder, getPositions, placeOrder, tcbsConfigured } from "./client";
 import { sendTelegram } from "../telegram/notify";
@@ -22,11 +22,12 @@ async function sessionsHeld(symbolId: number, openedAt: Date): Promise<number> {
 export async function runWatcher(): Promise<void> {
   if (await getBool("killSwitch")) return;
 
-  const openTrades = await prisma.trade.findMany({
-    where: { status: "open", stopPrice: { not: null } },
+  const allOpen = await prisma.trade.findMany({
+    where: { status: "open" },
     include: { symbol: true },
   });
-  if (!openTrades.length && !(await prisma.order.count({ where: { status: "pending" } }))) return;
+  const openTrades = allOpen.filter((t) => t.stopPrice !== null);
+  if (!allOpen.length && !(await prisma.order.count({ where: { status: "pending" } }))) return;
 
   // 1. Sync lệnh pending (live) → fill → mở Trade
   if (tcbsConfigured() && !(await getBool("paperTrading"))) {
@@ -49,19 +50,39 @@ export async function runWatcher(): Promise<void> {
         continue;
       }
       await executeStop(t, price);
-    } else if (t.targetPrice && price >= t.targetPrice) {
+    } else if (t.targetPrice && price >= t.targetPrice && !t.note?.includes("target-hit")) {
+      // Mark TRƯỚC khi gửi — tránh spam mỗi phút khi giá nằm trên target
+      await prisma.trade.update({
+        where: { id: t.id },
+        data: { note: `${t.note ?? ""} target-hit`.trim() },
+      });
       await sendTelegram(
         `🎯 <b>${t.symbol.ticker}</b> chạm target ${t.targetPrice} (giá ${price}) — cân nhắc chốt`,
       );
-      // tránh spam: chỉ notify 1 lần — mark qua note
-      if (!t.note?.includes("target-hit")) {
-        await prisma.trade.update({
-          where: { id: t.id },
-          data: { note: `${t.note ?? ""} target-hit`.trim() },
-        });
-      }
     }
   }
+
+  // 3. Heartbeat — chỉ gửi khi P&L dịch ≥1%pt so với lần báo trước (hoặc vị thế mới)
+  await heartbeat();
+}
+
+const HEARTBEAT_DELTA_PCT = 1;
+
+async function heartbeat(): Promise<void> {
+  const { positionsReport, formatPositionsReport } = await import("../report/positions");
+  const lines = await positionsReport();
+  if (!lines.length) return;
+  const prev = JSON.parse((await getSetting("heartbeatPnl")) || "{}") as Record<string, number>;
+  const cur: Record<string, number> = {};
+  let moved = Object.keys(prev).length === 0; // lần đầu luôn báo 1 nhịp
+  for (const l of lines) {
+    if (l.pnlPct !== null) cur[l.ticker] = l.pnlPct;
+    const p = prev[l.ticker];
+    if (p === undefined || Math.abs((l.pnlPct ?? 0) - p) >= HEARTBEAT_DELTA_PCT) moved = true;
+  }
+  if (!moved) return;
+  await sendTelegram(formatPositionsReport(lines));
+  await setSetting("heartbeatPnl", JSON.stringify(cur));
 }
 
 async function executeStop(

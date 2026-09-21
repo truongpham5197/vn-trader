@@ -78,7 +78,9 @@ phải chunked + self-chain, watcher intraday cần ping ngoài (cron-job.org).
 
 ## 6. Git
 
-- `main` push → auto-deploy production Vercel. Commit atomic, message
+- **BẮT BUỘC (user rule 2026-09-21):** làm xong → push nhánh `feat|fix/<slug>`
+  → `gh pr create` với summary để user duyệt → **KHÔNG push/merge thẳng `main`**.
+- `main` merge → auto-deploy production Vercel. Commit atomic, message
   conventional (`fix:`/`feat:`/`perf:`/`chore:`/`docs:`), tiếng Việt ngắn gọn.
 - Không push lộn file tạm. Scratch/screenshot/script tạm →
   `D:\project\BuildLab\scratch\vn-trader\`, không ghi vào repo.

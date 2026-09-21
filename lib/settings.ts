@@ -6,7 +6,8 @@ const DEFAULTS: Record<string, string> = {
   maxPositions: "5",
   maxSectorPct: "0.4",
   dailyLossLimitPct: "0.02",
-  universeMinValueVnd: "5000000000", // GTGD TB 20 phiên > 5 tỷ
+  universeMinValueVnd: "5000000000", // GTGD TB 20 phiên > 5 tỷ (universe=liquid)
+  universe: "vn30", // vn30 | liquid | all — paper trading focus VN30
   scanEnabled: "true",
   paperTrading: process.env.PAPER_TRADING ?? "true",
   killSwitch: process.env.KILL_SWITCH ?? "false",

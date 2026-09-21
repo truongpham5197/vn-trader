@@ -1,9 +1,10 @@
 import { prisma } from "./prisma";
 import { STRATEGIES, ensureStrategies } from "./strategy";
 import { positionSize } from "./risk/sizing";
-import { getBool, getNum } from "./settings";
+import { getBool, getNum, getSetting } from "./settings";
 import { notifySignal } from "./telegram/notify";
 import type { Bar } from "./data/types";
+import { VN30 } from "./data/vn30";
 
 const BARS_NEEDED = 60;
 
@@ -32,12 +33,8 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
   const navVnd = await getNum("navVnd");
   const riskPct = await getNum("riskPct");
   const minValue = await getNum("universeMinValueVnd");
+  const universe = await getSetting("universe"); // vn30 | liquid | all
   const notify = opts?.notify ?? true;
-
-  const symbols = await prisma.symbol.findMany({
-    where: { active: true },
-    select: { id: true, ticker: true, exchange: true, bandPct: true, sector: true },
-  });
 
   // Mã đang nắm giữ luôn được scan — bypass filter thanh khoản
   const heldTickers = new Set(
@@ -48,6 +45,18 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
       })
     ).map((t) => t.symbol.ticker),
   );
+
+  // universe=vn30 → chỉ load bars 30 mã (+ mã đang giữ), nhẹ hơn nhiều trên serverless
+  const vn30Only = universe === "vn30";
+  const symbols = await prisma.symbol.findMany({
+    where: {
+      active: true,
+      ...(vn30Only
+        ? { OR: [{ ticker: { in: [...VN30] } }, { ticker: { in: [...heldTickers] } }] }
+        : {}),
+    },
+    select: { id: true, ticker: true, exchange: true, bandPct: true, sector: true },
+  });
 
   // Batch-load bars 1 query (serverless-friendly) thay vì query per-symbol
   const cutoff = new Date(Date.now() - 100 * 86400e3).toISOString().slice(0, 10);
@@ -78,10 +87,16 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
       volume: r.volume,
     }));
 
-    // Universe filter: GTGD TB 20 phiên gần nhất
-    const last20 = rows.slice(0, 20);
-    const avgValue = last20.reduce((s, r) => s + r.value, 0) / last20.length;
-    if (avgValue < minValue && !heldTickers.has(sym.ticker)) continue;
+    // Universe filter — mã đang nắm giữ luôn được duyệt
+    if (!heldTickers.has(sym.ticker)) {
+      if (universe === "vn30") {
+        if (!VN30.has(sym.ticker)) continue;
+      } else if (universe === "liquid") {
+        const last20 = rows.slice(0, 20);
+        const avgValue = last20.reduce((s, r) => s + r.value, 0) / last20.length;
+        if (avgValue < minValue) continue;
+      }
+    }
     filtered++;
 
     for (const st of strategies) {

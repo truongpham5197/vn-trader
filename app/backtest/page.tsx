@@ -46,8 +46,8 @@ export default async function BacktestPage({
     : [];
 
   return (
-    <main className="mx-auto max-w-5xl p-6 font-mono text-sm">
-      <Link href="/" className="text-blue-400 underline">
+    <main className="mx-auto max-w-5xl p-6 text-sm">
+      <Link href="/" className="text-accent hover:underline">
         ← dashboard
       </Link>
       <h1 className="my-4 text-xl font-bold">Backtest</h1>
@@ -58,7 +58,7 @@ export default async function BacktestPage({
         <h2 className="mb-2 font-semibold">Runs gần đây</h2>
         <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b border-neutral-800 text-left text-neutral-500">
+            <tr className="border-b border-border text-left text-muted">
               <th className="p-2">#</th>
               <th className="p-2">Strategy</th>
               <th className="p-2">Universe</th>
@@ -73,9 +73,9 @@ export default async function BacktestPage({
             {runs.map((r) => {
               const m = JSON.parse(r.metrics) as Metrics;
               return (
-                <tr key={r.id} className="border-b border-neutral-900">
+                <tr key={r.id} className="border-b border-border/50">
                   <td className="p-2">
-                    <Link href={`/backtest?run=${r.id}`} className="text-blue-400 underline">
+                    <Link href={`/backtest?run=${r.id}`} className="text-accent hover:underline">
                       #{r.id}
                     </Link>
                   </td>
@@ -85,11 +85,11 @@ export default async function BacktestPage({
                     {r.periodStart} → {r.periodEnd}
                   </td>
                   <td
-                    className={`p-2 text-right ${m.totalReturnPct >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                    className={`p-2 text-right ${m.totalReturnPct >= 0 ? "text-gain" : "text-loss"}`}
                   >
                     {m.totalReturnPct.toFixed(1)}%
                   </td>
-                  <td className="p-2 text-right text-red-400">{m.maxDrawdownPct.toFixed(1)}%</td>
+                  <td className="p-2 text-right text-loss">{m.maxDrawdownPct.toFixed(1)}%</td>
                   <td className="p-2 text-right">{m.winRatePct.toFixed(0)}%</td>
                   <td className="p-2 text-right">{m.trades}</td>
                 </tr>
@@ -125,8 +125,8 @@ export default async function BacktestPage({
           <h3 className="mb-2 mt-6 font-semibold">Trades ({trades.length})</h3>
           <div className="max-h-96 overflow-y-auto">
             <table className="w-full border-collapse text-xs">
-              <thead className="sticky top-0 bg-neutral-950">
-                <tr className="border-b border-neutral-800 text-left text-neutral-500">
+              <thead className="sticky top-0 bg-card">
+                <tr className="border-b border-border text-left text-muted">
                   <th className="p-2">Mã</th>
                   <th className="p-2">Vào</th>
                   <th className="p-2">Ra</th>
@@ -140,7 +140,7 @@ export default async function BacktestPage({
               </thead>
               <tbody>
                 {trades.map((t, i) => (
-                  <tr key={i} className="border-b border-neutral-900">
+                  <tr key={i} className="border-b border-border/50">
                     <td className="p-2 font-bold">{t.ticker}</td>
                     <td className="p-2">{t.entryDate}</td>
                     <td className="p-2">{t.exitDate}</td>
@@ -148,7 +148,7 @@ export default async function BacktestPage({
                     <td className="p-2 text-right">{t.entry.toFixed(2)}</td>
                     <td className="p-2 text-right">{t.exit?.toFixed(2)}</td>
                     <td
-                      className={`p-2 text-right ${(t.pnl ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                      className={`p-2 text-right ${(t.pnl ?? 0) >= 0 ? "text-gain" : "text-loss"}`}
                     >
                       {((t.pnl ?? 0) / 1e6).toFixed(2)}tr
                     </td>
@@ -167,8 +167,8 @@ export default async function BacktestPage({
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded border border-neutral-800 p-2">
-      <div className="text-[10px] text-neutral-500">{label}</div>
+    <div className="card p-3">
+      <div className="text-[10px] text-muted">{label}</div>
       <div>{value}</div>
     </div>
   );
@@ -193,11 +193,11 @@ function EquityCurve({ points }: { points: { date: string; equity: number }[] })
   const first = points[0];
   const up = last.equity >= first.equity;
   return (
-    <div className="rounded border border-neutral-800 p-2">
+    <div className="card p-3">
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
         <path d={d} fill="none" stroke={up ? "#34d399" : "#f87171"} strokeWidth="1.5" />
       </svg>
-      <div className="flex justify-between text-[10px] text-neutral-500">
+      <div className="flex justify-between text-[10px] text-muted">
         <span>
           {first.date} — {(first.equity / 1e6).toFixed(0)}tr
         </span>

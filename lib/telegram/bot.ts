@@ -1,6 +1,6 @@
 import { Bot } from "grammy";
 import { prisma } from "../prisma";
-import { getNum, getBool, setSetting } from "../settings";
+import { getNum, getBool, setSetting, getSetting } from "../settings";
 import { vnToday } from "../vn-time";
 
 let started = false;
@@ -10,6 +10,15 @@ export function createBot(): Bot {
   const token = process.env.TELEGRAM_BOT_TOKEN ?? "";
   const chatId = process.env.TELEGRAM_CHAT_ID;
   const bot = new Bot(token);
+  // Mọi sendMessage mặc định parse HTML — ctx.reply() KHÔNG tự set parse_mode,
+  // thiếu dòng này thì <b>/<i> hiện thô trong group.
+  bot.api.config.use((prev, method, payload, signal) =>
+    prev(
+      method,
+      method === "sendMessage" ? { parse_mode: "HTML", ...payload } : payload,
+      signal,
+    ),
+  );
   const allowed = (ctx: { chat?: { id: number } }) =>
     !chatId || String(ctx.chat?.id) === chatId;
 
@@ -31,15 +40,19 @@ export function createBot(): Bot {
       prisma.signal.count({ where: { date: vnToday() } }),
       prisma.trade.count({ where: { status: "open" } }),
     ]);
-    const flags = [
-      `scan=${(await getBool("scanEnabled")) ? "ON" : "OFF"}`,
-      `paper=${(await getBool("paperTrading")) ? "ON" : "OFF"}`,
-      `kill=${(await getBool("killSwitch")) ? "ON" : "OFF"}`,
-      `nav=${((await getNum("navVnd")) / 1e6).toFixed(0)}tr`,
-      `risk=${((await getNum("riskPct")) * 100).toFixed(1)}%`,
-    ];
+    const [scan, paper, kill, nav, risk] = await Promise.all([
+      getBool("scanEnabled"),
+      getBool("paperTrading"),
+      getBool("killSwitch"),
+      getNum("navVnd"),
+      getNum("riskPct"),
+    ]);
     await ctx.reply(
-      `📊 Status\nsymbols: ${symbols} | bars: ${bars}\nsignals hôm nay: ${todaySignals} | trades mở: ${openTrades}\n${flags.join(" | ")}`,
+      `📊 <b>TRẠNG THÁI HỆ THỐNG</b>\n\n` +
+        `📈 Dữ liệu: <b>${symbols.toLocaleString("en-US")}</b> mã · ${bars.toLocaleString("en-US")} bars\n` +
+        `🔔 Tín hiệu hôm nay: <b>${todaySignals}</b> · Vị thế mở: <b>${openTrades}</b>\n` +
+        `⚙️ scanner <b>${scan ? "ON" : "OFF"}</b> · paper <b>${paper ? "ON" : "OFF"}</b> · kill <b>${kill ? "ON 🛑" : "off"}</b>\n` +
+        `💰 NAV <b>${(nav / 1e6).toFixed(0)}tr</b> · risk/lệnh ${(risk * 100).toFixed(1)}% · universe <b>${(await getSetting("universe")).toUpperCase()}</b>`,
     );
   });
 
@@ -53,12 +66,15 @@ export function createBot(): Bot {
     });
     if (!sigs.length) return void (await ctx.reply("Không có tín hiệu hôm nay."));
     await ctx.reply(
-      sigs
-        .map(
-          (s) =>
-            `${s.symbol.ticker} [${s.strategy.name}] entry ${s.entry} stop ${s.stop} qty ${s.qty} — ${s.status}`,
-        )
-        .join("\n"),
+      [`🔔 <b>TÍN HIỆU HÔM NAY</b>`, ...sigs.map((s) => {
+        const up = (((s.target - s.entry) / s.entry) * 100).toFixed(1);
+        const dn = (((s.entry - s.stop) / s.entry) * 100).toFixed(1);
+        return (
+          `<b>${s.symbol.ticker}</b> · ${s.strategy.name}\n` +
+          `  vào ${s.entry.toFixed(2)} · TP ${s.target.toFixed(2)} (+${up}%) · SL ${s.stop.toFixed(2)} (−${dn}%)` +
+          ` · ${s.qty.toLocaleString("en-US")}cp — <i>${s.status}</i>`
+        );
+      })].join("\n\n"),
     );
   });
 
@@ -94,7 +110,8 @@ export function createBot(): Bot {
           const up = (((s.target - s.entry) / s.entry) * 100).toFixed(1);
           const dn = (((s.entry - s.stop) / s.entry) * 100).toFixed(1);
           parts.push(
-            `• <b>${s.symbol.ticker}</b> [${s.strategy.name}] vào ${s.entry} | TP ${s.target} (+${up}%) | SL ${s.stop} (−${dn}%) | ${s.qty}cp`,
+            `• <b>${s.symbol.ticker}</b> <i>${s.strategy.name}</i>\n` +
+              `  vào ${s.entry.toFixed(2)} · TP ${s.target.toFixed(2)} (+${up}%) · SL ${s.stop.toFixed(2)} (−${dn}%) · ${s.qty.toLocaleString("en-US")}cp`,
           );
         }
       }
@@ -231,8 +248,14 @@ export function createBot(): Bot {
     const { suggestForTrade } = await import("../risk/suggest");
     const sg = await suggestForTrade(trade.id, Number(pctStr) || 5);
     if (!sg) return void (await ctx.reply("❌ thiếu data để gợi ý"));
+    const pct = Number(pctStr) || 5;
+    const tpPct = (((sg.target - trade.entryPrice) / trade.entryPrice) * 100).toFixed(1);
+    const slPct = (((trade.entryPrice - sg.stop) / trade.entryPrice) * 100).toFixed(1);
     await ctx.reply(
-      `💡 <b>${sym.ticker}</b> @ ${trade.entryPrice} → TP <b>${sg.target}</b> | SL <b>${sg.stop}</b> (R:R ${sg.rr.toFixed(1)})\n` +
+      `💡 <b>GỢI Ý — ${sym.ticker}</b> (vốn ${trade.entryPrice})\n\n` +
+        `🎯 TP <b>${sg.target.toFixed(2)}</b> (+${tpPct}%)\n` +
+        `🛑 SL <b>${sg.stop.toFixed(2)}</b> (−${slPct}%)\n` +
+        `📐 R:R <b>${sg.rr.toFixed(1)}</b> — lãi kỳ vọng gấp ${sg.rr.toFixed(1)}× rủi ro\n\n` +
         `<i>${sg.note}</i>`,
       {
         reply_markup: {
@@ -272,8 +295,13 @@ export function createBot(): Bot {
       where: { id: trade.id },
       data: { status: "closed", exitPrice: exit, pnl, exitReason: "manual", closedAt: new Date() },
     });
+    const pnlPct = (pnl / (trade.entryPrice * trade.qty * 1000)) * 100;
+    const icon = pnl >= 0 ? "🟢" : "🔴";
     await ctx.reply(
-      `🔒 Đóng <b>${sym.ticker}</b> @ ${exit} — P&L ${(pnl / 1e6).toFixed(2)}tr (net phí+thuế)`,
+      `🔒 <b>ĐÓNG ${sym.ticker}</b>\n\n` +
+        `Bán ${trade.qty.toLocaleString("en-US")}cp @ ${exit} (vốn ${trade.entryPrice})\n` +
+        `${icon} P&L net <b>${pnl >= 0 ? "+" : ""}${(pnl / 1e6).toFixed(2)}tr</b>` +
+        ` (${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%) — đã trừ phí+thuế`,
     );
   });
 

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { runBacktestFromDb } from "@/lib/backtest/run";
 import { STRATEGIES } from "@/lib/strategy";
-import { cronAuthorized, cronForbidden } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -26,7 +25,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!cronAuthorized(req)) return cronForbidden();
+  // UI-driven (RunForm trên /backtest) — không phải cron job, không gate.
   const body = (await req.json().catch(() => null)) as {
     strategyType?: string;
     params?: Record<string, number>;

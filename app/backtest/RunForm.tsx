@@ -34,7 +34,7 @@ export default function RunForm({ strategies }: { strategies: string[] }) {
     <form onSubmit={onSubmit} className="mb-6 flex flex-wrap items-end gap-3 text-xs">
       <label className="flex flex-col gap-1">
         Chiến lược
-        <select name="strategyType" className="rounded bg-neutral-900 p-2">
+        <select name="strategyType" className="rounded border border-border bg-card px-2 py-1.5 text-foreground">
           {strategies.map((s) => (
             <option key={s} value={s}>
               {s}
@@ -44,7 +44,7 @@ export default function RunForm({ strategies }: { strategies: string[] }) {
       </label>
       <label className="flex flex-col gap-1">
         Universe
-        <select name="universe" className="rounded bg-neutral-900 p-2">
+        <select name="universe" className="rounded border border-border bg-card px-2 py-1.5 text-foreground">
           <option value="liquid">liquid (GTGD&gt;5tỷ)</option>
           <option value="vn30">VN30</option>
           <option value="all">all (chậm)</option>
@@ -56,7 +56,7 @@ export default function RunForm({ strategies }: { strategies: string[] }) {
           name="fromDate"
           type="date"
           defaultValue="2023-01-01"
-          className="rounded bg-neutral-900 p-2"
+          className="rounded border border-border bg-card px-2 py-1.5 text-foreground"
           required
         />
       </label>
@@ -66,17 +66,17 @@ export default function RunForm({ strategies }: { strategies: string[] }) {
           name="toDate"
           type="date"
           defaultValue={new Date().toISOString().slice(0, 10)}
-          className="rounded bg-neutral-900 p-2"
+          className="rounded border border-border bg-card px-2 py-1.5 text-foreground"
           required
         />
       </label>
       <button
         disabled={busy}
-        className="rounded bg-emerald-700 px-4 py-2 disabled:opacity-50"
+        className="rounded bg-accent font-medium text-background px-4 py-2 disabled:opacity-50"
       >
         {busy ? "Đang chạy…" : "Chạy backtest"}
       </button>
-      {error && <span className="text-red-400">{error}</span>}
+      {error && <span className="text-loss">{error}</span>}
     </form>
   );
 }

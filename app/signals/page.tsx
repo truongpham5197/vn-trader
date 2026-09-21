@@ -18,15 +18,15 @@ export default async function SignalsPage({
   });
 
   return (
-    <main className="mx-auto max-w-4xl p-6 font-mono text-sm">
-      <Link href="/" className="text-blue-400 underline">
+    <main className="mx-auto max-w-5xl p-6 text-sm">
+      <Link href="/" className="text-accent hover:underline">
         ← dashboard
       </Link>
-      <h1 className="my-4 text-xl font-bold">
+      <h1 className="my-4 text-xl font-bold tracking-tight">
         Tín hiệu {date ? `ngày ${date}` : "(200 gần nhất)"} — {signals.length}
       </h1>
       {signals.length === 0 ? (
-        <p className="text-neutral-500">Chưa có tín hiệu nào.</p>
+        <p className="card p-4 text-muted">Chưa có tín hiệu nào.</p>
       ) : (
         <SignalTable signals={signals} />
       )}

@@ -75,18 +75,21 @@ export async function positionsReport(): Promise<PositionLine[]> {
 }
 
 export function formatPositionsReport(lines: PositionLine[]): string {
-  if (!lines.length) return "Không có vị thế đang mở.";
+  if (!lines.length) return "📊 Không có vị thế đang mở.";
   const rows = lines.map((l) => {
-    const sign = (l.pnlPct ?? 0) >= 0 ? "+" : "";
-    const daySign = (l.dayPct ?? 0) >= 0 ? "+" : "";
-    const t2 = l.sessionsHeld >= 2 ? "" : ` | ⏳T+${l.sessionsHeld}`;
-    const stop = l.stop ? ` | SL ${l.stop}` : "";
-    const tgt = l.target ? ` | TP ${l.target}` : "";
+    const pnlIcon = (l.pnlPct ?? 0) >= 0 ? "🟢" : "🔴";
+    const dayIcon = (l.dayPct ?? 0) >= 0 ? "🟢" : "🔴";
+    const s = (v: number | null) => (v == null ? "" : v >= 0 ? "+" : "");
+    const t2 = l.sessionsHeld >= 2 ? "" : ` · ⏳T+${l.sessionsHeld}`;
+    const stop = l.stop ? `SL ${l.stop}` : "SL —";
+    const tgt = l.target ? `TP ${l.target}` : "TP —";
     return (
-      `<b>${l.ticker}</b> ${l.qty}cp @ ${l.entry} → ${l.price ?? "?"} ` +
-      `(${sign}${l.pnlPct?.toFixed(2) ?? "?"}%${l.pnlVnd != null ? `, ${sign}${(l.pnlVnd / 1e6).toFixed(1)}tr` : ""})` +
-      ` | hôm nay ${daySign}${l.dayPct?.toFixed(2) ?? "?"}%${stop}${tgt}${t2}`
+      `<b>${l.ticker}</b> · ${l.qty.toLocaleString("en-US")}cp @ ${l.entry}\n` +
+      `  💵 Giá <b>${l.price ?? "?"}</b> · hôm nay ${dayIcon} ${s(l.dayPct)}${l.dayPct?.toFixed(2) ?? "?"}%\n` +
+      `  ${pnlIcon} P&L ${s(l.pnlPct)}${l.pnlPct?.toFixed(2) ?? "?"}%` +
+      `${l.pnlVnd != null ? ` (${s(l.pnlVnd)}${(l.pnlVnd / 1e6).toFixed(1)}tr)` : ""}` +
+      ` · ${stop} · ${tgt}${t2}`
     );
   });
-  return ["📊 <b>Vị thế đang giữ</b>", ...rows].join("\n");
+  return [`📊 <b>VỊ THẾ ĐANG GIỮ</b> (${lines.length})`, "", ...rows].join("\n\n");
 }

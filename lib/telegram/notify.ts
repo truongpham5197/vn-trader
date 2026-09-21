@@ -33,7 +33,7 @@ export async function sendTelegram(
 const fmt = (n: number) => n.toFixed(2);
 const fmtVnd = (n: number) => `${(n / 1e6).toFixed(1)}tr`;
 /** Escape text động cho parse_mode=HTML — chuỗi có < MA10 / RSI>70 sẽ phá markup. */
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 export async function notifySignal(s: {
   signalId: number;

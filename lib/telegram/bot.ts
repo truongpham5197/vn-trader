@@ -2,6 +2,7 @@ import { Bot } from "grammy";
 import { prisma } from "../prisma";
 import { getNum, getBool, setSetting, getSetting } from "../settings";
 import { vnToday } from "../vn-time";
+import { esc } from "./notify";
 
 let started = false;
 
@@ -105,12 +106,12 @@ export function createBot(): Bot {
         bySector.set(k, [...(bySector.get(k) ?? []), s]);
       }
       for (const [sector, sigs] of [...bySector.entries()].sort((a, b) => b[1].length - a[1].length)) {
-        parts.push(`\n<b>▸ ${sector}</b>`);
+        parts.push(`\n<b>▸ ${esc(sector)}</b>`);
         for (const s of sigs) {
           const up = (((s.target - s.entry) / s.entry) * 100).toFixed(1);
           const dn = (((s.entry - s.stop) / s.entry) * 100).toFixed(1);
           parts.push(
-            `• <b>${s.symbol.ticker}</b> <i>${s.strategy.name}</i>\n` +
+            `• <b>${s.symbol.ticker}</b> <i>${esc(s.strategy.name)}</i>\n` +
               `  vào ${s.entry.toFixed(2)} · TP ${s.target.toFixed(2)} (+${up}%) · SL ${s.stop.toFixed(2)} (−${dn}%) · ${s.qty.toLocaleString("en-US")}cp`,
           );
         }
@@ -131,7 +132,7 @@ export function createBot(): Bot {
       const zone = r.buyZone
         ? `mua ${r.buyZone[0].toFixed(2)}–${r.buyZone[1].toFixed(2)} · SL ${r.stop?.toFixed(2)} · TP ${r.target?.toFixed(2)}\n   `
         : "";
-      return `${r.setup} <b>${r.ticker}</b> @ ${r.close.toFixed(2)} (${r.chgPct !== null && r.chgPct >= 0 ? "+" : ""}${r.chgPct?.toFixed(1)}%)\n   ${zone}<i>${r.note}</i>`;
+      return `${r.setup} <b>${r.ticker}</b> @ ${r.close.toFixed(2)} (${r.chgPct !== null && r.chgPct >= 0 ? "+" : ""}${r.chgPct?.toFixed(1)}%)\n   ${zone}<i>${esc(r.note)}</i>`;
     });
     await ctx.reply(`🔭 <b>VN30 WATCHLIST</b>\n\n` + parts.join("\n\n"));
   });
@@ -153,7 +154,7 @@ export function createBot(): Bot {
         "<b>⏳T+x</b> — cổ phiếu chưa về tài khoản (T+2): mới mua hôm nay thì T+2 mới bán được.",
         "<b>Breakout-20</b> — mua khi giá đóng cửa vượt đỉnh cao nhất 20 phiên kèm vol bùng.",
         "<b>Pullback-MA20</b> — mua khi giá trong uptrend hồi về đúng trung bình 20 phiên.",
-        "<b>RSI(2)</b> — chỉ báo quá bán ngắn hạn: RSI 2 phiên < 5 trong uptrend → hồi kỹ thuật.",
+        "<b>RSI(2)</b> — chỉ báo quá bán ngắn hạn: RSI 2 phiên &lt; 5 trong uptrend → hồi kỹ thuật.",
         "",
         "Lệnh: /status /signals /orders /positions /vn30 /plan &lt;MÃ&gt; /add /close /pause /resume /kill /otp /auth",
       ].join("\n"),
@@ -182,7 +183,7 @@ export function createBot(): Bot {
   bot.command("otp", async (ctx) => {
     if (!allowed(ctx)) return;
     const otp = ctx.match?.trim();
-    if (!otp) return void (await ctx.reply("Dùng: /otp <mã iOTP từ app TCInvest>"));
+    if (!otp) return void (await ctx.reply("Dùng: /otp &lt;mã iOTP từ app TCInvest&gt;"));
     try {
       const { authenticate } = await import("../tcbs/client");
       const ok = await authenticate(otp);
@@ -197,7 +198,7 @@ export function createBot(): Bot {
     const { tcbsConfigured } = await import("../tcbs/client");
     const row = await prisma.setting.findUnique({ where: { key: "tcbsToken" } });
     await ctx.reply(
-      `TCBS configured: ${tcbsConfigured() ? "✅" : "❌ (thiếu TCBS_API_KEY/TCBS_ACCOUNT_NO)"}\ntoken: ${row?.value ? "có" : "chưa có — /otp <mã>"}`,
+      `TCBS configured: ${tcbsConfigured() ? "✅" : "❌ (thiếu TCBS_API_KEY/TCBS_ACCOUNT_NO)"}\ntoken: ${row?.value ? "có" : "chưa có — /otp &lt;mã&gt;"}`,
     );
   });
 
@@ -208,7 +209,7 @@ export function createBot(): Bot {
     const qty = Number(qtyStr);
     const entry = Number(entryStr);
     if (!ticker || !qty || !entry) {
-      return void (await ctx.reply("Dùng: /add <MÃ> <qty> <giá vốn> [stop] — vd: /add GAS 1000 95.5 90"));
+      return void (await ctx.reply("Dùng: /add &lt;MÃ&gt; &lt;qty&gt; &lt;giá vốn&gt; [stop] — vd: /add GAS 1000 95.5 90"));
     }
     const sym = await prisma.symbol.findUnique({ where: { ticker: ticker.toUpperCase() } });
     if (!sym) return void (await ctx.reply(`❌ không tìm thấy mã ${ticker.toUpperCase()}`));
@@ -237,7 +238,7 @@ export function createBot(): Bot {
     await ctx.reply(
       `✅ Đã mở trade #${trade.id}: <b>${sym.ticker}</b> ${qty}cp @ ${entry}\n\n` +
         `💡 Gợi ý chốt +5%: TP <b>${sg.target}</b> | SL <b>${sg.stop}</b> (R:R ${sg.rr.toFixed(1)})\n` +
-        `<i>${sg.note}</i>`,
+        `<i>${esc(sg.note)}</i>`,
       {
         reply_markup: {
           inline_keyboard: [
@@ -252,7 +253,7 @@ export function createBot(): Bot {
   bot.command("plan", async (ctx) => {
     if (!allowed(ctx)) return;
     const [ticker, pctStr] = (ctx.match ?? "").trim().split(/\s+/);
-    if (!ticker) return void (await ctx.reply("Dùng: /plan <MÃ> [%lãi mục tiêu] — vd: /plan GAS 5"));
+    if (!ticker) return void (await ctx.reply("Dùng: /plan &lt;MÃ&gt; [%lãi mục tiêu] — vd: /plan GAS 5"));
     const sym = await prisma.symbol.findUnique({ where: { ticker: ticker.toUpperCase() } });
     if (!sym) return void (await ctx.reply(`❌ không tìm thấy mã ${ticker.toUpperCase()}`));
     const trade = await prisma.trade.findFirst({
@@ -271,7 +272,7 @@ export function createBot(): Bot {
         `🎯 TP <b>${sg.target.toFixed(2)}</b> (+${tpPct}%)\n` +
         `🛑 SL <b>${sg.stop.toFixed(2)}</b> (−${slPct}%)\n` +
         `📐 R:R <b>${sg.rr.toFixed(1)}</b> — lãi kỳ vọng gấp ${sg.rr.toFixed(1)}× rủi ro\n\n` +
-        `<i>${sg.note}</i>`,
+        `<i>${esc(sg.note)}</i>`,
       {
         reply_markup: {
           inline_keyboard: [
@@ -286,7 +287,7 @@ export function createBot(): Bot {
   bot.command("close", async (ctx) => {
     if (!allowed(ctx)) return;
     const [ticker, exitStr] = (ctx.match ?? "").trim().split(/\s+/);
-    if (!ticker) return void (await ctx.reply("Dùng: /close <MÃ> [giá bán]"));
+    if (!ticker) return void (await ctx.reply("Dùng: /close &lt;MÃ&gt; [giá bán]"));
     const sym = await prisma.symbol.findUnique({ where: { ticker: ticker.toUpperCase() } });
     if (!sym) return void (await ctx.reply(`❌ không tìm thấy mã ${ticker.toUpperCase()}`));
     const trade = await prisma.trade.findFirst({

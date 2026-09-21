@@ -41,6 +41,20 @@ export function startJobs(): void {
     { timezone: TZ },
   );
 
+  // Mỗi 5 phút 9:00-14:59 T2-T6: digest top 5 mã tiềm năng (giá live vs vùng mua)
+  cron.schedule(
+    "*/5 9-14 * * 1-5",
+    async () => {
+      const { runTopPicksDigest } = await import("./report/top-picks");
+      const r = await runTopPicksDigest().catch((e) => {
+        console.error("[top-picks]", e);
+        return null;
+      });
+      if (r?.sent) console.log(`[cron] top-picks sent ${r.picks} mã`);
+    },
+    { timezone: TZ },
+  );
+
   // Mỗi 30 phút 9:00–14:30 T2–T6: báo cáo vị thế theo % lãi/lỗ live
   cron.schedule(
     "*/30 9-14 * * 1-5",
@@ -66,6 +80,6 @@ export function startJobs(): void {
   );
 
   console.log(
-    "[cron] eod-sync 15:20 + scan 15:40 + watcher */1 9-14 + weekly-report 20:00 CN (Asia/Ho_Chi_Minh)",
+    "[cron] eod-sync 15:20 + scan 15:40 + watcher */1 9-14 + top-picks */5 9-14 + weekly-report 20:00 CN (Asia/Ho_Chi_Minh)",
   );
 }

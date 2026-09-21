@@ -137,6 +137,17 @@ export function createBot(): Bot {
     await ctx.reply(`🔭 <b>VN30 WATCHLIST</b>\n\n` + parts.join("\n\n"));
   });
 
+  // /picks — preview digest top 5 mã tiềm năng (giá live vs vùng mua)
+  bot.command("picks", async (ctx) => {
+    if (!allowed(ctx)) return;
+    const { collectTopPicks, formatTopPicks } = await import("../report/top-picks");
+    const { picks, signalDate } = await collectTopPicks(5);
+    if (!picks.length) {
+      return void (await ctx.reply("Chưa có mã nào — chưa chạy scan hoặc không có setup."));
+    }
+    await ctx.reply(formatTopPicks(picks, signalDate));
+  });
+
   // /help — giải thích các chỉ báo trong alert
   bot.command("help", async (ctx) => {
     if (!allowed(ctx)) return;
@@ -156,7 +167,7 @@ export function createBot(): Bot {
         "<b>Pullback-MA20</b> — mua khi giá trong uptrend hồi về đúng trung bình 20 phiên.",
         "<b>RSI(2)</b> — chỉ báo quá bán ngắn hạn: RSI 2 phiên &lt; 5 trong uptrend → hồi kỹ thuật.",
         "",
-        "Lệnh: /status /signals /orders /positions /vn30 /plan &lt;MÃ&gt; /add /close /pause /resume /kill /otp /auth",
+        "Lệnh: /status /signals /orders /positions /vn30 /picks /plan &lt;MÃ&gt; /add /close /pause /resume /kill /otp /auth",
       ].join("\n"),
     );
   });

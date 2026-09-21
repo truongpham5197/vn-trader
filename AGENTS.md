@@ -30,18 +30,24 @@ lib/backtest/  engine portfolio T+2/lot100/band ±7-10-15%/phí+thuế
 lib/scan.ts    batch-load bars → filter GTGD>5tỷ + held tickers luôn qua →
                upsert Signal idempotent → notifySignal
 lib/risk/      sizing.ts (1% NAV, lot 100), suggest.ts (/plan gợi ý SL/TP)
-lib/report/    positions.ts — báo cáo vị thế % live (dùng chung bot+cron)
+lib/report/    positions.ts — báo cáo vị thế % live (dùng chung bot+cron);
+               top-picks.ts — digest top 5 mã tiềm năng: signal date mới nhất
+               (new/notified, bỏ mã đang giữ + setup hỏng intraday) xếp theo
+               giá live so vùng mua, bù slot bằng vn30Snapshot; dedupe qua
+               Setting topPicksState (giá đứng → tối đa 1 tin/30ph)
 lib/telegram/  bot.ts (createBot — dùng chung polling+webhook), notify.ts
                (sendTelegram + esc() — PHẢI escape text động, parse_mode=HTML)
 lib/tcbs/      OpenAPI client (spec: docs/tcbs-openapi.json)
 lib/jobs.ts    node-cron local — SKIP khi process.env.VERCEL
 app/api/cron/  eod-sync (chain after() + deadlineMs 40s + retry 3×),
-               scan, watcher, positions-report, weekly — TẤT CẢ qua cron-auth
+               scan, watcher, top-picks, positions-report, weekly
+               — TẤT CẢ qua cron-auth
 app/api/telegram/webhook  production bot endpoint (secret header check)
 ```
 
 Vercel Hobby: function ≤60s, không process nền, cron 1 lần/ngày → mọi job nặng
-phải chunked + self-chain, watcher intraday cần ping ngoài (cron-job.org).
+phải chunked + self-chain, watcher + top-picks intraday cần ping ngoài
+(cron-job.org: */1 → /api/cron/watcher, */5 9-15h T2-T6 → /api/cron/top-picks).
 
 ## 3. Quy tắc an toàn (không phá)
 

@@ -1,5 +1,5 @@
 import { prisma } from "../prisma";
-import { getLatestPrice } from "../price";
+import { getQuote } from "../price";
 
 const BUY_FEE = 0.0015;
 const SELL_FEE_TAX = 0.0015 + 0.001; // phí bán + thuế
@@ -10,9 +10,12 @@ export interface PositionLine {
   entry: number;
   price: number | null;
   prevClose: number | null;
+  open: number | null;
+  high: number | null;
+  low: number | null;
   pnlPct: number | null; // net sau phí+thuế
   pnlVnd: number | null;
-  dayPct: number | null; // % so giá đóng cửa phiên trước
+  dayPct: number | null; // % so giá tham chiếu (close phiên trước)
   stop: number | null;
   target: number | null;
   sessionsHeld: number; // phiên đã trôi qua kể từ mua (T+2 check)
@@ -27,14 +30,8 @@ export async function positionsReport(): Promise<PositionLine[]> {
 
   const lines: PositionLine[] = [];
   for (const t of trades) {
-    const [price, prevBars, held] = await Promise.all([
-      getLatestPrice(t.symbol.ticker),
-      prisma.dailyBar.findMany({
-        where: { symbolId: t.symbolId },
-        orderBy: { date: "desc" },
-        take: 2,
-        select: { close: true, date: true },
-      }),
+    const [quote, held] = await Promise.all([
+      getQuote(t.symbol.ticker),
       prisma.dailyBar.count({
         where: {
           symbolId: t.symbolId,
@@ -44,7 +41,8 @@ export async function positionsReport(): Promise<PositionLine[]> {
         },
       }),
     ]);
-    const prevClose = prevBars.length > 1 ? prevBars[1].close : (prevBars[0]?.close ?? null);
+    const price = quote.last;
+    const prevClose = quote.ref;
 
     let pnlPct: number | null = null;
     let pnlVnd: number | null = null;
@@ -63,6 +61,9 @@ export async function positionsReport(): Promise<PositionLine[]> {
       entry: t.entryPrice,
       price,
       prevClose,
+      open: quote.open,
+      high: quote.high,
+      low: quote.low,
       pnlPct,
       pnlVnd,
       dayPct,
@@ -83,13 +84,18 @@ export function formatPositionsReport(lines: PositionLine[]): string {
     const t2 = l.sessionsHeld >= 2 ? "" : ` · ⏳T+${l.sessionsHeld}`;
     const stop = l.stop ? `SL ${l.stop}` : "SL —";
     const tgt = l.target ? `TP ${l.target}` : "TP —";
+    const ohlc =
+      l.open !== null
+        ? `\n  📈 O ${l.open.toFixed(2)} · H ${l.high?.toFixed(2)} · L ${l.low?.toFixed(2)} · TC ${l.prevClose?.toFixed(2) ?? "?"}`
+        : "";
     return (
-      `<b>${l.ticker}</b> · ${l.qty.toLocaleString("en-US")}cp @ ${l.entry}\n` +
-      `  💵 Giá <b>${l.price ?? "?"}</b> · hôm nay ${dayIcon} ${s(l.dayPct)}${l.dayPct?.toFixed(2) ?? "?"}%\n` +
-      `  ${pnlIcon} P&L ${s(l.pnlPct)}${l.pnlPct?.toFixed(2) ?? "?"}%` +
+      `<b>${l.ticker}</b> · ${l.qty.toLocaleString("en-US")}cp @ ${l.entry}` +
+      `\n  💵 Giá <b>${l.price ?? "?"}</b> · hôm nay ${dayIcon} ${s(l.dayPct)}${l.dayPct?.toFixed(2) ?? "?"}%` +
+      ohlc +
+      `\n  ${pnlIcon} P&L ${s(l.pnlPct)}${l.pnlPct?.toFixed(2) ?? "?"}%` +
       `${l.pnlVnd != null ? ` (${s(l.pnlVnd)}${(l.pnlVnd / 1e6).toFixed(1)}tr)` : ""}` +
       ` · ${stop} · ${tgt}${t2}`
     );
   });
-  return [`📊 <b>VỊ THẾ ĐANG GIỮ</b> (${lines.length})`, "", ...rows].join("\n\n");
+  return [`📊 <b>VỊ THẾ ĐANG GIỮ</b> (${lines.length})`, ...rows].join("\n\n");
 }

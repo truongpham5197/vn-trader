@@ -121,6 +121,21 @@ export function createBot(): Bot {
     await ctx.reply(parts.join("\n"));
   });
 
+  // /vn30 — watchlist setup tốt nhất trong rổ VN30
+  bot.command("vn30", async (ctx) => {
+    if (!allowed(ctx)) return;
+    const { vn30Snapshot } = await import("../analysis/vn30");
+    const rows = (await vn30Snapshot()).slice(0, 10);
+    if (!rows.length) return void (await ctx.reply("Chưa đủ data VN30."));
+    const parts = rows.map((r) => {
+      const zone = r.buyZone
+        ? `mua ${r.buyZone[0].toFixed(2)}–${r.buyZone[1].toFixed(2)} · SL ${r.stop?.toFixed(2)} · TP ${r.target?.toFixed(2)}\n   `
+        : "";
+      return `${r.setup} <b>${r.ticker}</b> @ ${r.close.toFixed(2)} (${r.chgPct !== null && r.chgPct >= 0 ? "+" : ""}${r.chgPct?.toFixed(1)}%)\n   ${zone}<i>${r.note}</i>`;
+    });
+    await ctx.reply(`🔭 <b>VN30 WATCHLIST</b>\n\n` + parts.join("\n\n"));
+  });
+
   // /help — giải thích các chỉ báo trong alert
   bot.command("help", async (ctx) => {
     if (!allowed(ctx)) return;
@@ -140,7 +155,7 @@ export function createBot(): Bot {
         "<b>Pullback-MA20</b> — mua khi giá trong uptrend hồi về đúng trung bình 20 phiên.",
         "<b>RSI(2)</b> — chỉ báo quá bán ngắn hạn: RSI 2 phiên < 5 trong uptrend → hồi kỹ thuật.",
         "",
-        "Lệnh: /status /signals /orders /positions /plan &lt;MÃ&gt; /add /close /pause /resume /kill /otp /auth",
+        "Lệnh: /status /signals /orders /positions /vn30 /plan &lt;MÃ&gt; /add /close /pause /resume /kill /otp /auth",
       ].join("\n"),
     );
   });

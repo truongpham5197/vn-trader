@@ -1,6 +1,6 @@
 import { prisma } from "../prisma";
 import { getBool, getSetting, setSetting } from "../settings";
-import { getLatestPrice } from "../price";
+import { getQuote, formatQuoteLine } from "../price";
 import { getOrder, getPositions, placeOrder, tcbsConfigured } from "./client";
 import { sendTelegram } from "../telegram/notify";
 import { vnToday } from "../vn-time";
@@ -36,8 +36,10 @@ export async function runWatcher(): Promise<void> {
 
   // 2. Stop-loss + target alert
   for (const t of openTrades) {
-    const price = await getLatestPrice(t.symbol.ticker);
+    const quote = await getQuote(t.symbol.ticker);
+    const price = quote.last;
     if (price === null) continue;
+    const qLine = formatQuoteLine(quote);
 
     const held = await sessionsHeld(t.symbolId, t.openedAt);
     const eligible = held >= 2; // T+2 — CP mới về tài khoản
@@ -45,11 +47,11 @@ export async function runWatcher(): Promise<void> {
     if (price <= (t.stopPrice ?? 0)) {
       if (!eligible) {
         await sendTelegram(
-          `⚠️ <b>${t.symbol.ticker}</b> chạm stop ${t.stopPrice} nhưng chưa đủ T+2 (held ${held} phiên) — theo dõi tay!`,
+          `⚠️ <b>${t.symbol.ticker}</b> chạm stop ${t.stopPrice} nhưng chưa đủ T+2 (held ${held} phiên) — theo dõi tay!\n${qLine}`,
         );
         continue;
       }
-      await executeStop(t, price);
+      await executeStop(t, price, qLine);
     } else if (t.targetPrice && price >= t.targetPrice && !t.note?.includes("target-hit")) {
       // Mark TRƯỚC khi gửi — tránh spam mỗi phút khi giá nằm trên target
       await prisma.trade.update({
@@ -57,7 +59,7 @@ export async function runWatcher(): Promise<void> {
         data: { note: `${t.note ?? ""} target-hit`.trim() },
       });
       await sendTelegram(
-        `🎯 <b>${t.symbol.ticker}</b> chạm target ${t.targetPrice} (giá ${price}) — cân nhắc chốt`,
+        `🎯 <b>${t.symbol.ticker}</b> chạm target ${t.targetPrice} (giá ${price})\n${qLine}`,
       );
     }
   }
@@ -88,6 +90,7 @@ async function heartbeat(): Promise<void> {
 async function executeStop(
   t: { id: number; qty: number; symbolId: number; symbol: { ticker: string } },
   price: number,
+  qLine = "",
 ): Promise<void> {
   const paper = await getBool("paperTrading");
 
@@ -108,7 +111,7 @@ async function executeStop(
       },
     });
     await sendTelegram(
-      `🛑 STOP <b>${t.symbol.ticker}</b> bán ${t.qty}cp @ ${price} — P&L ${((proceeds - cost) / 1e6).toFixed(2)}tr (paper)`,
+      `🛑 STOP <b>${t.symbol.ticker}</b> bán ${t.qty}cp @ ${price} — P&L ${((proceeds - cost) / 1e6).toFixed(2)}tr (paper)\n${qLine}`,
     );
     return;
   }

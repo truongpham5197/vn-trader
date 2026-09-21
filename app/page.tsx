@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { vnToday } from "@/lib/vn-time";
 import { getBool, getNum, getSetting } from "@/lib/settings";
 import { positionsReport } from "@/lib/report/positions";
+import { vn30Snapshot } from "@/lib/analysis/vn30";
 import SignalTable from "./components/SignalTable";
 import NavEditor from "./components/NavEditor";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const today = vnToday();
-  const [symbolCount, barCount, todaySignals, latestSignal, positions, orders] =
+  const [symbolCount, barCount, todaySignals, latestSignal, positions, orders, vn30] =
     await Promise.all([
       prisma.symbol.count({ where: { active: true } }),
       prisma.dailyBar.count(),
@@ -26,6 +27,7 @@ export default async function Home() {
         take: 10,
         include: { signal: { include: { symbol: true } } },
       }),
+      vn30Snapshot(),
     ]);
   const [scanEnabled, paper, kill] = await Promise.all([
     getBool("scanEnabled"),
@@ -132,6 +134,52 @@ export default async function Home() {
             </table>
           </div>
         )}
+      </section>
+
+      {/* VN30 watchlist — gợi ý vị thế tốt */}
+      <section className="mb-6">
+        <h2 className="mb-2 font-semibold">VN30 — setup đáng chú ý</h2>
+        <div className="card overflow-x-auto">
+          <table className="w-full border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-border text-left text-muted">
+                <th className="p-3 font-medium">Mã</th>
+                <th className="p-3 font-medium">Setup</th>
+                <th className="p-3 text-right font-medium">Giá</th>
+                <th className="p-3 text-right font-medium">%</th>
+                <th className="p-3 text-right font-medium">Vùng mua</th>
+                <th className="p-3 text-right font-medium">Stop</th>
+                <th className="p-3 text-right font-medium">Target</th>
+                <th className="p-3 font-medium">Ghi chú</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vn30.slice(0, 12).map((r) => (
+                <tr
+                  key={r.ticker}
+                  className="border-b border-border/50 last:border-0 hover:bg-white/[0.03]"
+                >
+                  <td className="p-3 font-semibold">{r.ticker}</td>
+                  <td className="p-3">{r.setup}</td>
+                  <td className="num p-3 text-right">{r.close.toFixed(2)}</td>
+                  <td
+                    className={`num p-3 text-right ${
+                      (r.chgPct ?? 0) >= 0 ? "text-gain" : "text-loss"
+                    }`}
+                  >
+                    {r.chgPct !== null ? `${r.chgPct >= 0 ? "+" : ""}${r.chgPct.toFixed(1)}%` : "—"}
+                  </td>
+                  <td className="num p-3 text-right">
+                    {r.buyZone ? `${r.buyZone[0].toFixed(2)}–${r.buyZone[1].toFixed(2)}` : "—"}
+                  </td>
+                  <td className="num p-3 text-right text-loss">{r.stop?.toFixed(2) ?? "—"}</td>
+                  <td className="num p-3 text-right text-gain">{r.target?.toFixed(2) ?? "—"}</td>
+                  <td className="p-3 text-muted">{r.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {/* Lệnh gần đây */}

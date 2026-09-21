@@ -49,13 +49,23 @@ export async function notifySignal(s: {
   reason: string;
   plan?: string;
   buyZone?: [number, number];
+  dayBar?: { open: number; high: number; low: number; close: number };
+  ref?: number; // giá tham chiếu = close phiên trước
 }): Promise<boolean> {
   const stopPct = ((s.entry - s.stop) / s.entry) * 100;
   const targetPct = ((s.target - s.entry) / s.entry) * 100;
   const riskVnd = (s.entry - s.stop) * s.qty * 1000;
+  const ohlc = s.dayBar
+    ? `📈 O ${fmt(s.dayBar.open)} · H ${fmt(s.dayBar.high)} · L ${fmt(s.dayBar.low)} · TC ${
+        s.ref ? fmt(s.ref) : "?"
+      }${
+        s.ref ? ` (${s.dayBar.close >= s.ref ? "+" : ""}${(((s.dayBar.close - s.ref) / s.ref) * 100).toFixed(2)}% vs TC)` : ""
+      }`
+    : null;
   const text = [
     `🟢 <b>TÍN HIỆU MUA — ${s.ticker}</b>${s.sector ? ` · ${s.sector}` : ""}`,
     `<i>${esc(s.reason)}</i>`,
+    ...(ohlc ? [ohlc] : []),
     ``,
     `💰 Giá vào (LO): <b>${fmt(s.entry)}</b>`,
     ...(s.buyZone

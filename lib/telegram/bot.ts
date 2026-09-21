@@ -283,23 +283,34 @@ export function createBot(): Bot {
     const [action, idStr] = data.split(":");
     const id = Number(idStr);
     if (action === "skip" || action === "taken") {
+      const cur = await prisma.signal.findUnique({ where: { id }, select: { status: true } });
+      if (cur?.status === "taken" || cur?.status === "skipped") {
+        await ctx.answerCallbackQuery({ text: "Signal này đã xử lý" });
+        return;
+      }
       const signal = await prisma.signal.update({
         where: { id },
         data: { status: action === "skip" ? "skipped" : "taken" },
       });
       if (action === "taken") {
-        // Lệnh đặt tay ngoài broker → vẫn mở Trade để watcher cắt lỗ + journal
-        await prisma.trade.create({
-          data: {
-            symbolId: signal.symbolId,
-            qty: signal.qty,
-            entryPrice: signal.entry,
-            stopPrice: signal.stop,
-            targetPrice: signal.target,
-            signalId: signal.id,
-            note: "manual",
-          },
+        // Lệnh đặt tay ngoài broker → mở Trade để watcher cắt lỗ + journal.
+        // Guard: signal có thể đã có trade (bấm 2 lần / Telegram retry)
+        const dup = await prisma.trade.findFirst({
+          where: { signalId: signal.id, status: "open" },
         });
+        if (!dup) {
+          await prisma.trade.create({
+            data: {
+              symbolId: signal.symbolId,
+              qty: signal.qty,
+              entryPrice: signal.entry,
+              stopPrice: signal.stop,
+              targetPrice: signal.target,
+              signalId: signal.id,
+              note: "manual",
+            },
+          });
+        }
       }
       await ctx.answerCallbackQuery({ text: action === "skip" ? "Đã bỏ qua" : "Đã mở trade + bật watcher" });
     } else if (action === "setplan") {

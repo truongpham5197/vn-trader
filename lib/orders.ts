@@ -18,7 +18,7 @@ export async function placeSignalOrder(signalId: number): Promise<PlaceResult> {
     include: { symbol: true },
   });
   if (!signal) return { ok: false, message: "signal không tồn tại" };
-  if (["ordered", "filled", "skipped", "expired"].includes(signal.status)) {
+  if (["ordered", "filled", "skipped", "expired", "taken"].includes(signal.status)) {
     return { ok: false, message: `signal đã ở trạng thái ${signal.status}` };
   }
 

@@ -43,7 +43,7 @@ export default async function Home() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold tracking-tight">VN Trading Assistant</h1>
         <nav className="flex gap-2 text-xs">
-          {(["/signals", "/backtest", "/journal"] as const).map((h) => (
+          {(["/signals", "/sectors", "/backtest", "/journal"] as const).map((h) => (
             <Link
               key={h}
               href={h}

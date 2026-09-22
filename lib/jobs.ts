@@ -45,11 +45,12 @@ export function startJobs(): void {
   cron.schedule(
     "*/30 9-14 * * 1-5",
     async () => {
-      const { positionsReport, formatPositionsReport } = await import("./report/positions");
+      const { positionsReport } = await import("./report/positions");
+      const { positionsMessage } = await import("./report/portfolio");
       const lines = await positionsReport();
       if (lines.length) {
         const { sendTelegram } = await import("./telegram/notify");
-        await sendTelegram(formatPositionsReport(lines));
+        await sendTelegram(await positionsMessage(lines));
       }
     },
     { timezone: TZ },

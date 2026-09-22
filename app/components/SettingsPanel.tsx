@@ -91,7 +91,7 @@ export default function SettingsPanel(p: {
           }}
         />
         <label className="flex flex-col gap-1 text-muted">
-          Vốn NAV (triệu đ)
+          Vốn ban đầu (triệu đ)
           <input
             value={navV}
             inputMode="decimal"

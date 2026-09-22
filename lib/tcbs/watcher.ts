@@ -72,7 +72,8 @@ export async function runWatcher(): Promise<void> {
 const HEARTBEAT_DELTA_PCT = 1;
 
 async function heartbeat(): Promise<void> {
-  const { positionsReport, formatPositionsReport } = await import("../report/positions");
+  const { positionsReport } = await import("../report/positions");
+  const { positionsMessage } = await import("../report/portfolio");
   const lines = await positionsReport();
   if (!lines.length) return;
   const prev = JSON.parse((await getSetting("heartbeatPnl")) || "{}") as Record<string, number>;
@@ -84,7 +85,7 @@ async function heartbeat(): Promise<void> {
     if (p === undefined || Math.abs((l.pnlPct ?? 0) - p) >= HEARTBEAT_DELTA_PCT) moved = true;
   }
   if (!moved) return;
-  await sendTelegram(formatPositionsReport(lines));
+  await sendTelegram(await positionsMessage(lines));
   await setSetting("heartbeatPnl", JSON.stringify(cur));
 }
 

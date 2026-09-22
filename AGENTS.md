@@ -43,7 +43,12 @@ lib/analysis/  vn30.ts (scoreSetup — vùng mua/SL/TP + `plain` cho người m�
                sector-strength.ts — xếp hạng ngành trên mã GTGD≥ngưỡng:
                lãi 1 tuần/1 tháng (trung vị), % mã > MA50, dòng tiền 5p/20p,
                ngành <3 mã = kém tin cậy; top 5 mã từ ngành mạnh. Dùng ở
-               /sectors (unstable_cache 15ph) + Telegram /nganh
+               /sectors + Telegram /nganh. `live` ghép nến hôm nay từ DNSE
+               (GTGD quy đổi cả phiên theo sessionElapsed);
+               sector-live.ts — 9h–16h T2–T6 dùng bản live (cache 5ph),
+               ngoài giờ bản cuối ngày (15ph); runSectorAlerts gọi từ
+               watcher qua after(), tự giãn 5ph, báo mã vào vùng mua +
+               ngành lên dẫn đầu, dedup/ngày (Setting sectorAlerted)
 lib/telegram/  bot.ts (createBot — dùng chung polling+webhook), notify.ts
                (sendTelegram + esc() — PHẢI escape text động, parse_mode=HTML)
 lib/tcbs/      OpenAPI client (spec: docs/tcbs-openapi.json)

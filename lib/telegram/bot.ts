@@ -143,7 +143,8 @@ export function createBot(): Bot {
   bot.command("nganh", async (ctx) => {
     if (!allowed(ctx)) return;
     const { loadSectorStrength, formatSectorStrength } = await import("../analysis/sector-strength");
-    await ctx.reply(formatSectorStrength(await loadSectorStrength()));
+    const { inLiveWindow } = await import("../analysis/sector-live");
+    await ctx.reply(formatSectorStrength(await loadSectorStrength({ live: inLiveWindow() })));
   });
 
   // /picks — preview digest top 5 mã tiềm năng (giá live vs vùng mua)

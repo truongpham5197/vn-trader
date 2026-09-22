@@ -4,6 +4,8 @@ import { sma } from "../strategy/indicators";
 import { scoreSetup, type Vn30Row } from "./vn30";
 import type { Bar } from "../data/types";
 import { esc } from "../telegram/notify";
+import { fetchDailyBars } from "../data/dnse";
+import { sessionElapsed, vnToday } from "../vn-time";
 
 const BARS = 60;
 
@@ -45,6 +47,7 @@ export interface SectorStrength {
   market: { count: number; ret5: number; ret20: number; breadth: number; flow: number };
   sectors: SectorStat[];
   topPicks: (SectorPick & { sectorTrend: SectorTrend })[];
+  live?: { at: string; updated: number }; // có khi đã ghép giá trong phiên
 }
 
 const median = (xs: number[]) => {
@@ -181,8 +184,40 @@ export function computeSectorStrength(stocks: StockInput[]): SectorStrength {
   return { date, market, sectors, topPicks };
 }
 
-/** Load mã thanh khoản (GTGD TB 20 phiên ≥ ngưỡng) + 60 bars gần nhất → xếp hạng ngành. */
-export async function loadSectorStrength(): Promise<SectorStrength> {
+/**
+ * Ghép nến hôm nay (đang hình thành, DNSE) vào cuối chuỗi bars từ DB.
+ * GTGD hôm nay quy đổi ra cả phiên theo thời gian đã trôi qua để so dòng
+ * tiền công bằng với các phiên đủ. Mã fetch lỗi giữ nguyên data DB.
+ */
+async function mergeIntraday(stocks: StockInput[]): Promise<number> {
+  const today = vnToday();
+  const from = new Date(Date.now() - 5 * 86400e3);
+  const scale = 1 / sessionElapsed();
+  let updated = 0;
+  let i = 0;
+  const worker = async () => {
+    while (i < stocks.length) {
+      const s = stocks[i++];
+      const bar = await fetchDailyBars(s.ticker, from, new Date()).then((bs) => bs.at(-1), () => undefined);
+      if (bar?.date !== today) continue;
+      if (s.bars.at(-1)?.date === today) {
+        s.bars.pop();
+        s.value.pop();
+      }
+      s.bars.push(bar);
+      s.value.push(bar.close * bar.volume * 1000 * scale);
+      updated++;
+    }
+  };
+  await Promise.all(Array.from({ length: 16 }, worker));
+  return updated;
+}
+
+/**
+ * Load mã thanh khoản (GTGD TB 20 phiên ≥ ngưỡng) + 60 bars gần nhất → xếp hạng ngành.
+ * `live` = ghép thêm giá đang khớp trong phiên (DNSE) — dùng khi thị trường mở.
+ */
+export async function loadSectorStrength(opts: { live?: boolean } = {}): Promise<SectorStrength> {
   const minValue = await getNum("universeMinValueVnd");
   const cut30 = new Date(Date.now() - 30 * 86400e3).toISOString().slice(0, 10);
   const liquid = (
@@ -213,19 +248,23 @@ export async function loadSectorStrength(): Promise<SectorStrength> {
     if (arr) arr.push(r);
     else bySym.set(r.symbolId, [r]);
   }
-  return computeSectorStrength(
-    symbols.map((s) => {
-      const rs = bySym.get(s.id) ?? [];
-      return {
-        ticker: s.ticker,
-        sector: s.sector!,
-        companyName: s.companyName,
-        bars: rs.map(({ date, open, high, low, close, volume }) => ({ date, open, high, low, close, volume })),
-        value: rs.map((r) => r.value),
-      };
-    }),
-  );
+  const stocks = symbols.map((s): StockInput => {
+    const rs = bySym.get(s.id) ?? [];
+    return {
+      ticker: s.ticker,
+      sector: s.sector!,
+      companyName: s.companyName,
+      bars: rs.map(({ date, open, high, low, close, volume }) => ({ date, open, high, low, close, volume })),
+      value: rs.map((r) => r.value),
+    };
+  });
+  if (!opts.live) return computeSectorStrength(stocks);
+  const updated = await mergeIntraday(stocks);
+  return { ...computeSectorStrength(stocks), live: { at: new Date().toISOString(), updated } };
 }
+
+export const liveTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit" });
 
 const TREND_TG: Record<SectorTrend, string> = { lead: "🚀", strong: "📈", neutral: "➖", weak: "📉" };
 const dong = (p: number) => `${Math.round(p * 1000).toLocaleString("vi-VN")}đ`;
@@ -240,7 +279,7 @@ export function formatSectorStrength(r: SectorStrength): string {
   const top = r.sectors.filter((s) => !s.lowConfidence).slice(0, 5);
   const weak = r.sectors.filter((s) => !s.lowConfidence && s.trend === "weak").map((s) => esc(s.sector));
   return [
-    `🏆 <b>NHÓM NGÀNH</b> · ${r.date ?? ""}`,
+    `🏆 <b>NHÓM NGÀNH</b> · ${r.live ? `⚡ trong phiên ${liveTime(r.live.at)}` : (r.date ?? "")}`,
     `Thị trường ${verdict} · ${m.breadth.toFixed(0)}% mã đang tăng · 1 tháng ${sg(m.ret20)}`,
     ``,
     ...top.map(

@@ -1,20 +1,37 @@
 import { NextResponse } from "next/server";
 import { setSetting } from "@/lib/settings";
+import { sendTelegram } from "@/lib/telegram/notify";
 
 export const dynamic = "force-dynamic";
 
-// Chỉ các key được phép sửa từ UI — killSwitch/scanEnabled vẫn qua Telegram/env
+const bool = (v: string) => v === "true" || v === "false";
+
+// Key sửa được từ web (không cần đăng nhập — user chọn 2026-09-22). paperTrading KHÔNG có ở đây — chỉ đổi qua env (quy tắc an toàn).
+// riskPct lưu dạng tỷ lệ (0.01 = 1%/lệnh) — chặn ≤ 3% để tránh gõ nhầm "1" thành 100%.
 const EDITABLE: Record<string, (v: string) => boolean> = {
-  navVnd: (v) => Number(v) > 0,
-  riskPct: (v) => Number(v) > 0 && Number(v) <= 5,
+  navVnd: (v) => Number(v) >= 1e6,
+  riskPct: (v) => Number(v) > 0 && Number(v) <= 0.03,
   universe: (v) => ["vn30", "liquid", "all"].includes(v),
+  universeMinValueVnd: (v) => Number(v) >= 0,
+  scanEnabled: bool,
+  killSwitch: bool,
 };
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as { key?: string; value?: string } | null;
-  if (!body?.key || !EDITABLE[body.key]?.(body.value ?? "")) {
-    return NextResponse.json({ error: "key không hợp lệ" }, { status: 400 });
+  const key = body?.key ?? "";
+  const value = String(body?.value ?? "");
+  if (!EDITABLE[key]?.(value)) return NextResponse.json({ error: "Giá trị không hợp lệ" }, { status: 400 });
+
+  await setSetting(key, value);
+  // Giống /kill: bật kill switch thì dừng luôn scanner
+  if (key === "killSwitch" && value === "true") await setSetting("scanEnabled", "false");
+  if (key === "killSwitch" || key === "scanEnabled") {
+    const msg =
+      key === "killSwitch"
+        ? value === "true" ? "🛑 KILL SWITCH ON (từ web) — scanner dừng, mọi order bị chặn." : "✅ Kill switch OFF (từ web)"
+        : value === "true" ? "▶️ Scanner ON (từ web)" : "⏸ Scanner OFF (từ web)";
+    await sendTelegram(msg).catch(() => false);
   }
-  await setSetting(body.key, String(body.value));
   return NextResponse.json({ ok: true });
 }

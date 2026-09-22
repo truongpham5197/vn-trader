@@ -55,6 +55,14 @@ app/api/cron/  eod-sync (cursor resume qua Setting eodSyncCursor + chain
 app/api/quotes    GET ?tickers=A,B → giá nến 1m DNSE (cache 30s trong
                getQuote) — SectorBoard poll 30s trong phiên / 5ph ngoài
 app/api/telegram/webhook  production bot endpoint (secret header check)
+app/api/telegram/commands POST → setMyCommands (menu "/" của bot) — gọi
+               từ Vercel vì mạng local chặn api.telegram.org
+app/api/settings  POST {key,value} — web dashboard chỉnh: navVnd, riskPct
+               (TỶ LỆ 0.01=1%, chặn ≤0.03), universe, universeMinValueVnd,
+               scanEnabled, killSwitch (bật → tắt scan, báo Telegram).
+               paperTrading KHÔNG sửa từ web. KHÔNG auth — user chọn
+               2026-09-22 (UI không cần password); an toàn dựa vào validate
+               + báo Telegram mỗi lần đổi scanner/kill
 ```
 
 Vercel Hobby: function ≤60s, không process nền, cron 1 lần/ngày → mọi job nặng
@@ -81,6 +89,7 @@ trên cron-job.org nếu còn).
 - `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `CRON_SECRET` đã lộ trong chat → cần
   rotate (Neon console + @BotFather `/revoke`), update Vercel env sau.
 - Route mutating bắt buộc `cronAuthorized()` / webhook secret check.
+  Ngoại lệ duy nhất: `/api/settings` (web UI, user quyết định không password).
 
 ## 5. Coding conventions (theo code hiện có)
 

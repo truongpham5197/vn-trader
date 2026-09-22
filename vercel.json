@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/scan",
-      "schedule": "40 8 * * 1-5"
+      "schedule": "50 9 * * 1-5"
     }
   ]
 }

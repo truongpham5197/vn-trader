@@ -73,13 +73,17 @@ export async function syncDailyBars(opts?: {
     const budget = deadlineMs ? deadlineMs - (Date.now() - t0) : Infinity;
     if (budget <= 0) break;
     try {
-      // Race fetch với budget còn lại — 1 mã treo không được giết cả batch
-      const bars = await Promise.race([
-        fetchDailyBars(s.ticker, from, to),
-        sleep(Math.max(budget, 0)).then(() => {
-          throw new Error("deadline");
-        }),
-      ]);
+      // Race fetch với budget còn lại — 1 mã treo không được giết cả batch.
+      // Không có deadline thì fetch thẳng: setTimeout(Infinity) bị Node ép về 1ms
+      // → mọi mã fail "deadline" (đã gặp 2026-09-22 ở node-cron local)
+      const bars = Number.isFinite(budget)
+        ? await Promise.race([
+            fetchDailyBars(s.ticker, from, to),
+            sleep(budget).then(() => {
+              throw new Error("deadline");
+            }),
+          ])
+        : await fetchDailyBars(s.ticker, from, to);
       if (bars.length) {
         const stored = await prisma.dailyBar.findMany({
           where: { symbolId: s.id, date: { gte: bars[0].date } },

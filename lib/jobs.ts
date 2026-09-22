@@ -31,9 +31,9 @@ export function startJobs(): void {
     { timezone: TZ },
   );
 
-  // Mỗi phút 9:00-14:59 T2-T6: stop-loss watcher + sync lệnh pending
+  // Mỗi phút trong phiên (bỏ nghỉ trưa 12h) T2-T6: stop-loss watcher + sync lệnh pending
   cron.schedule(
-    "* 9-14 * * 1-5",
+    "* 9-11,13-14 * * 1-5",
     async () => {
       const { runWatcher } = await import("./tcbs/watcher");
       await runWatcher().catch((e) => console.error("[watcher]", e));
@@ -66,6 +66,6 @@ export function startJobs(): void {
   );
 
   console.log(
-    "[cron] eod-sync 15:20 + scan 15:40 + watcher */1 9-14 + positions */30 9-14 + weekly-report 20:00 CN (Asia/Ho_Chi_Minh)",
+    "[cron] eod-sync 15:20 + scan 15:40 + watcher */1 9-11,13-14 + positions */30 9-14 + weekly-report 20:00 CN (Asia/Ho_Chi_Minh)",
   );
 }

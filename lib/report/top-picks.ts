@@ -1,7 +1,6 @@
 import { prisma } from "../prisma";
 import { getQuote } from "../price";
-import { getBool, getSetting, setSetting } from "../settings";
-import { esc, sendTelegram } from "../telegram/notify";
+import { esc } from "../telegram/notify";
 import { vnNow } from "../vn-time";
 
 export interface Pick {
@@ -18,12 +17,6 @@ export interface Pick {
   reason: string;
   last: number | null; // giá live (nến 1m DNSE, trễ ~1 phút)
   ref: number | null; // tham chiếu = close phiên trước
-}
-
-export interface TopPicksResult {
-  sent: boolean;
-  picks: number;
-  skippedReason?: string;
 }
 
 /** "Kỳ vọng 3–10 phiên; ..." → "3–10 phiên" (trích từ plan của strategy). */
@@ -184,40 +177,9 @@ export function formatTopPicks(picks: Pick[], signalDate: string | null): string
   ].join("\n\n");
 }
 
-const RESEND_AFTER_MS = 30 * 60e3;
-
 /** Trong phiên VN: T2–T6, 9:00–15:00. Nghỉ trưa vẫn tính — giá đóng băng thì dedupe lo. */
 export function inSession(now: Date): boolean {
   const dow = now.getDay();
   const mins = now.getHours() * 60 + now.getMinutes();
   return dow >= 1 && dow <= 5 && mins >= 9 * 60 && mins < 15 * 60;
-}
-
-/**
- * Digest top-5 gửi Telegram mỗi 5 phút trong phiên. Dedupe: nội dung (mã + giá)
- * y hệt lần trước và chưa quá 30 phút → bỏ qua (nghỉ trưa/hết phiên giá đứng).
- */
-export async function runTopPicksDigest(opts?: {
-  limit?: number;
-  force?: boolean;
-}): Promise<TopPicksResult> {
-  if (await getBool("killSwitch")) return { sent: false, picks: 0, skippedReason: "kill-switch" };
-  if (!(await getBool("scanEnabled"))) return { sent: false, picks: 0, skippedReason: "paused" };
-  if (!opts?.force && !inSession(vnNow()))
-    return { sent: false, picks: 0, skippedReason: "out-of-session" };
-
-  const { picks, signalDate } = await collectTopPicks(opts?.limit ?? 5);
-  if (!picks.length) return { sent: false, picks: 0, skippedReason: "no-picks" };
-
-  const key = picks.map((p) => `${p.ticker}:${p.last?.toFixed(2) ?? "?"}`).join(",");
-  const prev = JSON.parse((await getSetting("topPicksState")) || "{}") as {
-    at?: number;
-    key?: string;
-  };
-  if (prev.key === key && Date.now() - (prev.at ?? 0) < RESEND_AFTER_MS)
-    return { sent: false, picks: picks.length, skippedReason: "unchanged" };
-
-  const ok = await sendTelegram(formatTopPicks(picks, signalDate));
-  if (ok) await setSetting("topPicksState", JSON.stringify({ at: Date.now(), key }));
-  return { sent: ok, picks: picks.length };
 }

@@ -33,10 +33,10 @@ lib/corp-action.ts  GDKHQ: detectAdjustment (fresh/stored factor) +
                applyCorporateAction (×factor vào bars cũ + Trade/Signal mở)
 lib/risk/      sizing.ts (1% NAV, lot 100), suggest.ts (/plan gợi ý SL/TP)
 lib/report/    positions.ts — báo cáo vị thế % live (dùng chung bot+cron);
-               top-picks.ts — digest top 5 mã tiềm năng: signal date mới nhất
-               (new/notified, bỏ mã đang giữ + setup hỏng intraday) xếp theo
-               giá live so vùng mua, bù slot bằng vn30Snapshot; dedupe qua
-               Setting topPicksState (giá đứng → tối đa 1 tin/30ph);
+               top-picks.ts — collectTopPicks + formatTopPicks cho /picks
+               (preview tay). Auto-push digest ĐÃ GỠ 2026-09-22 — spam mỗi
+               5ph không hiệu quả; route cron + schedule + runTopPicksDigest
+               xóa, không còn đường gửi nào;
                sectors.ts — bảng nhóm ngành cho /sectors (vị thế mở +
                signal ngày mới nhất + setup VN30, kèm GDKHQ gần nhất)
 lib/telegram/  bot.ts (createBot — dùng chung polling+webhook), notify.ts
@@ -45,7 +45,7 @@ lib/tcbs/      OpenAPI client (spec: docs/tcbs-openapi.json)
 lib/jobs.ts    node-cron local — SKIP khi process.env.VERCEL
 app/api/cron/  eod-sync (cursor resume qua Setting eodSyncCursor + chain
                after() + deadlineMs 40s + retry 3×),
-               scan, watcher, top-picks, positions-report, weekly
+               scan, watcher, positions-report, weekly
                — TẤT CẢ qua cron-auth
 app/api/quotes    GET ?tickers=A,B → giá nến 1m DNSE (cache 30s trong
                getQuote) — SectorBoard poll 30s trong phiên / 5ph ngoài
@@ -53,9 +53,10 @@ app/api/telegram/webhook  production bot endpoint (secret header check)
 ```
 
 Vercel Hobby: function ≤60s, không process nền, cron 1 lần/ngày → mọi job nặng
-phải chunked + self-chain, watcher + top-picks intraday cần ping ngoài
-(cron-job.org: */1 → /api/cron/watcher, */5 9-15h T2-T6 → /api/cron/top-picks,
-*/2 15-16h T2-T6 → /api/cron/eod-sync — resume từ cursor, thay thế chain hay đứt).
+phải chunked + self-chain, watcher intraday cần ping ngoài
+(cron-job.org: */1 → /api/cron/watcher, */2 15-16h T2-T6 → /api/cron/eod-sync
+— resume từ cursor, thay thế chain hay đứt; job */5 → top-picks ĐÃ BỎ — xóa
+trên cron-job.org nếu còn).
 
 ## 3. Quy tắc an toàn (không phá)
 

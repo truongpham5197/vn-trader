@@ -2,6 +2,7 @@ import { prisma } from "./prisma";
 import { STRATEGIES, ensureStrategies } from "./strategy";
 import { positionSize } from "./risk/sizing";
 import { getBool, getNum, getSetting } from "./settings";
+import { loadPortfolio } from "./report/portfolio";
 import { notifySignal } from "./telegram/notify";
 import type { Bar } from "./data/types";
 import { VN30 } from "./data/vn30";
@@ -30,7 +31,8 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
     type: string;
     params: string;
   }[];
-  const navVnd = await getNum("navVnd");
+  // Size lệnh theo NAV thực (vốn + lãi/lỗ đã chốt + tạm tính), không phải vốn ban đầu
+  const navVnd = (await loadPortfolio()).nav;
   const riskPct = await getNum("riskPct");
   const minValue = await getNum("universeMinValueVnd");
   const universe = await getSetting("universe"); // vn30 | liquid | all

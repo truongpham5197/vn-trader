@@ -42,11 +42,12 @@ export function createBot(): Bot {
       prisma.signal.count({ where: { date: vnToday() } }),
       prisma.trade.count({ where: { status: "open" } }),
     ]);
-    const [scan, paper, kill, nav, risk] = await Promise.all([
+    const { loadPortfolio } = await import("../report/portfolio");
+    const [scan, paper, kill, pf, risk] = await Promise.all([
       getBool("scanEnabled"),
       getBool("paperTrading"),
       getBool("killSwitch"),
-      getNum("navVnd"),
+      loadPortfolio(),
       getNum("riskPct"),
     ]);
     await ctx.reply(
@@ -54,7 +55,7 @@ export function createBot(): Bot {
         `📈 Dữ liệu: <b>${symbols.toLocaleString("en-US")}</b> mã · ${bars.toLocaleString("en-US")} bars\n` +
         `🔔 Tín hiệu hôm nay: <b>${todaySignals}</b> · Vị thế mở: <b>${openTrades}</b>\n` +
         `⚙️ scanner <b>${scan ? "ON" : "OFF"}</b> · paper <b>${paper ? "ON" : "OFF"}</b> · kill <b>${kill ? "ON 🛑" : "off"}</b>\n` +
-        `💰 NAV <b>${(nav / 1e6).toFixed(0)}tr</b> · risk/lệnh ${(risk * 100).toFixed(1)}% · universe <b>${(await getSetting("universe")).toUpperCase()}</b>`,
+        `💰 NAV <b>${(pf.nav / 1e6).toFixed(2)}tr</b> (${pf.totalPct >= 0 ? "+" : ""}${pf.totalPct.toFixed(2)}% so với vốn ${(pf.initial / 1e6).toFixed(0)}tr) · risk/lệnh ${(risk * 100).toFixed(1)}% · universe <b>${(await getSetting("universe")).toUpperCase()}</b>`,
     );
   });
 
@@ -82,8 +83,8 @@ export function createBot(): Bot {
 
   bot.command("positions", async (ctx) => {
     if (!allowed(ctx)) return;
-    const { positionsReport, formatPositionsReport } = await import("../report/positions");
-    await ctx.reply(formatPositionsReport(await positionsReport()));
+    const { positionsMessage } = await import("../report/portfolio");
+    await ctx.reply(await positionsMessage());
   });
 
   // /orders — tín hiệu chờ xử lý hôm nay + vị thế đang giữ (live %)
@@ -95,7 +96,7 @@ export function createBot(): Bot {
       orderBy: { id: "desc" },
       take: 15,
     });
-    const { positionsReport, formatPositionsReport } = await import("../report/positions");
+    const { positionsMessage } = await import("../report/portfolio");
 
     const parts: string[] = [];
     if (pending.length) {
@@ -119,7 +120,7 @@ export function createBot(): Bot {
       }
       parts.push("");
     }
-    parts.push(formatPositionsReport(await positionsReport()));
+    parts.push(await positionsMessage());
     await ctx.reply(parts.join("\n"));
   });
 

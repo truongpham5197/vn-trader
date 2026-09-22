@@ -36,7 +36,9 @@ lib/report/    positions.ts — báo cáo vị thế % live (dùng chung bot+cro
                top-picks.ts — digest top 5 mã tiềm năng: signal date mới nhất
                (new/notified, bỏ mã đang giữ + setup hỏng intraday) xếp theo
                giá live so vùng mua, bù slot bằng vn30Snapshot; dedupe qua
-               Setting topPicksState (giá đứng → tối đa 1 tin/30ph)
+               Setting topPicksState (giá đứng → tối đa 1 tin/30ph);
+               sectors.ts — bảng nhóm ngành cho /sectors (vị thế mở +
+               signal ngày mới nhất + setup VN30, kèm GDKHQ gần nhất)
 lib/telegram/  bot.ts (createBot — dùng chung polling+webhook), notify.ts
                (sendTelegram + esc() — PHẢI escape text động, parse_mode=HTML)
 lib/tcbs/      OpenAPI client (spec: docs/tcbs-openapi.json)
@@ -45,6 +47,8 @@ app/api/cron/  eod-sync (cursor resume qua Setting eodSyncCursor + chain
                after() + deadlineMs 40s + retry 3×),
                scan, watcher, top-picks, positions-report, weekly
                — TẤT CẢ qua cron-auth
+app/api/quotes    GET ?tickers=A,B → giá nến 1m DNSE (cache 30s trong
+               getQuote) — SectorBoard poll 30s trong phiên / 5ph ngoài
 app/api/telegram/webhook  production bot endpoint (secret header check)
 ```
 

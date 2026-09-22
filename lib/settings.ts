@@ -9,6 +9,7 @@ const DEFAULTS: Record<string, string> = {
   universeMinValueVnd: "5000000000", // GTGD TB 20 phiên > 5 tỷ (universe=liquid)
   universe: "vn30", // vn30 | liquid | all — paper trading focus VN30
   scanEnabled: "true",
+  topPicksEnabled: "false", // auto-push digest top-5: tắt mặc định, /picks on để bật
   paperTrading: process.env.PAPER_TRADING ?? "true",
   killSwitch: process.env.KILL_SWITCH ?? "false",
 };

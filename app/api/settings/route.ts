@@ -8,6 +8,7 @@ const EDITABLE: Record<string, (v: string) => boolean> = {
   navVnd: (v) => Number(v) > 0,
   riskPct: (v) => Number(v) > 0 && Number(v) <= 5,
   universe: (v) => ["vn30", "liquid", "all"].includes(v),
+  topPicksEnabled: (v) => ["true", "false"].includes(v),
 };
 
 export async function POST(req: Request) {

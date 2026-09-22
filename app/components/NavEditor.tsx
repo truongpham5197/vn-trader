@@ -7,10 +7,12 @@ export default function NavEditor({
   nav,
   riskPct,
   universe,
+  topPicks,
 }: {
   nav: number;
   riskPct: number;
   universe: string;
+  topPicks: boolean;
 }) {
   const router = useRouter();
   const [navV, setNavV] = useState((nav / 1e6).toString());
@@ -61,6 +63,15 @@ export default function NavEditor({
             <option value="liquid">Liquid (GTGD&gt;5tỷ)</option>
             <option value="all">All (toàn TT)</option>
           </select>
+        </label>
+        <label className="flex items-center gap-2 pb-1.5 text-muted">
+          <input
+            type="checkbox"
+            defaultChecked={topPicks}
+            onChange={(e) => save("topPicksEnabled", String(e.target.checked))}
+            className="accent-accent"
+          />
+          Telegram top-5 digest
         </label>
         {state === "saving" && <span className="text-muted">đang lưu…</span>}
         {state === "saved" && <span className="text-gain">✓ đã lưu</span>}

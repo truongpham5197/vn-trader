@@ -36,7 +36,9 @@ lib/report/    positions.ts — báo cáo vị thế % live (dùng chung bot+cro
                top-picks.ts — digest top 5 mã tiềm năng: signal date mới nhất
                (new/notified, bỏ mã đang giữ + setup hỏng intraday) xếp theo
                giá live so vùng mua, bù slot bằng vn30Snapshot; dedupe qua
-               Setting topPicksState (giá đứng → tối đa 1 tin/30ph)
+               Setting topPicksState (giá đứng → tối đa 1 tin/30ph);
+               auto-push gate bởi Setting topPicksEnabled — mặc định TẮT
+               (user tắt 2026-09-22 vì spam), bật lại = checkbox dashboard
 lib/telegram/  bot.ts (createBot — dùng chung polling+webhook), notify.ts
                (sendTelegram + esc() — PHẢI escape text động, parse_mode=HTML)
 lib/tcbs/      OpenAPI client (spec: docs/tcbs-openapi.json)
@@ -50,8 +52,9 @@ app/api/telegram/webhook  production bot endpoint (secret header check)
 
 Vercel Hobby: function ≤60s, không process nền, cron 1 lần/ngày → mọi job nặng
 phải chunked + self-chain, watcher + top-picks intraday cần ping ngoài
-(cron-job.org: */1 → /api/cron/watcher, */5 9-15h T2-T6 → /api/cron/top-picks,
-*/2 15-16h T2-T6 → /api/cron/eod-sync — resume từ cursor, thay thế chain hay đứt).
+(cron-job.org: */1 → /api/cron/watcher, */5 9-15h T2-T6 → /api/cron/top-picks
+— no-op khi topPicksEnabled=false, có thể xóa job, */2 15-16h T2-T6 →
+/api/cron/eod-sync — resume từ cursor, thay thế chain hay đứt).
 
 ## 3. Quy tắc an toàn (không phá)
 

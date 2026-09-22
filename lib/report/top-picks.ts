@@ -203,6 +203,8 @@ export async function runTopPicksDigest(opts?: {
 }): Promise<TopPicksResult> {
   if (await getBool("killSwitch")) return { sent: false, picks: 0, skippedReason: "kill-switch" };
   if (!(await getBool("scanEnabled"))) return { sent: false, picks: 0, skippedReason: "paused" };
+  if (!(await getBool("topPicksEnabled")))
+    return { sent: false, picks: 0, skippedReason: "disabled" };
   if (!opts?.force && !inSession(vnNow()))
     return { sent: false, picks: 0, skippedReason: "out-of-session" };
 

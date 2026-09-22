@@ -29,10 +29,11 @@ export default async function Home() {
       }),
       vn30Snapshot(),
     ]);
-  const [scanEnabled, paper, kill] = await Promise.all([
+  const [scanEnabled, paper, kill, topPicks] = await Promise.all([
     getBool("scanEnabled"),
     getBool("paperTrading"),
     getBool("killSwitch"),
+    getBool("topPicksEnabled"),
   ]);
   const nav = await getNum("navVnd");
   const riskPct = await getNum("riskPct");
@@ -67,9 +68,10 @@ export default async function Home() {
           <Badge ok={scanEnabled}>scanner {scanEnabled ? "ON" : "OFF"}</Badge>
           <Badge ok={paper}>paper {paper ? "ON" : "OFF"}</Badge>
           <Badge ok={!kill}>{kill ? "🛑 kill ON" : "kill off"}</Badge>
+          <Badge ok={topPicks}>top-5 {topPicks ? "ON" : "off"}</Badge>
         </div>
         <div className="grow">
-          <NavEditor nav={nav} riskPct={riskPct} universe={universe} />
+          <NavEditor nav={nav} riskPct={riskPct} universe={universe} topPicks={topPicks} />
         </div>
       </div>
 

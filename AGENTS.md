@@ -29,6 +29,8 @@ lib/strategy/  pure fns → SignalCandidate {entry,stop,target,rr,reason,plan,bu
 lib/backtest/  engine portfolio T+2/lot100/band ±7-10-15%/phí+thuế
 lib/scan.ts    batch-load bars → filter GTGD>5tỷ + held tickers luôn qua →
                upsert Signal idempotent → notifySignal
+lib/corp-action.ts  GDKHQ: detectAdjustment (fresh/stored factor) +
+               applyCorporateAction (×factor vào bars cũ + Trade/Signal mở)
 lib/risk/      sizing.ts (1% NAV, lot 100), suggest.ts (/plan gợi ý SL/TP)
 lib/report/    positions.ts — báo cáo vị thế % live (dùng chung bot+cron);
                top-picks.ts — digest top 5 mã tiềm năng: signal date mới nhất
@@ -39,7 +41,8 @@ lib/telegram/  bot.ts (createBot — dùng chung polling+webhook), notify.ts
                (sendTelegram + esc() — PHẢI escape text động, parse_mode=HTML)
 lib/tcbs/      OpenAPI client (spec: docs/tcbs-openapi.json)
 lib/jobs.ts    node-cron local — SKIP khi process.env.VERCEL
-app/api/cron/  eod-sync (chain after() + deadlineMs 40s + retry 3×),
+app/api/cron/  eod-sync (cursor resume qua Setting eodSyncCursor + chain
+               after() + deadlineMs 40s + retry 3×),
                scan, watcher, top-picks, positions-report, weekly
                — TẤT CẢ qua cron-auth
 app/api/telegram/webhook  production bot endpoint (secret header check)
@@ -47,7 +50,8 @@ app/api/telegram/webhook  production bot endpoint (secret header check)
 
 Vercel Hobby: function ≤60s, không process nền, cron 1 lần/ngày → mọi job nặng
 phải chunked + self-chain, watcher + top-picks intraday cần ping ngoài
-(cron-job.org: */1 → /api/cron/watcher, */5 9-15h T2-T6 → /api/cron/top-picks).
+(cron-job.org: */1 → /api/cron/watcher, */5 9-15h T2-T6 → /api/cron/top-picks,
+*/2 15-16h T2-T6 → /api/cron/eod-sync — resume từ cursor, thay thế chain hay đứt).
 
 ## 3. Quy tắc an toàn (không phá)
 
@@ -109,4 +113,11 @@ phải chunked + self-chain, watcher + top-picks intraday cần ping ngoài
 - Prisma relation là `bars`, không phải `dailyBars`.
 - `after()` chain trên Vercel: handler phải return ngay, work+chain trong
   after(); batch ≤40s (deadlineMs), retry cùng offset khi Neon hiccup.
+  Chain self-fetch **đứt ngẫu nhiên sau vài hop** (đã gặp 09-2026, chỉ ~23-113/860
+  mã được sync) → luôn resume qua `eodSyncCursor`, không dựa vào chain.
+- `/kill` set killSwitch=true + scanEnabled=false; `/resume` giờ clear cả hai —
+  trước 2026-09-22 chỉ bật scanEnabled nên pipeline vẫn bị killSwitch chặn.
+- DNSE trả OHLC **đã điều chỉnh lùi** sau GDKHQ → bars cũ trong DB lệch scale;
+  syncDailyBars detect qua detectAdjustment → applyCorporateAction nhân factor
+  vào bars + Trade/Signal mở. Position (live) không đụng — TCBS tự adjust.
 - Neon free: connection drop thoáng qua → retry query hoặc chấp nhận DataGap.

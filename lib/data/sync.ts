@@ -1,6 +1,7 @@
 import { prisma } from "../prisma";
 import { listListedSymbols, listSectors, BAND_PCT } from "./vndirect";
 import { fetchDailyBars } from "./dnse";
+import { detectAdjustment, applyCorporateAction } from "../corp-action";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -80,8 +81,28 @@ export async function syncDailyBars(opts?: {
         }),
       ]);
       if (bars.length) {
-        await prisma.dailyBar.createMany({
-          data: bars.map((b) => ({
+        const stored = await prisma.dailyBar.findMany({
+          where: { symbolId: s.id, date: { gte: bars[0].date } },
+          select: { id: true, date: true, open: true, high: true, low: true, close: true, volume: true },
+        });
+        // GDKHQ: DNSE điều chỉnh lùi lịch sử → fresh/stored lệch 1 hệ số đều nhau
+        const act = detectAdjustment(stored, bars);
+        if (act) {
+          const seen = await prisma.corporateAction.findUnique({
+            where: { symbolId_exDate: { symbolId: s.id, exDate: act.exDate } },
+          });
+          if (!seen) {
+            await applyCorporateAction(s.id, s.ticker, act).catch((e) =>
+              console.error(`[sync] corp-action ${s.ticker}`, e),
+            );
+          }
+        }
+        // Upsert: insert bar thiếu + sửa bar bị source revise (gồm cả trường
+        // hợp adjust lùi mà detectAdjustment không nhận — vd quá ít overlap)
+        const byDate = new Map(stored.map((r) => [r.date, r]));
+        const toInsert = bars
+          .filter((b) => !byDate.has(b.date))
+          .map((b) => ({
             symbolId: s.id,
             date: b.date,
             open: b.open,
@@ -90,9 +111,24 @@ export async function syncDailyBars(opts?: {
             close: b.close,
             volume: b.volume,
             value: b.close * b.volume * 1000,
-          })),
-          skipDuplicates: true,
-        });
+          }));
+        if (toInsert.length) await prisma.dailyBar.createMany({ data: toInsert });
+        for (const b of bars) {
+          const ex = byDate.get(b.date);
+          if (ex && Math.abs(ex.close - b.close) > 0.005) {
+            await prisma.dailyBar.update({
+              where: { id: ex.id },
+              data: {
+                open: b.open,
+                high: b.high,
+                low: b.low,
+                close: b.close,
+                volume: b.volume,
+                value: b.close * b.volume * 1000,
+              },
+            });
+          }
+        }
       }
       if (bars.length === 0) {
         await prisma.dataGap.create({

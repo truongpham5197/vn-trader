@@ -7,7 +7,8 @@ const SELL_FEE_TAX = 0.0015 + 0.001;
 
 export interface Portfolio {
   initial: number; // vốn ban đầu (Setting navVnd)
-  cash: number; // tiền mặt còn lại
+  cash: number; // tiền mặt còn lại = vốn + đã chốt − invested
+  invested: number; // tiền đã bỏ ra mua CP đang giữ (giá mua × KL + phí mua)
   marketValue: number; // giá trị CP đang giữ theo giá hiện tại (chưa trừ phí bán)
   nav: number; // tổng tài sản nếu bán hết hôm nay (đã trừ phí+thuế bán)
   realized: number; // lãi/lỗ đã chốt (net)
@@ -47,6 +48,7 @@ export function computePortfolio(initial: number, open: Open[], closed: Closed[]
   return {
     initial,
     cash,
+    invested: cost,
     marketValue,
     nav,
     realized,
@@ -87,7 +89,7 @@ const tr = (v: number) => `${v >= 0 ? "+" : ""}${(v / 1e6).toFixed(2)}tr`;
 export function formatPortfolio(p: Portfolio): string {
   return [
     `💼 <b>TÀI SẢN</b> ${(p.nav / 1e6).toFixed(2)}tr (${p.totalPct >= 0 ? "+" : ""}${p.totalPct.toFixed(2)}% so với vốn ${(p.initial / 1e6).toFixed(0)}tr)`,
-    `  Tiền mặt ${(p.cash / 1e6).toFixed(2)}tr · CP ${(p.marketValue / 1e6).toFixed(2)}tr` +
+    `  Tiền mặt còn ${(p.cash / 1e6).toFixed(2)}tr · CP đang giữ trị giá ${(p.marketValue / 1e6).toFixed(2)}tr` +
       (p.dayPnl !== null ? ` · hôm nay ${tr(p.dayPnl)}` : ""),
     `  Đã chốt ${tr(p.realized)} · đang giữ ${tr(p.unrealized)}` +
       (p.winRate !== null ? ` · thắng ${p.wins}/${p.closedCount} (${p.winRate.toFixed(0)}%)` : ""),

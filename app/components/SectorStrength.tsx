@@ -25,7 +25,14 @@ function flowText(f: number): { text: string; cls: string } {
   return { text: `Tiền rút ra ×${f.toFixed(2)}`, cls: "text-loss" };
 }
 
+function zoneStatus(close: number, [lo, hi]: [number, number]): { text: string; cls: string } {
+  if (close > hi) return { text: `Cao hơn vùng mua ${(((close - hi) / hi) * 100).toFixed(1)}% — chờ giá về`, cls: "text-muted" };
+  if (close < lo) return { text: `Thấp hơn vùng mua ${(((lo - close) / lo) * 100).toFixed(1)}% — chờ hồi lại`, cls: "text-muted" };
+  return { text: "✅ Đang trong vùng mua", cls: "text-gain" };
+}
+
 function PickCard({ p, sector }: { p: SectorPick; sector?: string }) {
+  const zone = zoneStatus(p.close, p.buyZone);
   return (
     <div className="card min-w-0 p-3">
       <div className="flex items-baseline justify-between gap-2">
@@ -36,6 +43,13 @@ function PickCard({ p, sector }: { p: SectorPick; sector?: string }) {
         <div className="truncate text-xs text-muted">{[sector, p.companyName].filter(Boolean).join(" · ")}</div>
       )}
       <dl className="num mt-2 space-y-0.5 text-xs">
+        <div className="flex flex-wrap justify-between gap-x-2">
+          <dt className="text-muted">Giá hiện tại</dt>
+          <dd className="font-semibold">
+            {dong(p.close)}
+            {p.chgPct !== null && <span className={`ml-1 ${tone(p.chgPct)}`}>({signed(p.chgPct)})</span>}
+          </dd>
+        </div>
         <div className="flex flex-wrap justify-between gap-x-2">
           <dt className="text-muted">Vùng mua</dt>
           <dd className="font-semibold">
@@ -55,6 +69,7 @@ function PickCard({ p, sector }: { p: SectorPick; sector?: string }) {
           </dd>
         </div>
       </dl>
+      <p className={`mt-1 text-xs font-medium ${zone.cls}`}>{zone.text}</p>
       <p className="mt-2 text-xs leading-relaxed text-muted">{p.plain}</p>
     </div>
   );

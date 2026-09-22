@@ -67,9 +67,14 @@ app/api/settings  POST {key,value} — web dashboard chỉnh: navVnd, riskPct
 
 Vercel Hobby: function ≤60s, không process nền, cron 1 lần/ngày → mọi job nặng
 phải chunked + self-chain, watcher intraday cần ping ngoài
-(cron-job.org: */1 → /api/cron/watcher, */2 15-16h T2-T6 → /api/cron/eod-sync
-— resume từ cursor, thay thế chain hay đứt; job */5 → top-picks ĐÃ BỎ — xóa
-trên cron-job.org nếu còn).
+(cron-job.org, TZ Asia/Ho_Chi_Minh, T2-T6 — xem/sửa qua API bằng
+`CRON_JOB_API_KEY` trong .env:
+watcher mỗi phút 9-11h + 13-14h (bỏ nghỉ trưa 12h);
+positions-report :20/:50 giờ 9-11,13-14 (11:50 = chốt phiên sáng,
+14:50 = sau ATC); eod-sync */2 15-16h — route tự bỏ qua trước 15:10
+(DNSE chưa chốt nến ngày), resume cursor, hết vòng mà HOSE < 80% nến
+phiên trước → quét lại (≤3 lượt), xong thì ping kế tiếp chạy scan.
+Vercel cron: eod-sync 15:20 + scan 16:50 chỉ là fallback — scan idempotent).
 
 ## 3. Quy tắc an toàn (không phá)
 
@@ -139,4 +144,9 @@ trên cron-job.org nếu còn).
 - DNSE trả OHLC **đã điều chỉnh lùi** sau GDKHQ → bars cũ trong DB lệch scale;
   syncDailyBars detect qua detectAdjustment → applyCorporateAction nhân factor
   vào bars + Trade/Signal mở. Position (live) không đụng — TCBS tự adjust.
+- Sync ngay 15:00 → DNSE chưa có nến hôm nay cho phần lớn HOSE (2026-09-22
+  chỉ 28/405 mã) mà cursor vẫn đánh dấu xong → scan chạy trên data cũ. Giờ
+  chặn trước 15:10 + kiểm tra độ phủ HOSE trước khi coi là xong.
+- `setTimeout(Infinity)` bị Node ép về 1ms → syncDailyBars không truyền
+  deadlineMs từng làm mọi mã fail "deadline"; chỉ race khi có deadline.
 - Neon free: connection drop thoáng qua → retry query hoặc chấp nhận DataGap.

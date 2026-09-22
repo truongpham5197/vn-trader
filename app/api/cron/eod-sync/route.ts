@@ -3,13 +3,33 @@ import { prisma } from "@/lib/prisma";
 import { syncSymbols, syncDailyBars } from "@/lib/data/sync";
 import { cronAuthorized, cronForbidden } from "@/lib/cron-auth";
 import { getSetting, setSetting } from "@/lib/settings";
-import { vnToday } from "@/lib/vn-time";
+import { vnNow, vnToday } from "@/lib/vn-time";
+import { runScan } from "@/lib/scan";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // Hobby cap — toàn bộ work chạy trong after()
 
-/** Cursor sync theo ngày VN — {"date":"YYYY-MM-DD","next":number|null}. */
+/** Cursor sync theo ngày VN — {"date","next":number|null,"pass","scanned"}. */
 const CURSOR_KEY = "eodSyncCursor";
+type Cursor = { date?: string; next?: number | null; pass?: number; scanned?: boolean };
+
+// DNSE chưa chốt nến ngày ngay 15:00 — 2026-09-22 sync chạy 15:00–15:04 mất nến
+// hôm nay của ~350/405 mã HOSE → pinger chỉ bắt đầu từ 15:10
+const SETTLE_MIN = 15 * 60 + 10;
+const MAX_PASS = 3;
+
+/** Số nến HOSE hôm nay vs phiên trước — HOSE mã nào cũng khớp lệnh hằng ngày nên dùng đo độ phủ. */
+async function hoseCoverage(today: string): Promise<{ now: number; prev: number }> {
+  const where = (date: string) => ({ date, symbol: { exchange: "HOSE", active: true } });
+  const prevDate = (
+    await prisma.dailyBar.findFirst({ where: { date: { lt: today } }, orderBy: { date: "desc" }, select: { date: true } })
+  )?.date;
+  const [now, prev] = await Promise.all([
+    prisma.dailyBar.count({ where: where(today) }),
+    prevDate ? prisma.dailyBar.count({ where: where(prevDate) }) : 0,
+  ]);
+  return { now, prev };
+}
 
 async function handle(req: Request, body: Record<string, unknown>) {
   if (!cronAuthorized(req)) return cronForbidden();
@@ -21,15 +41,21 @@ async function handle(req: Request, body: Record<string, unknown>) {
 
   // Resume theo cursor khi caller KHÔNG truyền offset (Vercel cron, pinger
   // cron-job.org…): chain after() hay đứt giữa chừng nên mỗi ping chạy tiếp
-  // từ điểm dừng thay vì bắt đầu lại. Xong hết → done:true (ping rẻ).
+  // từ điểm dừng thay vì bắt đầu lại. Xong hết → ping kế tiếp chạy scan 1 lần,
+  // sau đó done:true (ping rẻ).
   let offset = Number(body.offset ?? NaN);
   if (!onlyTickers && !Number.isFinite(offset)) {
-    const cur = JSON.parse((await getSetting(CURSOR_KEY)) || "null") as {
-      date?: string;
-      next?: number | null;
-    } | null;
+    const n = vnNow();
+    if (n.getHours() * 60 + n.getMinutes() < SETTLE_MIN) {
+      return NextResponse.json({ skipped: "wait-settle", until: "15:10" });
+    }
+    const cur = JSON.parse((await getSetting(CURSOR_KEY)) || "null") as Cursor | null;
     if (cur?.date === today && cur.next === null) {
-      return NextResponse.json({ done: true, skipped: "eod-synced", date: today });
+      if (cur.scanned) return NextResponse.json({ done: true, skipped: "eod-synced", date: today });
+      // Scan ngay khi data đủ thay vì chờ Vercel cron (giờ là fallback) — runScan idempotent
+      await setSetting(CURSOR_KEY, JSON.stringify({ ...cur, scanned: true }));
+      after(() => runScan({ notify: true }).then((r) => console.log("[eod-sync] scan", r), (e) => console.error("[eod-sync] scan", e)));
+      return NextResponse.json({ done: true, scan: "scheduled", date: today });
     }
     offset = cur?.date === today && typeof cur.next === "number" ? cur.next : 0;
   }
@@ -57,15 +83,27 @@ async function handle(req: Request, body: Record<string, unknown>) {
         limit,
         deadlineMs: 40_000,
       });
+      let next = r.nextOffset;
       if (!onlyTickers) {
-        await setSetting(CURSOR_KEY, JSON.stringify({ date: today, next: r.nextOffset }));
+        const cur = JSON.parse((await getSetting(CURSOR_KEY)) || "null") as Cursor | null;
+        let pass = cur?.date === today ? (cur.pass ?? 1) : 1;
+        if (next === null) {
+          // Hết 1 vòng mà HOSE thiếu nến hôm nay (DNSE chưa chốt) → quét lại từ đầu
+          const cov = await hoseCoverage(today);
+          if (cov.now < cov.prev * 0.8 && pass < MAX_PASS) {
+            console.warn(`[eod-sync] HOSE ${cov.now}/${cov.prev} nến hôm nay → quét lại lượt ${pass + 1}`);
+            next = 0;
+            pass++;
+          }
+        }
+        await setSetting(CURSOR_KEY, JSON.stringify({ date: today, next, pass }));
       }
-      console.log(`[eod-sync] offset=${offset} done → next=${r.nextOffset}`);
-      if (r.nextOffset !== null && !onlyTickers) {
+      console.log(`[eod-sync] offset=${offset} done → next=${next}`);
+      if (next !== null && !onlyTickers) {
         await fetch(selfUrl, {
           method: "POST",
           headers,
-          body: JSON.stringify({ lookbackDays, offset: r.nextOffset, limit }),
+          body: JSON.stringify({ lookbackDays, offset: next, limit }),
         });
       }
     } catch (e) {

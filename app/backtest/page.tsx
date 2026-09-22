@@ -168,7 +168,7 @@ export default async function BacktestPage({
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="card p-3">
-      <div className="text-[10px] text-muted">{label}</div>
+      <div className="text-xs text-muted">{label}</div>
       <div>{value}</div>
     </div>
   );
@@ -197,7 +197,7 @@ function EquityCurve({ points }: { points: { date: string; equity: number }[] })
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full">
         <path d={d} fill="none" stroke={up ? "#34d399" : "#f87171"} strokeWidth="1.5" />
       </svg>
-      <div className="flex justify-between text-[10px] text-muted">
+      <div className="flex justify-between text-xs text-muted">
         <span>
           {first.date} — {(first.equity / 1e6).toFixed(0)}tr
         </span>

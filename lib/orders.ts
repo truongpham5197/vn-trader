@@ -2,6 +2,7 @@ import { prisma } from "./prisma";
 import { getBool } from "./settings";
 import { placeOrder as tcbsPlace, tcbsConfigured } from "./tcbs/client";
 import { sendTelegram } from "./telegram/notify";
+import { px } from "./format";
 
 export interface PlaceResult {
   ok: boolean;
@@ -60,7 +61,7 @@ export async function placeSignalOrder(signalId: number): Promise<PlaceResult> {
     });
     await prisma.order.update({ where: { id: order.id }, data: { tradeId: trade.id } });
     await prisma.signal.update({ where: { id: signal.id }, data: { status: "filled" } });
-    return { ok: true, message: `📝 PAPER fill ${signal.symbol.ticker} ${signal.qty}cp @ ${signal.entry}`, orderId: order.id };
+    return { ok: true, message: `📝 PAPER fill ${signal.symbol.ticker} ${signal.qty}cp @ ${px(signal.entry)}`, orderId: order.id };
   }
 
   if (!tcbsConfigured()) {
@@ -81,7 +82,7 @@ export async function placeSignalOrder(signalId: number): Promise<PlaceResult> {
     });
     await prisma.signal.update({ where: { id: signal.id }, data: { status: "ordered" } });
     await sendTelegram(
-      `📤 Đã đặt LO mua <b>${signal.symbol.ticker}</b> ${signal.qty}cp @ ${signal.entry} (order ${r.orderId ?? "?"})`,
+      `📤 Đã đặt LO mua <b>${signal.symbol.ticker}</b> ${signal.qty}cp @ ${px(signal.entry)} (order ${r.orderId ?? "?"})`,
     );
     return { ok: true, message: `đã gửi lệnh TCBS, id=${r.orderId ?? "?"}`, orderId: order.id };
   } catch (e) {

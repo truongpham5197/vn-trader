@@ -113,7 +113,7 @@ function Stat({
 }) {
   return (
     <div className="card p-3">
-      <div className="text-[11px] text-muted">{label}</div>
+      <div className="text-xs text-muted">{label}</div>
       <div
         className={`num mt-1 font-semibold ${
           tone === "gain" ? "text-gain" : tone === "loss" ? "text-loss" : ""

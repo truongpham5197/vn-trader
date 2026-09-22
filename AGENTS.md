@@ -55,9 +55,9 @@ app/api/telegram/commands POST → setMyCommands (menu "/" của bot) — gọi
 app/api/settings  POST {key,value} — web dashboard chỉnh: navVnd, riskPct
                (TỶ LỆ 0.01=1%, chặn ≤0.03), universe, universeMinValueVnd,
                scanEnabled, killSwitch (bật → tắt scan, báo Telegram).
-               paperTrading KHÔNG sửa từ web. Auth: lib/admin-auth.ts —
-               cookie vt_admin (hash của ADMIN_PASSWORD, fallback CRON_SECRET)
-               qua /api/admin/login, hoặc secret cron
+               paperTrading KHÔNG sửa từ web. KHÔNG auth — user chọn
+               2026-09-22 (UI không cần password); an toàn dựa vào validate
+               + báo Telegram mỗi lần đổi scanner/kill
 ```
 
 Vercel Hobby: function ≤60s, không process nền, cron 1 lần/ngày → mọi job nặng
@@ -83,8 +83,8 @@ trên cron-job.org nếu còn).
 - KHÔNG paste token/connection string vào file track được, log, hay comment.
 - `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `CRON_SECRET` đã lộ trong chat → cần
   rotate (Neon console + @BotFather `/revoke`), update Vercel env sau.
-- Route mutating bắt buộc `cronAuthorized()` / `adminAuthorized()` (web) /
-  webhook secret check. Trước 2026-09-22 `/api/settings` mở không auth.
+- Route mutating bắt buộc `cronAuthorized()` / webhook secret check.
+  Ngoại lệ duy nhất: `/api/settings` (web UI, user quyết định không password).
 
 ## 5. Coding conventions (theo code hiện có)
 

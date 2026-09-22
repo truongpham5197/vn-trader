@@ -6,7 +6,6 @@ import { positionsReport } from "@/lib/report/positions";
 import { vn30Snapshot } from "@/lib/analysis/vn30";
 import SignalTable from "./components/SignalTable";
 import SettingsPanel from "./components/SettingsPanel";
-import { isAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +38,6 @@ export default async function Home() {
   const riskPct = await getNum("riskPct");
   const universe = await getSetting("universe");
   const minValue = await getNum("universeMinValueVnd");
-  const authed = await isAdmin();
 
   return (
     <main className="mx-auto max-w-5xl p-6 text-sm">
@@ -73,7 +71,6 @@ export default async function Home() {
         </div>
         <div className="grow">
           <SettingsPanel
-            authed={authed}
             nav={nav}
             riskPct={riskPct}
             universe={universe}

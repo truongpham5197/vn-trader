@@ -8,40 +8,6 @@ type State = "idle" | "saving" | "saved" | "error";
 const input =
   "num rounded border border-border bg-background px-2 py-1.5 text-foreground focus:border-accent focus:outline-none";
 
-function Login() {
-  const router = useRouter();
-  const [pw, setPw] = useState("");
-  const [err, setErr] = useState("");
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const res = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: pw }),
-    });
-    if (res.ok) router.refresh();
-    else setErr("Sai mật khẩu");
-  }
-
-  return (
-    <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-3 text-xs">
-      <label className="flex flex-col gap-1 text-muted">
-        🔒 Đăng nhập để chỉnh cấu hình
-        <input
-          type="password"
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          placeholder="Mật khẩu (ADMIN_PASSWORD / CRON_SECRET)"
-          className={`${input} w-64`}
-        />
-      </label>
-      <button className="rounded border border-accent px-3 py-1.5 text-accent hover:bg-accent/10">Đăng nhập</button>
-      {err && <span className="text-loss">{err}</span>}
-    </form>
-  );
-}
-
 function Toggle({
   on,
   label,
@@ -73,7 +39,6 @@ function Toggle({
 }
 
 export default function SettingsPanel(p: {
-  authed: boolean;
   nav: number;
   riskPct: number;
   universe: string;
@@ -89,8 +54,6 @@ export default function SettingsPanel(p: {
   const [state, setState] = useState<State>("idle");
   const [err, setErr] = useState("");
 
-  if (!p.authed) return <Login />;
-
   async function save(key: string, value: string) {
     setState("saving");
     const res = await fetch("/api/settings", {
@@ -103,19 +66,9 @@ export default function SettingsPanel(p: {
     if (res.ok) router.refresh();
   }
 
-  async function logout() {
-    await fetch("/api/admin/login", { method: "DELETE" });
-    router.refresh();
-  }
-
   return (
     <div className="card p-3">
-      <div className="flex items-center justify-between text-xs text-muted">
-        <span>Cấu hình — lưu ngay khi sửa (bấm ra ngoài ô)</span>
-        <button onClick={logout} className="hover:text-foreground">
-          đăng xuất
-        </button>
-      </div>
+      <div className="text-xs text-muted">Cấu hình — lưu ngay khi sửa (bấm ra ngoài ô)</div>
       <div className="mt-2 flex flex-wrap items-end gap-3 text-xs">
         <Toggle
           label="Quét tín hiệu"

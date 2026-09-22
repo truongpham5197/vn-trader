@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminAuthorized } from "@/lib/admin-auth";
-import { cronForbidden } from "@/lib/cron-auth";
+import { cronAuthorized, cronForbidden } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +25,7 @@ const COMMANDS: [string, string][] = [
 
 /** POST — đăng ký menu lệnh bot (chạy trên Vercel vì mạng local có thể chặn Telegram). */
 export async function POST(req: Request) {
-  if (!(await adminAuthorized(req))) return cronForbidden();
+  if (!cronAuthorized(req)) return cronForbidden();
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) return NextResponse.json({ ok: false, error: "thiếu TELEGRAM_BOT_TOKEN" }, { status: 400 });
   const res = await fetch(`https://api.telegram.org/bot${token}/setMyCommands`, {

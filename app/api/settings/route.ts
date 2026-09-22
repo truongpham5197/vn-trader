@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import { setSetting } from "@/lib/settings";
-import { adminAuthorized } from "@/lib/admin-auth";
-import { cronForbidden } from "@/lib/cron-auth";
 import { sendTelegram } from "@/lib/telegram/notify";
 
 export const dynamic = "force-dynamic";
 
 const bool = (v: string) => v === "true" || v === "false";
 
-// Key sửa được từ web. paperTrading KHÔNG có ở đây — chỉ đổi qua env (quy tắc an toàn).
+// Key sửa được từ web (không cần đăng nhập — user chọn 2026-09-22). paperTrading KHÔNG có ở đây — chỉ đổi qua env (quy tắc an toàn).
 // riskPct lưu dạng tỷ lệ (0.01 = 1%/lệnh) — chặn ≤ 3% để tránh gõ nhầm "1" thành 100%.
 const EDITABLE: Record<string, (v: string) => boolean> = {
   navVnd: (v) => Number(v) >= 1e6,
@@ -20,7 +18,6 @@ const EDITABLE: Record<string, (v: string) => boolean> = {
 };
 
 export async function POST(req: Request) {
-  if (!(await adminAuthorized(req))) return cronForbidden();
   const body = (await req.json().catch(() => null)) as { key?: string; value?: string } | null;
   const key = body?.key ?? "";
   const value = String(body?.value ?? "");

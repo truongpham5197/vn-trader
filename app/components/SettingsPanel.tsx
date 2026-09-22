@@ -1,0 +1,194 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+type State = "idle" | "saving" | "saved" | "error";
+
+const input =
+  "num rounded border border-border bg-background px-2 py-1.5 text-foreground focus:border-accent focus:outline-none";
+
+function Login() {
+  const router = useRouter();
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const res = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw }),
+    });
+    if (res.ok) router.refresh();
+    else setErr("Sai mật khẩu");
+  }
+
+  return (
+    <form onSubmit={submit} className="card flex flex-wrap items-end gap-3 p-3 text-xs">
+      <label className="flex flex-col gap-1 text-muted">
+        🔒 Đăng nhập để chỉnh cấu hình
+        <input
+          type="password"
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+          placeholder="Mật khẩu (ADMIN_PASSWORD / CRON_SECRET)"
+          className={`${input} w-64`}
+        />
+      </label>
+      <button className="rounded border border-accent px-3 py-1.5 text-accent hover:bg-accent/10">Đăng nhập</button>
+      {err && <span className="text-loss">{err}</span>}
+    </form>
+  );
+}
+
+function Toggle({
+  on,
+  label,
+  onText,
+  offText,
+  danger,
+  onChange,
+}: {
+  on: boolean;
+  label: string;
+  onText: string;
+  offText: string;
+  danger?: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  const cls = on
+    ? danger
+      ? "border-loss/50 bg-loss/15 text-loss"
+      : "border-gain/50 bg-gain/15 text-gain"
+    : "border-border text-muted";
+  return (
+    <div className="flex flex-col gap-1 text-muted">
+      {label}
+      <button type="button" onClick={() => onChange(!on)} className={`rounded border px-3 py-1.5 text-left ${cls}`}>
+        {on ? onText : offText}
+      </button>
+    </div>
+  );
+}
+
+export default function SettingsPanel(p: {
+  authed: boolean;
+  nav: number;
+  riskPct: number;
+  universe: string;
+  minValue: number;
+  scanEnabled: boolean;
+  kill: boolean;
+  paper: boolean;
+}) {
+  const router = useRouter();
+  const [navV, setNavV] = useState(String(p.nav / 1e6));
+  const [riskV, setRiskV] = useState(String(+(p.riskPct * 100).toFixed(2)));
+  const [minV, setMinV] = useState(String(p.minValue / 1e9));
+  const [state, setState] = useState<State>("idle");
+  const [err, setErr] = useState("");
+
+  if (!p.authed) return <Login />;
+
+  async function save(key: string, value: string) {
+    setState("saving");
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, value }),
+    });
+    setState(res.ok ? "saved" : "error");
+    setErr(res.ok ? "" : ((await res.json().catch(() => null))?.error ?? `lỗi ${res.status}`));
+    if (res.ok) router.refresh();
+  }
+
+  async function logout() {
+    await fetch("/api/admin/login", { method: "DELETE" });
+    router.refresh();
+  }
+
+  return (
+    <div className="card p-3">
+      <div className="flex items-center justify-between text-xs text-muted">
+        <span>Cấu hình — lưu ngay khi sửa (bấm ra ngoài ô)</span>
+        <button onClick={logout} className="hover:text-foreground">
+          đăng xuất
+        </button>
+      </div>
+      <div className="mt-2 flex flex-wrap items-end gap-3 text-xs">
+        <Toggle
+          label="Quét tín hiệu"
+          on={p.scanEnabled}
+          onText="▶️ Đang chạy"
+          offText="⏸ Đang tắt"
+          onChange={(v) => save("scanEnabled", String(v))}
+        />
+        <Toggle
+          label="Kill switch"
+          danger
+          on={p.kill}
+          onText="🛑 BẬT — chặn mọi lệnh"
+          offText="Tắt"
+          onChange={(v) => {
+            const q = v
+              ? "Bật kill switch? Scanner dừng và mọi lệnh bị chặn."
+              : "Tắt kill switch? Hệ thống sẽ được phép đặt lệnh trở lại.";
+            if (confirm(q)) save("killSwitch", String(v));
+          }}
+        />
+        <label className="flex flex-col gap-1 text-muted">
+          Vốn NAV (triệu đ)
+          <input
+            value={navV}
+            inputMode="decimal"
+            onChange={(e) => setNavV(e.target.value)}
+            onBlur={() => save("navVnd", String(Number(navV) * 1e6))}
+            className={`${input} w-28`}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-muted" title="Mỗi lệnh chấp nhận lỗ tối đa bao nhiêu % vốn nếu chạm cắt lỗ. Nên 0,5–1%.">
+          Rủi ro mỗi lệnh (% vốn, ≤3)
+          <input
+            value={riskV}
+            inputMode="decimal"
+            onChange={(e) => setRiskV(e.target.value)}
+            onBlur={() => save("riskPct", String(Number(riskV.replace(",", ".")) / 100))}
+            className={`${input} w-20`}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-muted">
+          Danh sách quét
+          <select
+            defaultValue={p.universe}
+            onChange={(e) => save("universe", e.target.value)}
+            className="rounded border border-border bg-card px-2 py-1.5 text-foreground focus:border-accent focus:outline-none"
+          >
+            <option value="vn30">VN30 (30 mã lớn)</option>
+            <option value="liquid">Mã giao dịch sôi động</option>
+            <option value="all">Toàn thị trường</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-muted" title="Chỉ xét mã có giá trị giao dịch trung bình/ngày từ mức này trở lên">
+          GTGD tối thiểu (tỷ đ/ngày)
+          <input
+            value={minV}
+            inputMode="decimal"
+            onChange={(e) => setMinV(e.target.value)}
+            onBlur={() => save("universeMinValueVnd", String(Number(minV) * 1e9))}
+            className={`${input} w-20`}
+          />
+        </label>
+        <div className="flex flex-col gap-1 text-muted" title="Chỉ đổi được qua biến môi trường PAPER_TRADING — quy tắc an toàn">
+          Chế độ
+          <span className={`rounded border px-3 py-1.5 ${p.paper ? "border-border" : "border-loss/50 text-loss"}`}>
+            {p.paper ? "📝 Tiền ảo (paper)" : "💸 TIỀN THẬT"}
+          </span>
+        </div>
+        {state === "saving" && <span className="text-muted">đang lưu…</span>}
+        {state === "saved" && <span className="text-gain">✓ đã lưu</span>}
+        {state === "error" && <span className="text-loss">{err || "lỗi"}</span>}
+      </div>
+    </div>
+  );
+}

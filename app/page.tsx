@@ -5,7 +5,8 @@ import { getBool, getNum, getSetting } from "@/lib/settings";
 import { positionsReport } from "@/lib/report/positions";
 import { vn30Snapshot } from "@/lib/analysis/vn30";
 import SignalTable from "./components/SignalTable";
-import NavEditor from "./components/NavEditor";
+import SettingsPanel from "./components/SettingsPanel";
+import { isAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,8 @@ export default async function Home() {
   const nav = await getNum("navVnd");
   const riskPct = await getNum("riskPct");
   const universe = await getSetting("universe");
+  const minValue = await getNum("universeMinValueVnd");
+  const authed = await isAdmin();
 
   return (
     <main className="mx-auto max-w-5xl p-6 text-sm">
@@ -69,7 +72,16 @@ export default async function Home() {
           <Badge ok={!kill}>{kill ? "🛑 kill ON" : "kill off"}</Badge>
         </div>
         <div className="grow">
-          <NavEditor nav={nav} riskPct={riskPct} universe={universe} />
+          <SettingsPanel
+            authed={authed}
+            nav={nav}
+            riskPct={riskPct}
+            universe={universe}
+            minValue={minValue}
+            scanEnabled={scanEnabled}
+            kill={kill}
+            paper={paper}
+          />
         </div>
       </div>
 

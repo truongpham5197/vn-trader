@@ -3,6 +3,7 @@ import { prisma } from "../prisma";
 import { getNum, getBool, setSetting, getSetting } from "../settings";
 import { vnToday } from "../vn-time";
 import { esc } from "./notify";
+import { px } from "../format";
 
 let started = false;
 
@@ -243,7 +244,7 @@ export function createBot(): Bot {
     });
     if (stopStr) {
       return void (await ctx.reply(
-        `✅ Đã mở trade #${trade.id}: <b>${sym.ticker}</b> ${qty}cp @ ${entry} | stop ${stopStr} — watcher đang canh`,
+        `✅ Đã mở trade #${trade.id}: <b>${sym.ticker}</b> ${qty}cp @ ${px(entry)} | stop ${px(stopStr)} — watcher đang canh`,
       ));
     }
     // Không có stop → gợi ý tự động theo target +5%
@@ -251,17 +252,17 @@ export function createBot(): Bot {
     const sg = await suggestForTrade(trade.id, 5);
     if (!sg) {
       return void (await ctx.reply(
-        `✅ Đã mở trade #${trade.id}: <b>${sym.ticker}</b> ${qty}cp @ ${entry} (chưa có stop — thiếu data để gợi ý)`,
+        `✅ Đã mở trade #${trade.id}: <b>${sym.ticker}</b> ${qty}cp @ ${px(entry)} (chưa có stop — thiếu data để gợi ý)`,
       ));
     }
     await ctx.reply(
-      `✅ Đã mở trade #${trade.id}: <b>${sym.ticker}</b> ${qty}cp @ ${entry}\n\n` +
-        `💡 Gợi ý chốt +5%: TP <b>${sg.target}</b> | SL <b>${sg.stop}</b> (R:R ${sg.rr.toFixed(1)})\n` +
+      `✅ Đã mở trade #${trade.id}: <b>${sym.ticker}</b> ${qty}cp @ ${px(entry)}\n\n` +
+        `💡 Gợi ý chốt +5%: TP <b>${px(sg.target)}</b> | SL <b>${px(sg.stop)}</b> (R:R ${sg.rr.toFixed(1)})\n` +
         `<i>${esc(sg.note)}</i>`,
       {
         reply_markup: {
           inline_keyboard: [
-            [{ text: `✅ Áp dụng SL ${sg.stop} / TP ${sg.target}`, callback_data: `setplan:${trade.id}:${sg.stop}:${sg.target}` }],
+            [{ text: `✅ Áp dụng SL ${px(sg.stop)} / TP ${px(sg.target)}`, callback_data: `setplan:${trade.id}:${sg.stop}:${sg.target}` }],
           ],
         },
       },
@@ -287,7 +288,7 @@ export function createBot(): Bot {
     const tpPct = (((sg.target - trade.entryPrice) / trade.entryPrice) * 100).toFixed(1);
     const slPct = (((trade.entryPrice - sg.stop) / trade.entryPrice) * 100).toFixed(1);
     await ctx.reply(
-      `💡 <b>GỢI Ý — ${sym.ticker}</b> (vốn ${trade.entryPrice})\n\n` +
+      `💡 <b>GỢI Ý — ${sym.ticker}</b> (vốn ${px(trade.entryPrice)})\n\n` +
         `🎯 TP <b>${sg.target.toFixed(2)}</b> (+${tpPct}%)\n` +
         `🛑 SL <b>${sg.stop.toFixed(2)}</b> (−${slPct}%)\n` +
         `📐 R:R <b>${sg.rr.toFixed(1)}</b> — lãi kỳ vọng gấp ${sg.rr.toFixed(1)}× rủi ro\n\n` +
@@ -295,7 +296,7 @@ export function createBot(): Bot {
       {
         reply_markup: {
           inline_keyboard: [
-            [{ text: `✅ Áp dụng SL ${sg.stop} / TP ${sg.target}`, callback_data: `setplan:${trade.id}:${sg.stop}:${sg.target}` }],
+            [{ text: `✅ Áp dụng SL ${px(sg.stop)} / TP ${px(sg.target)}`, callback_data: `setplan:${trade.id}:${sg.stop}:${sg.target}` }],
           ],
         },
       },
@@ -334,7 +335,7 @@ export function createBot(): Bot {
     const icon = pnl >= 0 ? "🟢" : "🔴";
     await ctx.reply(
       `🔒 <b>ĐÓNG ${sym.ticker}</b>\n\n` +
-        `Bán ${trade.qty.toLocaleString("en-US")}cp @ ${exit} (vốn ${trade.entryPrice})\n` +
+        `Bán ${trade.qty.toLocaleString("en-US")}cp @ ${px(exit)} (vốn ${px(trade.entryPrice)})\n` +
         `${icon} P&L net <b>${pnl >= 0 ? "+" : ""}${(pnl / 1e6).toFixed(2)}tr</b>` +
         ` (${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%) — đã trừ phí+thuế`,
     );
@@ -383,7 +384,7 @@ export function createBot(): Bot {
         data: { stopPrice: Number(stopStr), targetPrice: Number(targetStr) },
       });
       await ctx.answerCallbackQuery({ text: "Đã áp dụng plan" });
-      await ctx.reply(`🛡 Trade #${id}: stop ${stopStr} | target ${targetStr} — watcher đang canh`);
+      await ctx.reply(`🛡 Trade #${id}: stop ${px(stopStr)} | target ${px(targetStr)} — watcher đang canh`);
     } else if (action === "order") {
       await ctx.answerCallbackQuery({ text: "Đang đặt lệnh…" });
       const { placeSignalOrder } = await import("../orders");

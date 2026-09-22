@@ -115,7 +115,7 @@ export default function SectorBoard({ rows }: { rows: SectorRow[] }) {
                         <td className="p-3">
                           <span className="font-semibold">{r.ticker}</span>
                           {r.held && (
-                            <span className="ml-1.5 rounded border border-accent/40 bg-accent/10 px-1 py-0.5 text-[10px] text-accent">
+                            <span className="ml-1.5 rounded border border-accent/40 bg-accent/10 px-1 py-0.5 text-xs text-accent">
                               giữ
                             </span>
                           )}

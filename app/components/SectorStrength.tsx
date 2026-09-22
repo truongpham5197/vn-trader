@@ -27,28 +27,28 @@ function flowText(f: number): { text: string; cls: string } {
 
 function PickCard({ p, sector }: { p: SectorPick; sector?: string }) {
   return (
-    <div className="card p-3">
+    <div className="card min-w-0 p-3">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-base font-bold">{p.ticker}</span>
-        <span className="text-[11px] text-muted">{p.setup}</span>
+        <span className="truncate text-xs text-muted">{p.setup}</span>
       </div>
       {(p.companyName || sector) && (
-        <div className="truncate text-[11px] text-muted">{[sector, p.companyName].filter(Boolean).join(" · ")}</div>
+        <div className="truncate text-xs text-muted">{[sector, p.companyName].filter(Boolean).join(" · ")}</div>
       )}
       <dl className="num mt-2 space-y-0.5 text-xs">
-        <div className="flex justify-between gap-2">
+        <div className="flex flex-wrap justify-between gap-x-2">
           <dt className="text-muted">Vùng mua</dt>
           <dd className="font-semibold">
             {dong(p.buyZone[0])} – {dong(p.buyZone[1])}
           </dd>
         </div>
-        <div className="flex justify-between gap-2">
+        <div className="flex flex-wrap justify-between gap-x-2">
           <dt className="text-muted">Cắt lỗ nếu rơi về</dt>
           <dd className="text-loss">
             {dong(p.stop)} (−{p.riskPct.toFixed(1)}%)
           </dd>
         </div>
-        <div className="flex justify-between gap-2">
+        <div className="flex flex-wrap justify-between gap-x-2">
           <dt className="text-muted">Chốt lời ở</dt>
           <dd className="text-gain">
             {dong(p.target)} (+{p.upsidePct.toFixed(1)}%)
@@ -116,11 +116,11 @@ export default function SectorStrength({ data }: { data: Data }) {
                   <span className="num text-muted">{s.lowConfidence ? "·" : i + 1}</span>
                   <span className="font-semibold">
                     {s.sector}
-                    <span className="ml-1.5 text-[11px] font-normal text-muted">
+                    <span className="ml-1.5 text-xs font-normal text-muted">
                       {s.count} mã{s.lowConfidence ? " · ít mã, kém tin cậy" : ""}
                     </span>
                   </span>
-                  <span className={`justify-self-end rounded-md border px-2 py-0.5 text-[11px] sm:justify-self-start ${TREND[s.trend].cls}`}>
+                  <span className={`justify-self-end rounded-md border px-2 py-0.5 text-xs sm:justify-self-start ${TREND[s.trend].cls}`}>
                     {TREND[s.trend].label}
                   </span>
                   <span className="num col-start-2 text-xs sm:col-start-auto">
@@ -161,7 +161,7 @@ export default function SectorStrength({ data }: { data: Data }) {
                         ))}
                       </div>
                       {s.picks.length > 3 && (
-                        <p className="mt-2 text-[11px] text-muted">
+                        <p className="mt-2 text-xs text-muted">
                           Còn: {s.picks.slice(3).map((p) => p.ticker).join(", ")}
                         </p>
                       )}
@@ -194,7 +194,7 @@ export default function SectorStrength({ data }: { data: Data }) {
             để giữ vốn; lên tới chốt lời thì bán lấy lãi. Giá hiển thị bằng đồng/cổ phiếu.
           </li>
         </ul>
-        <p className="mt-3 text-[11px]">
+        <p className="mt-3 text-xs">
           ⚠️ Đây là gợi ý kỹ thuật tự động dựa trên giá và khối lượng, chưa xét báo cáo tài chính. Các chiến lược
           chưa được chứng minh có lãi — hãy tập bằng tiền ảo trước.
         </p>

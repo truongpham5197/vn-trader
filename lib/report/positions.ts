@@ -1,5 +1,6 @@
 import { prisma } from "../prisma";
 import { getQuote } from "../price";
+import { px } from "../format";
 
 const BUY_FEE = 0.0015;
 const SELL_FEE_TAX = 0.0015 + 0.001; // phí bán + thuế
@@ -82,15 +83,15 @@ export function formatPositionsReport(lines: PositionLine[]): string {
     const dayIcon = (l.dayPct ?? 0) >= 0 ? "🟢" : "🔴";
     const s = (v: number | null) => (v == null ? "" : v >= 0 ? "+" : "");
     const t2 = l.sessionsHeld >= 2 ? "" : ` · ⏳T+${l.sessionsHeld}`;
-    const stop = l.stop ? `SL ${l.stop}` : "SL —";
-    const tgt = l.target ? `TP ${l.target}` : "TP —";
+    const stop = l.stop ? `SL ${px(l.stop)}` : "SL —";
+    const tgt = l.target ? `TP ${px(l.target)}` : "TP —";
     const ohlc =
       l.open !== null
         ? `\n  📈 O ${l.open.toFixed(2)} · H ${l.high?.toFixed(2)} · L ${l.low?.toFixed(2)} · TC ${l.prevClose?.toFixed(2) ?? "?"}`
         : "";
     return (
-      `<b>${l.ticker}</b> · ${l.qty.toLocaleString("en-US")}cp @ ${l.entry}` +
-      `\n  💵 Giá <b>${l.price ?? "?"}</b> · hôm nay ${dayIcon} ${s(l.dayPct)}${l.dayPct?.toFixed(2) ?? "?"}%` +
+      `<b>${l.ticker}</b> · ${l.qty.toLocaleString("en-US")}cp @ ${px(l.entry)}` +
+      `\n  💵 Giá <b>${px(l.price, "?")}</b> · hôm nay ${dayIcon} ${s(l.dayPct)}${l.dayPct?.toFixed(2) ?? "?"}%` +
       ohlc +
       `\n  ${pnlIcon} P&L ${s(l.pnlPct)}${l.pnlPct?.toFixed(2) ?? "?"}%` +
       `${l.pnlVnd != null ? ` (${s(l.pnlVnd)}${(l.pnlVnd / 1e6).toFixed(1)}tr)` : ""}` +

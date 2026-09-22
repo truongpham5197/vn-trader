@@ -6,6 +6,7 @@ import { positionsReport } from "@/lib/report/positions";
 import { vn30Snapshot } from "@/lib/analysis/vn30";
 import SignalTable from "./components/SignalTable";
 import SettingsPanel from "./components/SettingsPanel";
+import { px } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +115,7 @@ export default async function Home() {
                     <td className="p-3 font-semibold">{p.ticker}</td>
                     <td className="num p-3 text-right">{p.qty.toLocaleString("en-US")}</td>
                     <td className="num p-3 text-right">{p.entry.toFixed(2)}</td>
-                    <td className="num p-3 text-right font-medium">{p.price ?? "?"}</td>
+                    <td className="num p-3 text-right font-medium">{px(p.price, "?")}</td>
                     <td
                       className={`num p-3 text-right font-medium ${
                         (p.pnlPct ?? 0) >= 0 ? "text-gain" : "text-loss"
@@ -132,8 +133,8 @@ export default async function Home() {
                     >
                       {p.dayPct !== null ? `${p.dayPct >= 0 ? "+" : ""}${p.dayPct.toFixed(2)}%` : "?"}
                     </td>
-                    <td className="num p-3 text-right text-loss">{p.stop ?? "—"}</td>
-                    <td className="num p-3 text-right text-gain">{p.target ?? "—"}</td>
+                    <td className="num p-3 text-right text-loss">{px(p.stop)}</td>
+                    <td className="num p-3 text-right text-gain">{px(p.target)}</td>
                     <td className="p-3 text-muted">
                       {p.sessionsHeld >= 2 ? "✓ bán được" : `⏳T+${p.sessionsHeld}`}
                     </td>

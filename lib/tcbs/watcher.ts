@@ -4,6 +4,7 @@ import { getQuote, formatQuoteLine } from "../price";
 import { getOrder, getPositions, placeOrder, tcbsConfigured } from "./client";
 import { sendTelegram } from "../telegram/notify";
 import { vnToday } from "../vn-time";
+import { px } from "../format";
 
 const FEE_SELL = 0.0015 + 0.001; // phí + thuế bán
 
@@ -47,7 +48,7 @@ export async function runWatcher(): Promise<void> {
     if (price <= (t.stopPrice ?? 0)) {
       if (!eligible) {
         await sendTelegram(
-          `⚠️ <b>${t.symbol.ticker}</b> chạm stop ${t.stopPrice} nhưng chưa đủ T+2 (held ${held} phiên) — theo dõi tay!\n${qLine}`,
+          `⚠️ <b>${t.symbol.ticker}</b> chạm stop ${px(t.stopPrice)} nhưng chưa đủ T+2 (held ${held} phiên) — theo dõi tay!\n${qLine}`,
         );
         continue;
       }
@@ -59,7 +60,7 @@ export async function runWatcher(): Promise<void> {
         data: { note: `${t.note ?? ""} target-hit`.trim() },
       });
       await sendTelegram(
-        `🎯 <b>${t.symbol.ticker}</b> chạm target ${t.targetPrice} (giá ${price})\n${qLine}`,
+        `🎯 <b>${t.symbol.ticker}</b> chạm target ${px(t.targetPrice)} (giá ${px(price)})\n${qLine}`,
       );
     }
   }
@@ -164,7 +165,7 @@ async function syncPendingOrders(): Promise<void> {
           await prisma.order.update({ where: { id: o.id }, data: { tradeId: trade.id } });
           await prisma.signal.update({ where: { id: o.signalId }, data: { status: "filled" } });
         }
-        await sendTelegram(`✅ Lệnh ${o.side} ${o.qty}cp khớp @ ${od.price}`);
+        await sendTelegram(`✅ Lệnh ${o.side} ${o.qty}cp khớp @ ${px(od.price)}`);
       } else if (/cancel|reject/i.test(od.status)) {
         await prisma.order.update({ where: { id: o.id }, data: { status: "cancelled" } });
       }

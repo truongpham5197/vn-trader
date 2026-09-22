@@ -1,17 +1,14 @@
 import Link from "next/link";
-import { unstable_cache } from "next/cache";
 import { buildSectorBoard } from "@/lib/report/sectors";
-import { loadSectorStrength } from "@/lib/analysis/sector-strength";
+import { currentSectorStrength } from "@/lib/analysis/sector-live";
 import SectorBoard from "../components/SectorBoard";
 import SectorStrength from "../components/SectorStrength";
+import AutoRefresh from "../components/AutoRefresh";
 
 export const dynamic = "force-dynamic";
 
-// Xếp hạng ngành dựa trên nến ngày — tính ~160 mã tốn vài giây, cache 15 phút
-const cachedStrength = unstable_cache(loadSectorStrength, ["sector-strength"], { revalidate: 900 });
-
 export default async function SectorsPage() {
-  const [strength, rows] = await Promise.all([cachedStrength(), buildSectorBoard()]);
+  const [strength, rows] = await Promise.all([currentSectorStrength(), buildSectorBoard()]);
 
   return (
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
@@ -19,6 +16,7 @@ export default async function SectorsPage() {
         ← dashboard
       </Link>
       <h1 className="my-4 text-xl font-bold tracking-tight">Nhóm ngành</h1>
+      <AutoRefresh />
       <SectorStrength data={strength} />
 
       <h2 className="mt-10 mb-3 text-lg font-bold tracking-tight">

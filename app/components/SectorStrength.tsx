@@ -1,4 +1,4 @@
-import type { SectorPick, SectorStrength as Data, SectorTrend } from "@/lib/analysis/sector-strength";
+import { liveTime, type SectorPick, type SectorStrength as Data, type SectorTrend } from "@/lib/analysis/sector-strength";
 
 const TREND: Record<SectorTrend, { label: string; cls: string }> = {
   lead: { label: "🚀 Dẫn đầu", cls: "border-gain/40 bg-gain/15 text-gain" },
@@ -69,7 +69,14 @@ export default function SectorStrength({ data }: { data: Data }) {
       {/* Thị trường chung */}
       <section className="card p-4">
         <div className="text-xs text-muted">
-          Thị trường chung · {market.count} mã giao dịch sôi động · dữ liệu đến {data.date ?? "—"}
+          Thị trường chung · {market.count} mã giao dịch sôi động ·{" "}
+          {data.live ? (
+            <span className="text-accent">
+              ⚡ giá trong phiên, cập nhật {liveTime(data.live.at)} — tự làm mới 5 phút/lần
+            </span>
+          ) : (
+            <>dữ liệu cuối ngày {data.date ?? "—"}</>
+          )}
         </div>
         <p className="mt-1 font-medium">{marketVerdict(market.breadth)}</p>
         <div className="num mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">

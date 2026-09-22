@@ -137,6 +137,18 @@ model Setting {
   value String
 }
 
+model CorporateAction {
+  id        Int      @id @default(autoincrement())
+  symbolId  Int
+  exDate    String // YYYY-MM-DD phiên GDKHQ
+  factor    Float // hệ số điều chỉnh giá (fresh/stored)
+  kind      String // cash | split
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@unique([symbolId, exDate])
+}
+
 model DataGap {
   id        Int      @id @default(autoincrement())
   symbolId  Int?

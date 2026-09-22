@@ -181,7 +181,8 @@ export function createBot(): Bot {
   bot.command("resume", async (ctx) => {
     if (!allowed(ctx)) return;
     await setSetting("scanEnabled", "true");
-    await ctx.reply("▶️ Scanner ON");
+    await setSetting("killSwitch", "false");
+    await ctx.reply("▶️ Scanner ON — kill switch OFF");
   });
 
   bot.command("kill", async (ctx) => {

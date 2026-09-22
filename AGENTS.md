@@ -39,6 +39,11 @@ lib/report/    positions.ts — báo cáo vị thế % live (dùng chung bot+cro
                xóa, không còn đường gửi nào;
                sectors.ts — bảng nhóm ngành cho /sectors (vị thế mở +
                signal ngày mới nhất + setup VN30, kèm GDKHQ gần nhất)
+lib/analysis/  vn30.ts (scoreSetup — vùng mua/SL/TP + `plain` cho người mới);
+               sector-strength.ts — xếp hạng ngành trên mã GTGD≥ngưỡng:
+               lãi 1 tuần/1 tháng (trung vị), % mã > MA50, dòng tiền 5p/20p,
+               ngành <3 mã = kém tin cậy; top 5 mã từ ngành mạnh. Dùng ở
+               /sectors (unstable_cache 15ph) + Telegram /nganh
 lib/telegram/  bot.ts (createBot — dùng chung polling+webhook), notify.ts
                (sendTelegram + esc() — PHẢI escape text động, parse_mode=HTML)
 lib/tcbs/      OpenAPI client (spec: docs/tcbs-openapi.json)

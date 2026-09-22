@@ -15,6 +15,7 @@ export interface Vn30Row {
   stop?: number;
   target?: number;
   note: string;
+  plain: string; // giải thích không thuật ngữ cho người mới
 }
 
 /**
@@ -48,7 +49,7 @@ export async function vn30Snapshot(): Promise<Vn30Row[]> {
   return out.sort((a, b) => b.score - a.score);
 }
 
-function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): Vn30Row | null {
+export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): Vn30Row | null {
   const n = bars.length;
   const last = bars[n - 1];
   const prev = bars[n - 2];
@@ -66,7 +67,7 @@ function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): Vn30Row
   const volX = last.volume / volAvg;
   const distHighPct = ((hh - last.close) / hh) * 100;
   const uptrend = last.close > ma50;
-  const base: Omit<Vn30Row, "setup" | "score" | "note"> = {
+  const base: Omit<Vn30Row, "setup" | "score" | "note" | "plain"> = {
     ticker,
     sector,
     close: last.close,
@@ -85,6 +86,7 @@ function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): Vn30Row
       stop,
       target: floorTick(entry + 2 * (entry - stop)),
       note: `cách đỉnh ${hh.toFixed(2)} chỉ ${distHighPct.toFixed(1)}% · vol ${volX.toFixed(1)}x · vượt đỉnh kèm vol = trigger`,
+      plain: "Giá đang sát mức cao nhất 1 tháng — nếu vượt lên kèm nhiều người mua thì thường chạy tiếp",
     };
   }
 
@@ -101,6 +103,7 @@ function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): Vn30Row
       stop,
       target: floorTick(entry + 2 * (entry - stop)),
       note: `uptrend (close > MA50 ${ma50.toFixed(1)}) · đang về MA20 ${ma20.toFixed(2)} · RSI ${r14.toFixed(0)}`,
+      plain: "Xu hướng đang tăng, giá vừa điều chỉnh về mức trung bình 1 tháng — mua được giá tốt hơn",
     };
   }
 
@@ -116,6 +119,7 @@ function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): Vn30Row
       stop,
       target: floorTick(entry + 1.5 * (entry - stop)),
       note: `RSI(2)=${r2.toFixed(1)} <10 trong uptrend — kỳ vọng hồi kỹ thuật 1–5 phiên`,
+      plain: "Giảm mạnh vài phiên gần đây dù xu hướng lớn vẫn tăng — thường hồi lại trong 1 tuần",
     };
   }
 
@@ -126,6 +130,7 @@ function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): Vn30Row
       setup: "📈 uptrend",
       score: 40 + Math.min((last.close / ma50 - 1) * 40, 10),
       note: `trên MA20/MA50 — không đuổi, chờ pullback về ~${ma20.toFixed(1)}`,
+      plain: "Đang tăng tốt nhưng đã lên xa — đừng mua đuổi, chờ giá chỉnh về",
     };
   }
 
@@ -134,5 +139,6 @@ function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): Vn30Row
     setup: "⏸ theo dõi",
     score: 10,
     note: `dưới MA50 ${ma50.toFixed(1)} · RSI ${r14.toFixed(0)} — chưa có setup`,
+    plain: "Xu hướng chưa tăng — chưa nên mua",
   };
 }

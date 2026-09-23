@@ -27,3 +27,10 @@ export interface AlertItem {
   body: string;
   ticker: string | null;
 }
+
+/** Loại mặc định cho Telegram riêng + thông báo đẩy (khớp default ở schema User.alertKinds). */
+export const DEFAULT_PUSH_KINDS: AlertKind[] = ["signal", "sector", "stop", "target", "system"];
+
+/** Trang liên quan tới thông báo — dùng chung chuông web + thông báo đẩy. */
+export const alertHref = (a: { kind: AlertKind | string; ticker: string | null }) =>
+  a.ticker ? `/stock/${a.ticker}` : a.kind === "signal" ? "/signals" : a.kind === "sector" ? "/sectors" : a.kind === "system" ? "/settings" : "/journal";

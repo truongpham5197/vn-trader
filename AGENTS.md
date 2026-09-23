@@ -63,16 +63,33 @@ lib/telegram/  bot.ts (createBot — dùng chung polling+webhook), notify.ts
                ticker, userId} → ghi thêm thông báo web (lib/alerts.ts pushAlert;
                userId bỏ trống = owner, null = mọi người). Cảnh báo mới từ cron
                nhớ gắn web để hiện nổi trên web
-lib/alerts.ts  model Alert (giữ 7 ngày), pushAlert/listAlerts/htmlToAlert;
-               lib/alert-kinds.ts = ALERT_KINDS + type dùng chung client.
+lib/alerts.ts  model Alert, pushAlert/listAlerts/htmlToAlert; pruneAlerts xóa
+               theo loại (KEEP_DAYS: positions 2 ngày, sector 3, còn lại 7) —
+               cron scan gọi mỗi ngày + pushAlert tự gọi ≤6h/lần.
+               pushAlert → fanOut: Telegram riêng (user khác owner có
+               User.tgChatId; 403 → gỡ liên kết) + Web Push (PushSub, lib/push.ts,
+               VAPID tự sinh lưu Setting "vapidKeys" — không cần env; 404/410 →
+               xóa sub), lọc theo User.alertKinds.
+               lib/alert-kinds.ts = ALERT_KINDS + alertHref + type dùng chung client.
                watcher.watchOthers(): vị thế user khác owner chạm SL/TP → chỉ
                báo web (không Telegram, không tự đóng), note stop-hit/target-hit
                để báo 1 lần; positions-report cũng push báo cáo cho từng user
+app/api/push   GET {publicKey} · POST PushSubscription.toJSON() (upsert theo
+               endpoint, gắn user cookie) · DELETE {endpoint}. public/sw.js nhận
+               push (bỏ qua nếu web đang focus), app/manifest.ts = PWA (iOS
+               16.4+ phải "Thêm vào MH chính" mới có push)
+app/api/me     GET/PATCH {alertKinds} — loại thông báo đẩy/Telegram riêng
+app/api/telegram/link  POST → mã 1 lần + t.me/<bot>?start=<mã>; DELETE gỡ.
+               Bot /start <mã> gắn chat với user, /stop gỡ — 2 lệnh này KHÔNG
+               check allowed(); mọi lệnh khác vẫn chỉ owner chat.
+               UI: app/components/PushSettings.tsx ở /settings#thong-bao
 app/api/alerts  GET ?after=id → thông báo của user hiện tại + chung.
                Client app/components/AlertCenter.tsx: chuông 🔔 trên Nav + toast
                nổi (portal) — poll 30s trong phiên, 60s 15h–17h30, 5ph còn lại,
-               lần đầu mở không bắn lại cũ; chọn loại ở /settings#thong-bao
-               (localStorage vt_alert_prefs) + tùy chọn Notification desktop
+               lần đầu mở không bắn lại cũ; toast tự đóng 12s (warn/danger 30s),
+               bấm mở Modal xem đủ nội dung; chọn loại ở /settings#thong-bao
+               (localStorage vt_alert_prefs). Mobile: Nav có thanh tab đáy
+               (sm:hidden, ngoài header vì backdrop-blur), bảng → thẻ dưới sm
 lib/tcbs/      OpenAPI client (spec: docs/tcbs-openapi.json)
 lib/jobs.ts    node-cron local — SKIP khi process.env.VERCEL
 app/api/cron/  eod-sync (cursor resume qua Setting eodSyncCursor + chain

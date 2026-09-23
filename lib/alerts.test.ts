@@ -8,6 +8,12 @@ describe("htmlToAlert", () => {
       body: "Giá < MA10 & vol thấp",
     });
   });
+  it("tiêu đề quá dài → rút gọn, body giữ đủ", () => {
+    const long = "A".repeat(300);
+    const r = htmlToAlert(`${long}\nchi tiết`);
+    expect(r.title.length).toBe(151);
+    expect(r.body).toBe(`${long}\nchi tiết`);
+  });
   it("chỉ 1 dòng → body rỗng", () => {
     expect(htmlToAlert("<i>ok</i>")).toEqual({ title: "ok", body: "" });
   });

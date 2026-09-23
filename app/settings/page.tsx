@@ -5,6 +5,7 @@ import { STRATEGIES, ensureStrategies } from "@/lib/strategy";
 import SettingsPanel from "../components/SettingsPanel";
 import { StrategyCard, WatchlistEditor } from "../components/SettingsEditors";
 import { AlertPrefs } from "../components/AlertCenter";
+import PushSettings from "../components/PushSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -79,12 +80,18 @@ export default async function SettingsPage() {
       </section>
 
       <section id="thong-bao" className="mb-8 scroll-mt-20">
-        <h2 className="font-semibold">Thông báo nổi trên web</h2>
+        <h2 className="font-semibold">Thông báo</h2>
         <p className="mt-1 mb-3 text-xs text-muted">
-          Cùng nội dung với cảnh báo Telegram từ các cron (watcher, quét tín hiệu, báo cáo vị thế). Chọn loại muốn hiện nổi — chuông 🔔 trên menu vẫn giữ đủ
-          lịch sử 7 ngày. Lưu riêng trên trình duyệt này.
+          Cùng nội dung với cảnh báo Telegram từ các cron (watcher, quét tín hiệu, báo cáo vị thế). Chọn loại muốn hiện nổi — chuông 🔔 trên menu giữ lịch sử
+          (tín hiệu, cắt lỗ/chốt lời, hệ thống: 7 ngày; cơ hội trong phiên: 3 ngày; báo cáo vị thế: 2 ngày — quá hạn tự xóa cho nhẹ dữ liệu). Lưu riêng trên
+          trình duyệt này.
         </p>
         <AlertPrefs />
+        <h3 className="mt-5 font-semibold">Thông báo đẩy &amp; Telegram riêng</h3>
+        <p className="mt-1 mb-3 text-xs text-muted">
+          Nhận cảnh báo cả khi không mở web: thông báo đẩy về điện thoại/máy tính và/hoặc Telegram riêng của bạn. Lưu theo tên người dùng.
+        </p>
+        <PushSettings username={u.username} />
       </section>
     </main>
   );

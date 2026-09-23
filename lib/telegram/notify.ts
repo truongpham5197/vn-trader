@@ -1,6 +1,6 @@
 import { pushAlert, type WebAlert } from "../alerts";
+import { tgSend, tgToken as TOKEN, type TgButtons } from "./send";
 
-const TOKEN = () => process.env.TELEGRAM_BOT_TOKEN ?? "";
 const CHAT_ID = () => process.env.TELEGRAM_CHAT_ID ?? "";
 
 export function telegramConfigured(): boolean {
@@ -9,7 +9,7 @@ export function telegramConfigured(): boolean {
 
 export async function sendTelegram(
   text: string,
-  buttons?: { text: string; callback_data: string }[][],
+  buttons?: TgButtons,
   web?: WebAlert,
 ): Promise<boolean> {
   if (web) await pushAlert(text, web);
@@ -17,22 +17,7 @@ export async function sendTelegram(
     console.log("[telegram:dry]", text);
     return true;
   }
-  const res = await fetch(`https://api.telegram.org/bot${TOKEN()}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: CHAT_ID(),
-      text,
-      parse_mode: "HTML",
-      link_preview_options: { is_disabled: true },
-      ...(buttons ? { reply_markup: { inline_keyboard: buttons } } : {}),
-    }),
-  });
-  if (!res.ok) {
-    console.error("[telegram] sendMessage failed", res.status, await res.text());
-    return false;
-  }
-  return true;
+  return (await tgSend(CHAT_ID(), text, buttons)).ok;
 }
 
 const fmt = (n: number) => n.toFixed(2);

@@ -198,7 +198,41 @@ export default async function Home() {
       {/* VN30 watchlist — gợi ý vị thế tốt */}
       <section className="mb-6">
         <h2 className="mb-2 font-semibold">VN30 — setup đáng chú ý</h2>
-        <div className="card overflow-x-auto">
+        <div className="flex flex-col gap-2 sm:hidden">
+          {vn30.slice(0, 12).map((r) => (
+            <div key={r.ticker} className="card p-3 text-xs">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <Link href={`/stock/${r.ticker}`} className="text-sm font-semibold hover:text-accent">
+                    {r.ticker}
+                  </Link>{" "}
+                  <span>{r.setup}</span>
+                </div>
+                <LivePrice
+                  ticker={r.ticker}
+                  fallback={r.close}
+                  refPrice={r.chgPct !== null ? r.close / (1 + r.chgPct / 100) : null}
+                />
+              </div>
+              <div className="num mt-2 grid grid-cols-3 gap-2">
+                <div>
+                  <div className="text-[10px] text-muted">Vùng mua</div>
+                  {r.buyZone ? `${r.buyZone[0].toFixed(2)}–${r.buyZone[1].toFixed(2)}` : "—"}
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted">Cắt lỗ</div>
+                  <span className="text-loss">{r.stop?.toFixed(2) ?? "—"}</span>
+                </div>
+                <div>
+                  <div className="text-[10px] text-muted">Chốt lời</div>
+                  <span className="text-gain">{r.target?.toFixed(2) ?? "—"}</span>
+                </div>
+              </div>
+              {r.note && <p className="mt-1 text-[11px] text-muted">{r.note}</p>}
+            </div>
+          ))}
+        </div>
+        <div className="card hidden overflow-x-auto sm:block">
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr className="border-b border-border text-left text-muted">

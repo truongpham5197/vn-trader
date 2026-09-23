@@ -35,6 +35,43 @@ export function createBot(): Bot {
     await next();
   });
 
+  // /start <mã> — user khác owner liên kết Telegram riêng (mã lấy ở web Cài đặt). Không cần allowed().
+  bot.command("start", async (ctx) => {
+    const chat = String(ctx.chat.id);
+    const code = ctx.match.trim();
+    if (!code) {
+      await ctx.reply(
+        allowed(ctx) && chatId
+          ? "👋 Đây là chat chính của chủ app — gõ /help để xem lệnh."
+          : "👋 Để nhận thông báo riêng: mở web VN Trader → <b>Cài đặt → Thông báo → Kết nối Telegram</b>, rồi bấm link bot đưa ra.",
+      );
+      return;
+    }
+    const u = await prisma.user.findUnique({ where: { tgLinkCode: code } });
+    if (!u) {
+      await ctx.reply("⚠️ Mã liên kết không đúng hoặc đã dùng. Tạo mã mới ở web Cài đặt → Thông báo.");
+      return;
+    }
+    await prisma.$transaction([
+      prisma.user.updateMany({ where: { tgChatId: chat, id: { not: u.id } }, data: { tgChatId: null } }),
+      prisma.user.update({ where: { id: u.id }, data: { tgChatId: chat, tgLinkCode: null } }),
+    ]);
+    await ctx.reply(
+      `✅ Đã liên kết với tài khoản <b>${esc(u.username)}</b>.
+` +
+        `Bạn sẽ nhận tín hiệu mới, cơ hội trong phiên, chạm cắt lỗ/chốt lời vị thế của bạn (chọn loại ở web Cài đặt).
+` +
+        `Gõ /stop để ngừng nhận.
+
+<i>Tín hiệu dựa trên giá + khối lượng, chỉ để tham khảo — không phải khuyến nghị.</i>`,
+    );
+  });
+
+  bot.command("stop", async (ctx) => {
+    const { count } = await prisma.user.updateMany({ where: { tgChatId: String(ctx.chat.id) }, data: { tgChatId: null } });
+    await ctx.reply(count ? "🔕 Đã ngừng gửi thông báo tới chat này. Kết nối lại ở web Cài đặt → Thông báo." : "Chat này chưa liên kết tài khoản nào.");
+  });
+
   bot.command("status", async (ctx) => {
     if (!allowed(ctx)) return;
     const [symbols, bars, todaySignals, openTrades] = await Promise.all([

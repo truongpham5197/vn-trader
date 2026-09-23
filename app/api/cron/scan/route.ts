@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { runScan } from "@/lib/scan";
 import { runWatcher } from "@/lib/tcbs/watcher";
 import { cronAuthorized, cronForbidden } from "@/lib/cron-auth";
+import { pruneAlerts } from "@/lib/alerts";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -12,6 +13,9 @@ async function handle(req: Request, notify: boolean) {
 
   // EOD stop-check + target alert trên giá close vừa sync (backup cho watcher intraday)
   await runWatcher().catch((e) => console.error("[scan] watcher EOD", e));
+
+  // Dọn thông báo web quá hạn (positions 2 ngày, sector 3 ngày, còn lại 7 ngày)
+  await pruneAlerts().catch((e) => console.error("[scan] prune alerts", e));
 
   // Chủ nhật → kèm báo cáo tuần (Hobby cron chỉ daily — gộp vào scan)
   const dow = new Date().toLocaleDateString("en-US", { weekday: "short", timeZone: "Asia/Ho_Chi_Minh" });

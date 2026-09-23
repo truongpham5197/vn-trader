@@ -14,7 +14,7 @@ const LINKS = [
   ["/", "Trang chủ", "🏠", "Trang chủ"],
   ["/signals", "Gợi ý mua", "📡", "Gợi ý"],
   ["/signals/evidence", "Giá sau báo", "📊", "Giá sau"],
-  ["/journal", "Đang giữ", "💼", "Đang giữ"],
+  ["/journal", "Vị thế", "💼", "Vị thế"],
   ["/sectors", "Nhóm ngành", "🏭", "Ngành"],
   ["/backtest", "Giả lập mua bán", "🧪", "Giả lập"],
   ["/settings", "Cài đặt", "⚙️", "Cài đặt"],

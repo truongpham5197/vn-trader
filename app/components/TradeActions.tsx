@@ -47,12 +47,31 @@ function TickerInput({ onPicked }: { onPicked: (ticker: string) => void }) {
 
 const fmt = (n: number) => String(+n.toFixed(2));
 
+/** Cảnh báo nhập nhầm: cắt lỗ đã ở trên giá hiện tại, hoặc giá vốn lệch xa giá thị trường (vd giá trước GDKHQ). */
+function PriceCheck({ last, entry, stop }: { last: number | null; entry: number; stop: number }) {
+  if (!last) return null;
+  const msgs: string[] = [];
+  if (stop > 0 && last <= stop) msgs.push(`Giá hiện tại ${fmt(last)} đã thấp hơn/bằng mức cắt lỗ ${fmt(stop)} — lưu xong sẽ báo "đã thủng cắt lỗ" ngay.`);
+  const dev = entry > 0 ? (entry / last - 1) * 100 : 0;
+  if (Math.abs(dev) >= 10)
+    msgs.push(`Giá vốn ${fmt(entry)} lệch ${dev > 0 ? "+" : ""}${dev.toFixed(1)}% so với giá hiện tại ${fmt(last)} — kiểm tra lại giá khớp (sau ngày GDKHQ giá đã điều chỉnh).`);
+  if (!msgs.length) return null;
+  return (
+    <div className="rounded-md border border-amber-400/40 bg-amber-400/10 p-2 text-[11px] text-amber-300">
+      {msgs.map((m) => (
+        <p key={m}>⚠️ {m}</p>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Ô nhập SL/giá/stop/target dùng chung cho thêm + sửa. Cắt lỗ/chốt lời TỰ TÍNH
  * −/+8% theo giá vốn (đổi giá vốn là tính lại) cho tới khi user sửa tay ô đó.
  */
 function TradeFields({ t, withTicker }: { t?: Partial<TradeRow>; withTicker?: boolean }) {
   const [entry, setEntry] = useState(v(t?.entry));
+  const [last, setLast] = useState<number | null>(t?.price ?? null);
   const [manual, setManual] = useState<{ stop: string | null; target: string | null }>({
     stop: t?.stop != null ? v(t.stop) : null,
     target: t?.target != null ? v(t.target) : null,
@@ -65,8 +84,9 @@ function TradeFields({ t, withTicker }: { t?: Partial<TradeRow>; withTicker?: bo
     const q = await fetch(`/api/quotes?tickers=${ticker}`)
       .then((r) => r.json())
       .catch(() => null);
-    const last = q?.[ticker]?.last;
-    if (last) setEntry((cur) => cur || fmt(last));
+    const p = q?.[ticker]?.last;
+    setLast(p ?? null);
+    if (p) setEntry((cur) => cur || fmt(p));
   };
   const note = (k: "stop" | "target", pct: number) =>
     manual[k] === null ? (
@@ -108,6 +128,7 @@ function TradeFields({ t, withTicker }: { t?: Partial<TradeRow>; withTicker?: bo
           {note("target", QUICK_PCT)}
         </Field>
       </div>
+      <PriceCheck last={last} entry={e} stop={Number(stop)} />
     </>
   );
 }

@@ -7,6 +7,7 @@ import { esc, sendTelegram } from "../telegram/notify";
 import { pushAlert } from "../alerts";
 import { vnToday } from "../vn-time";
 import { px } from "../format";
+import { levelState } from "../risk/levels";
 
 const FEE_SELL = 0.0015 + 0.001; // phí + thuế bán
 
@@ -96,10 +97,9 @@ async function watchOthers(): Promise<void> {
     const kind = hitStop && price <= t.stopPrice! ? "stop" : hitTarget && price >= t.targetPrice! ? "target" : null;
     if (!kind) continue;
     await prisma.trade.update({ where: { id: t.id }, data: { note: `${t.note ?? ""} ${kind}-hit`.trim() } });
+    const lv = levelState(price, kind === "stop" ? t.stopPrice : null, kind === "target" ? t.targetPrice : null)!;
     await pushAlert(
-      kind === "stop"
-        ? `🛑 <b>${t.symbol.ticker}</b> chạm cắt lỗ ${px(t.stopPrice)} (giá ${px(price)})\nCân nhắc bán để giữ vốn. Bán xong bấm "Bán" ở trang Vị thế để ghi nhật ký.\n${formatQuoteLine(quote)}`
-        : `🎯 <b>${t.symbol.ticker}</b> chạm chốt lời ${px(t.targetPrice)} (giá ${px(price)})\nCân nhắc chốt lời. Bán xong bấm "Bán" ở trang Vị thế để ghi nhật ký.\n${formatQuoteLine(quote)}`,
+      `${kind === "stop" ? "🛑" : "🎯"} <b>${t.symbol.ticker}</b> ${lv.label}\n${lv.detail}\nBán xong bấm "Bán" ở trang Vị thế để ghi nhật ký.\n${formatQuoteLine(quote)}`,
       { kind, level: kind === "stop" ? "danger" : "success", ticker: t.symbol.ticker, userId: t.userId },
     );
   }

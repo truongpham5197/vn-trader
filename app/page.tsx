@@ -62,29 +62,34 @@ export default async function Home() {
       {/* Tài sản — NAV tự tính từ vốn ban đầu + lãi/lỗ đã chốt + giá CP đang giữ */}
       <div className="mb-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat
-          label="Tổng tài sản (NAV)"
+          label="Tổng tài sản"
           value={tr(pf.nav)}
-          sub={`${signed(pf.totalPct)}% so với vốn ${(pf.initial / 1e6).toFixed(0)}tr`}
+          sub={`= tiền mặt + cổ phiếu (nếu bán hết hôm nay) · ${signed(pf.totalPct)}% so với vốn ${tr(pf.initial)}`}
           tone={pf.totalPnl}
         />
-        <Stat label="Tiền mặt" value={tr(pf.cash)} sub={`Cổ phiếu ${tr(pf.marketValue)}`} />
         <Stat
-          label="Lãi/lỗ hôm nay"
-          value={pf.dayPnl === null ? "—" : trSigned(pf.dayPnl)}
-          sub="theo giá CP đang giữ"
-          tone={pf.dayPnl ?? 0}
+          label="Tiền mặt còn lại"
+          value={tr(pf.cash)}
+          sub={`Vốn ${tr(pf.initial)} − đã mua CP ${tr(pf.invested)} (gồm phí)${pf.realized ? ` ${trSigned(pf.realized)} lãi/lỗ đã chốt` : ""}`}
+          tone={pf.cash < 0 ? -1 : 0}
+        />
+        <Stat
+          label="Cổ phiếu đang giữ"
+          value={tr(pf.marketValue)}
+          sub={`Giá trị theo giá hiện tại · mua vào ${tr(pf.invested)}`}
         />
         <Stat
           label="Tổng lãi/lỗ"
           value={trSigned(pf.totalPnl)}
-          sub={`Đã chốt ${trSigned(pf.realized)} · đang giữ ${trSigned(pf.unrealized)}`}
+          sub={`Đã bán chốt ${trSigned(pf.realized)} · đang giữ (tạm tính) ${trSigned(pf.unrealized)}${pf.dayPnl === null ? "" : ` · riêng hôm nay ${trSigned(pf.dayPnl)}`}`}
           tone={pf.totalPnl}
         />
       </div>
       {pf.cash < 0 && (
         <p className="card mb-2 border-loss/40 p-3 text-xs text-loss">
-          ⚠️ Tiền mặt âm: cổ phiếu đang giữ ({tr(pf.marketValue)}) vượt vốn ban đầu ({tr(pf.initial)}). Hãy tăng
-          &quot;Vốn ban đầu&quot; ở phần Cấu hình cho đúng số tiền thật bạn bỏ ra, để NAV và cỡ lệnh gợi ý chính xác.
+          ⚠️ Tiền mặt âm {tr(pf.cash)}: số tiền đã mua cổ phiếu ({tr(pf.invested)}, gồm phí 0,15%) lớn hơn vốn ban đầu
+          ({tr(pf.initial)}) — tức là bạn đã mua nhiều hơn số vốn khai báo. Sửa &quot;Vốn ban đầu&quot; ở phần Cấu hình
+          cho đúng số tiền thật bạn bỏ ra (ít nhất {Math.ceil((pf.invested - pf.realized) / 1e6)}tr) để số liệu chính xác.
         </p>
       )}
       <div className="card mb-4 flex flex-wrap gap-x-6 gap-y-1 p-3 text-xs text-muted">

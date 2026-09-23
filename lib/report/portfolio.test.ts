@@ -15,6 +15,7 @@ describe("computePortfolio", () => {
     // mua 1000cp @ 20 (20tr), giá lên 22
     const p = computePortfolio(100e6, [{ qty: 1000, entry: 20, price: 22, prevClose: 21 }], []);
     expect(p.cash).toBeCloseTo(100e6 - 20e6 * 1.0015);
+    expect(p.invested).toBeCloseTo(20e6 * 1.0015);
     expect(p.marketValue).toBe(22e6);
     expect(p.nav).toBeCloseTo(p.cash + 22e6 * (1 - 0.0025));
     expect(p.unrealized).toBeCloseTo(22e6 * 0.9975 - 20e6 * 1.0015);

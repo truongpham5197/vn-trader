@@ -101,7 +101,7 @@ export default function StockSearch() {
   };
 
   return (
-    <div className="relative ml-auto w-36 shrink-0 sm:w-56">
+    <div className="relative ml-auto min-w-0 flex-1 sm:w-56 sm:flex-none">
       <input
         ref={input}
         value={q}
@@ -120,7 +120,7 @@ export default function StockSearch() {
         aria-label="Tìm mã cổ phiếu"
         className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-xs outline-none placeholder:text-muted focus:border-accent"
       />
-      {open && <SymbolHits hits={hits} sel={sel} setSel={setSel} onPick={(h) => go(h.ticker)} />}
+      {open && <SymbolHits hits={hits} sel={sel} setSel={setSel} onPick={(h) => go(h.ticker)} className="left-0 w-72 sm:right-0 sm:left-auto" />}
     </div>
   );
 }

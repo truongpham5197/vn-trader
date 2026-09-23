@@ -214,7 +214,7 @@ export default function AlertCenter({ username }: { username: string | null }) {
       {mounted &&
         toasts.length > 0 &&
         createPortal(
-          <div className="pointer-events-none fixed right-4 bottom-16 z-[60] flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2">
+          <div className="pointer-events-none fixed right-4 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-[60] sm:bottom-16 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2">
             {toasts.map((a) => (
               <div
                 key={a.id}

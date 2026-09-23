@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button, inputCls, useApi } from "./ui";
+import { SymbolHits, useSymbolHits } from "./StockSearch";
 
 const PARAM_LABEL: Record<string, string> = {
   donchian: "Số phiên đỉnh cũ",
@@ -94,21 +95,33 @@ export function StrategyCard({ s }: { s: StrategyInfo }) {
 export function WatchlistEditor({ tickers }: { tickers: string[] }) {
   const { call, busy } = useApi();
   const [v, setV] = useState("");
+  const [open, setOpen] = useState(false);
+  const { hits, sel, setSel, onKey } = useSymbolHits(open ? v : "");
+  const add = async (t: string) => {
+    setOpen(false);
+    if (await call("POST", "/api/watchlist", { ticker: t }, `Đã thêm ${t.toUpperCase()}`)) setV("");
+  };
   return (
     <div className="card p-4">
       <form
         className="flex gap-2"
-        onSubmit={async (e) => {
+        onSubmit={(e) => {
           e.preventDefault();
-          if (await call("POST", "/api/watchlist", { ticker: v }, `Đã thêm ${v.toUpperCase()}`)) setV("");
+          void add(v);
         }}
       >
-        <input
-          value={v}
-          onChange={(e) => setV(e.target.value)}
-          placeholder="Thêm mã, vd: FPT, MWG"
-          className={`${inputCls} uppercase`}
-        />
+        <div className="relative min-w-0 flex-1">
+          <input
+            value={v}
+            autoComplete="off"
+            onChange={(e) => (setV(e.target.value.toUpperCase()), setOpen(true))}
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            onKeyDown={(e) => open && onKey(e, (h) => void add(h.ticker))}
+            placeholder="Gõ mã hoặc tên công ty — vd: FPT, HOA PHAT"
+            className={`${inputCls} w-full`}
+          />
+          {open && <SymbolHits hits={hits} sel={sel} setSel={setSel} onPick={(h) => void add(h.ticker)} className="left-0 w-full" />}
+        </div>
         <Button type="submit" tone="primary" disabled={busy || !v.trim()}>
           Thêm
         </Button>

@@ -31,7 +31,7 @@ export default function UserSwitcher({ username }: { username: string | null }) 
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="max-w-32 shrink-0 truncate rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
+        className="max-w-24 shrink-0 truncate rounded-md border sm:max-w-32 border-border px-2 py-1 text-xs text-muted hover:text-foreground"
         title="Đổi người dùng"
       >
         👤 {username ?? "Chọn tên"}

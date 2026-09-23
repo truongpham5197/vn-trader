@@ -53,7 +53,7 @@ export default async function BacktestPage({
 
       <div className="mb-8">
         <h2 className="mb-2 font-semibold">Runs gần đây</h2>
-        <table className="w-full border-collapse text-xs">
+        <div className="overflow-x-auto"><table className="w-full border-collapse text-xs">
           <thead>
             <tr className="border-b border-border text-left text-muted">
               <th className="p-2">#</th>
@@ -93,7 +93,7 @@ export default async function BacktestPage({
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       {selected && metrics && (
@@ -120,8 +120,8 @@ export default async function BacktestPage({
           <EquityCurve points={equity} />
 
           <h3 className="mb-2 mt-6 font-semibold">Trades ({trades.length})</h3>
-          <div className="max-h-96 overflow-y-auto">
-            <table className="w-full border-collapse text-xs">
+          <div className="max-h-96 overflow-auto">
+            <div className="overflow-x-auto"><table className="w-full border-collapse text-xs">
               <thead className="sticky top-0 bg-card">
                 <tr className="border-b border-border text-left text-muted">
                   <th className="p-2">Mã</th>
@@ -154,7 +154,7 @@ export default async function BacktestPage({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         </section>
       )}

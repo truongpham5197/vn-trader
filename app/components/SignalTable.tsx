@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import Link from "next/link";
 import { Button, Field, Modal, ModalForm, inputCls, useApi } from "./ui";
 import SignalDetail from "./SignalDetail";
 import { LivePrice } from "./live";
@@ -46,7 +47,20 @@ export default function SignalTable({
 }) {
   const [open, setOpen] = useState<number | null>(null);
   return (
-    <div className="card overflow-x-auto">
+    <>
+      <div className="flex flex-col gap-2 sm:hidden">
+        {signals.map((s) => (
+          <SignalCard
+            key={s.id}
+            s={s}
+            showDate={showDate}
+            owner={owner}
+            expanded={open === s.id}
+            toggle={() => setOpen(open === s.id ? null : s.id)}
+          />
+        ))}
+      </div>
+    <div className="card hidden overflow-x-auto sm:block">
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr className="border-b border-border text-left text-muted">
@@ -137,6 +151,76 @@ export default function SignalTable({
           })}
         </tbody>
       </table>
+    </div>
+    </>
+  );
+}
+
+/** Thẻ tín hiệu cho màn hình hẹp — đủ thông tin như 1 dòng bảng, không cuộn ngang. */
+function SignalCard({
+  s,
+  showDate,
+  owner,
+  expanded,
+  toggle,
+}: {
+  s: SignalRow;
+  showDate: boolean;
+  owner: boolean;
+  expanded: boolean;
+  toggle: () => void;
+}) {
+  const up = ((s.target - s.entry) / s.entry) * 100;
+  const dn = ((s.entry - s.stop) / s.entry) * 100;
+  const [label, cls] = STATUS[s.status] ?? [s.status, ""];
+  return (
+    <div className="card p-3 text-xs">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-2">
+            <Link href={`/stock/${s.symbol.ticker}`} className="text-sm font-semibold hover:text-accent">
+              {s.symbol.ticker}
+            </Link>
+            <span className={cls}>{label}</span>
+          </div>
+          <div className="truncate text-[11px] text-muted">
+            {[showDate && `nến ${s.date}`, s.strategy.name, s.symbol.sector].filter(Boolean).join(" · ")}
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="text-[10px] text-muted">giá nay</div>
+          <LivePrice ticker={s.symbol.ticker} />
+        </div>
+      </div>
+      <div className="num mt-2 grid grid-cols-3 gap-2">
+        <div>
+          <div className="text-[10px] text-muted">Vùng mua</div>
+          {s.buyLow && s.buyHigh ? `${f2(s.buyLow)}–${f2(s.buyHigh)}` : f2(s.entry)}
+        </div>
+        <div>
+          <div className="text-[10px] text-muted">Cắt lỗ</div>
+          <span className="text-loss">{f2(s.stop)}</span> <span className="text-[10px] text-muted">−{dn.toFixed(1)}%</span>
+        </div>
+        <div>
+          <div className="text-[10px] text-muted">Chốt lời</div>
+          <span className="text-gain">{f2(s.target)}</span> <span className="text-[10px] text-muted">+{up.toFixed(1)}%</span>
+        </div>
+      </div>
+      <div className="mt-1 text-[11px] text-muted">
+        SL gợi ý <span className="num text-foreground">{s.qty.toLocaleString("en-US")}</span> cp · R:R{" "}
+        <span className="num text-foreground">{s.rr.toFixed(1)}</span>
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <button type="button" onClick={toggle} className="py-1 text-accent">
+          {expanded ? "▾ Ẩn lý do" : "▸ Vì sao?"}
+        </button>
+        <SignalActions s={s} owner={owner} />
+      </div>
+      {expanded && (
+        <div className="mt-2 border-t border-border pt-2">
+          <SignalDetail ticker={s.symbol.ticker} reason={s.reason} plan={s.plan} />
+        </div>
+      )}
     </div>
   );
 }

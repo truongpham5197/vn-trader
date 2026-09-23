@@ -28,6 +28,70 @@ function withLive(
   };
 }
 
+const tradeOf = (p: PositionLine) => ({
+  id: p.id,
+  ticker: p.ticker,
+  qty: p.qty,
+  entry: p.entry,
+  stop: p.stop,
+  target: p.target,
+  exit: null,
+  status: "open",
+  note: p.note,
+  price: p.price,
+});
+
+/** Thẻ vị thế cho mobile. */
+function PositionCard({ p }: { p: PositionLine }) {
+  const nearStop = p.price !== null && p.stop !== null && p.price <= p.stop * 1.02;
+  const hitTarget = p.price !== null && p.target !== null && p.price >= p.target;
+  return (
+    <div className="card p-3 text-xs">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <Link href={`/stock/${p.ticker}`} className="text-sm font-semibold hover:text-accent">
+            {p.ticker}
+          </Link>
+          {nearStop && <span className="ml-1.5 rounded bg-loss/15 px-1.5 py-0.5 text-[10px] text-loss">sát cắt lỗ</span>}
+          {hitTarget && <span className="ml-1.5 rounded bg-gain/15 px-1.5 py-0.5 text-[10px] text-gain">chạm chốt lời</span>}
+          <div className="text-[11px] text-muted">
+            <span className="num">{p.qty.toLocaleString("en-US")}</span> cp · vốn <span className="num">{px(p.entry)}</span> ·{" "}
+            {p.sessionsHeld >= 2 ? "✓ bán được" : `⏳T+${p.sessionsHeld}`}
+          </div>
+        </div>
+        <div className="num shrink-0 text-right">
+          <div className="text-sm font-medium">{px(p.price, "?")}</div>
+          <div className={`text-[11px] ${tone(p.dayPct)}`}>hôm nay {pct(p.dayPct)}</div>
+        </div>
+      </div>
+      <div className="num mt-2 grid grid-cols-3 gap-2">
+        <div>
+          <div className="text-[10px] text-muted">Lãi/lỗ</div>
+          <span className={`font-medium ${tone(p.pnlPct)}`}>{pct(p.pnlPct)}</span>
+          {p.pnlVnd !== null && (
+            <div className="text-[10px] text-muted">
+              {p.pnlVnd >= 0 ? "+" : ""}
+              {(p.pnlVnd / 1e6).toFixed(2)}tr
+            </div>
+          )}
+        </div>
+        <div>
+          <div className="text-[10px] text-muted">Cắt lỗ</div>
+          <span className="text-loss">{px(p.stop)}</span>
+        </div>
+        <div>
+          <div className="text-[10px] text-muted">Chốt lời</div>
+          <span className="text-gain">{px(p.target)}</span>
+        </div>
+      </div>
+      {p.note && !p.note.startsWith("manual") && <div className="mt-1 truncate text-[11px] text-muted">{p.note}</div>}
+      <div className="mt-2 flex justify-end">
+        <TradeActions t={tradeOf(p)} />
+      </div>
+    </div>
+  );
+}
+
 /** Vị thế đang giữ — giá live nến 1m (tự cập nhật), kèm nút Bán/Sửa/Xóa. */
 export default function PositionsTable({
   positions: rows,
@@ -49,7 +113,12 @@ export default function PositionsTable({
       <div className="mb-1 text-right">
         <LiveBadge />
       </div>
-      <div className="card overflow-x-auto">
+      <div className="flex flex-col gap-2 sm:hidden">
+        {positions.map((p) => (
+          <PositionCard key={p.id} p={p} />
+        ))}
+      </div>
+      <div className="card hidden overflow-x-auto sm:block">
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="border-b border-border text-left text-muted">
@@ -133,20 +202,7 @@ export default function PositionsTable({
                       : `⏳T+${p.sessionsHeld}`}
                   </td>
                   <td className="p-3">
-                    <TradeActions
-                      t={{
-                        id: p.id,
-                        ticker: p.ticker,
-                        qty: p.qty,
-                        entry: p.entry,
-                        stop: p.stop,
-                        target: p.target,
-                        exit: null,
-                        status: "open",
-                        note: p.note,
-                        price: p.price,
-                      }}
-                    />
+                    <TradeActions t={tradeOf(p)} />
                   </td>
                 </tr>
               );

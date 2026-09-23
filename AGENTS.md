@@ -48,7 +48,9 @@ lib/report/    positions.ts — báo cáo vị thế % live (dùng chung bot+cro
 lib/analysis/  vn30.ts (scoreSetup — vùng mua/SL/TP + `plain` cho người mới);
                sector-strength.ts — xếp hạng ngành trên mã GTGD≥ngưỡng:
                lãi 1 tuần/1 tháng (trung vị), % mã > MA50, dòng tiền 5p/20p,
-               ngành <3 mã = kém tin cậy; top 5 mã từ ngành mạnh. Dùng ở
+               ngành <3 mã = kém tin cậy; top 5 mã từ ngành mạnh. Mỗi ngành
+               có rank/summary/why (từng thước đo kèm hạng X/N), mỗi pick có
+               why = bối cảnh ngành + scoreSetup.facts (số liệu cụ thể). Dùng ở
                /sectors + Telegram /nganh. `live` ghép nến hôm nay từ DNSE
                (GTGD quy đổi cả phiên theo sessionElapsed);
                sector-live.ts — 9h–16h T2–T6 dùng bản live (cache 5ph),
@@ -64,7 +66,12 @@ app/api/cron/  eod-sync (cursor resume qua Setting eodSyncCursor + chain
                scan, watcher, positions-report, weekly
                — TẤT CẢ qua cron-auth
 app/api/quotes    GET ?tickers=A,B → giá nến 1m DNSE (cache 30s trong
-               getQuote) — SectorBoard poll 30s trong phiên / 5ph ngoài
+               getQuote) — client KHÔNG tự poll: dùng app/components/live.tsx
+               (QuotesProvider trong layout, gom mã đang hiện trên màn hình,
+               20s trong phiên / 5ph ngoài, tab ẩn thì dừng): useQuote/
+               useQuotes/LivePrice/LiveBadge
+app/api/symbols   GET ?q= → ≤8 mã (mã/tên công ty, bỏ dấu) cho StockSearch
+               trên Nav ("/" để focus) → /stock/[ticker]
 app/api/telegram/webhook  production bot endpoint (secret header check)
 app/api/telegram/commands POST → setMyCommands (menu "/" của bot) — gọi
                từ Vercel vì mạng local chặn api.telegram.org
@@ -84,8 +91,13 @@ app/api/watchlist  POST/DELETE {ticker} → Setting `watchlist` (JSON) —
 lib/trades.ts  netPnl/closeTrade/takeSignal/watchlist — dùng chung bot+web
 lib/api.ts     pos()/bad()/body() validate cho route web
 app/components/ui.tsx  Button/Modal/ModalForm/toast/useApi (refresh sau lưu)
+app/components/Fundamentals.tsx  useFundamentals (cache promise, lazy IO),
+               FundBadge/BusinessBox/NewsList; PickCard.tsx thẻ gợi ý live
+lib/fees.ts    BUY_FEE/SELL_FEE_TAX/netPnl/netPnlPct — dùng chung server+client
 Trang: / (tổng quan), /signals (chip ngày + tab trạng thái), /journal,
-               /sectors, /backtest, /settings (cấu hình, chiến lược, theo dõi)
+               /sectors, /backtest, /settings (cấu hình, chiến lược, theo dõi),
+               /stock/[ticker] (giá live, biểu đồ, setup+lý do, ngành, vị thế,
+               tín hiệu, kinh doanh/tin, nút theo dõi)
 ```
 
 Vercel Hobby: function ≤60s, không process nền, cron 1 lần/ngày → mọi job nặng

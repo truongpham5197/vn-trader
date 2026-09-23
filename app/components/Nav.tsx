@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import StockSearch from "./StockSearch";
 
 const LINKS = [
   ["/", "Tổng quan"],
@@ -16,7 +17,7 @@ export default function Nav() {
   const path = usePathname();
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 sm:gap-4 sm:px-6">
         <Link href="/" className="shrink-0 py-3 font-bold tracking-tight">
           📈 VN Trader
         </Link>
@@ -36,6 +37,7 @@ export default function Nav() {
             );
           })}
         </nav>
+        <StockSearch />
       </div>
     </header>
   );

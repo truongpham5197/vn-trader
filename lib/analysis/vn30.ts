@@ -16,6 +16,7 @@ export interface Vn30Row {
   target?: number;
   note: string;
   plain: string; // giải thích không thuật ngữ cho người mới
+  facts: string[]; // lý do cụ thể có số liệu — vì sao ra setup này
 }
 
 /**
@@ -49,6 +50,9 @@ export async function vn30Snapshot(): Promise<Vn30Row[]> {
   return out.sort((a, b) => b.score - a.score);
 }
 
+const dong = (p: number) => `${Math.round(p * 1000).toLocaleString("vi-VN")}đ`;
+const sg = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
+
 export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): Vn30Row | null {
   const n = bars.length;
   const last = bars[n - 1];
@@ -67,7 +71,16 @@ export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): 
   const volX = last.volume / volAvg;
   const distHighPct = ((hh - last.close) / hh) * 100;
   const uptrend = last.close > ma50;
-  const base: Omit<Vn30Row, "setup" | "score" | "note" | "plain"> = {
+  const ret5 = n > 5 ? (last.close / closes[n - 6] - 1) * 100 : null;
+  const ret20 = n > 20 ? (last.close / closes[n - 21] - 1) * 100 : null;
+  const perf = [ret5 !== null && `1 tuần ${sg(ret5)}`, ret20 !== null && `1 tháng ${sg(ret20)}`].filter(Boolean).join(", ");
+  const trendFact = uptrend
+    ? `Xu hướng tăng: giá ${dong(last.close)} trên đường trung bình 50 phiên (${dong(ma50)})${perf ? ` · ${perf}` : ""}`
+    : `Giá ${dong(last.close)} dưới đường trung bình 50 phiên (${dong(ma50)}) — xu hướng dài chưa tăng${perf ? ` · ${perf}` : ""}`;
+  const volFact = `Khối lượng phiên gần nhất gấp ${volX.toFixed(1)}× trung bình 20 phiên${
+    volX >= 1.5 ? " → nhiều người mua vào" : volX < 0.8 ? " → giao dịch thưa" : ""
+  }`;
+  const base: Omit<Vn30Row, "setup" | "score" | "note" | "plain" | "facts"> = {
     ticker,
     sector,
     close: last.close,
@@ -87,6 +100,11 @@ export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): 
       target: floorTick(entry + 2 * (entry - stop)),
       note: `cách đỉnh ${hh.toFixed(2)} chỉ ${distHighPct.toFixed(1)}% · vol ${volX.toFixed(1)}x · vượt đỉnh kèm vol = trigger`,
       plain: "Giá đang sát mức cao nhất 1 tháng — nếu vượt lên kèm nhiều người mua thì thường chạy tiếp",
+      facts: [
+        `Giá chỉ thấp hơn đỉnh 20 phiên (${dong(hh)}) ${distHighPct.toFixed(1)}% — sắp thử vượt đỉnh`,
+        trendFact,
+        volX >= 1.2 ? `${volFact} — lực mua đang tăng trước khi vượt đỉnh` : `${volFact} — cần khối lượng tăng khi vượt đỉnh mới đáng tin`,
+      ],
     };
   }
 
@@ -104,6 +122,12 @@ export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): 
       target: floorTick(entry + 2 * (entry - stop)),
       note: `uptrend (close > MA50 ${ma50.toFixed(1)}) · đang về MA20 ${ma20.toFixed(2)} · RSI ${r14.toFixed(0)}`,
       plain: "Xu hướng đang tăng, giá vừa điều chỉnh về mức trung bình 1 tháng — mua được giá tốt hơn",
+      facts: [
+        trendFact,
+        `Giá chỉ cách đường trung bình 20 phiên (${dong(ma20)}) ${(distMa20 * 100).toFixed(1)}% — vùng hỗ trợ hay gặp trong xu hướng tăng`,
+        volX < 1 ? `${volFact} — điều chỉnh với ít người bán, lành mạnh` : `${volFact} — bán ra khá mạnh, nên chờ thêm 1–2 phiên`,
+        `RSI(14) = ${r14.toFixed(0)} — ${r14 < 45 ? "đã hạ nhiệt" : r14 > 70 ? "vẫn còn nóng" : "trung tính"}`,
+      ],
     };
   }
 
@@ -120,6 +144,11 @@ export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): 
       target: floorTick(entry + 1.5 * (entry - stop)),
       note: `RSI(2)=${r2.toFixed(1)} <10 trong uptrend — kỳ vọng hồi kỹ thuật 1–5 phiên`,
       plain: "Giảm mạnh vài phiên gần đây dù xu hướng lớn vẫn tăng — thường hồi lại trong 1 tuần",
+      facts: [
+        trendFact,
+        `RSI(2) = ${r2.toFixed(1)} (dưới 10) — giảm quá nhanh trong vài phiên, hay có nhịp hồi`,
+        volFact,
+      ],
     };
   }
 
@@ -131,6 +160,7 @@ export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): 
       score: 40 + Math.min((last.close / ma50 - 1) * 40, 10),
       note: `trên MA20/MA50 — không đuổi, chờ pullback về ~${ma20.toFixed(1)}`,
       plain: "Đang tăng tốt nhưng đã lên xa — đừng mua đuổi, chờ giá chỉnh về",
+      facts: [trendFact, `Giá cao hơn đường trung bình 20 phiên (${dong(ma20)}) ${((last.close / ma20 - 1) * 100).toFixed(1)}% — đã chạy xa điểm mua an toàn`],
     };
   }
 
@@ -140,5 +170,6 @@ export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): 
     score: 10,
     note: `dưới MA50 ${ma50.toFixed(1)} · RSI ${r14.toFixed(0)} — chưa có setup`,
     plain: "Xu hướng chưa tăng — chưa nên mua",
+    facts: [trendFact, `RSI(14) = ${r14.toFixed(0)}`],
   };
 }

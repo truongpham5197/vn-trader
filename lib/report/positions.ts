@@ -6,7 +6,9 @@ const BUY_FEE = 0.0015;
 const SELL_FEE_TAX = 0.0015 + 0.001; // phí bán + thuế
 
 export interface PositionLine {
+  id: number; // Trade.id
   ticker: string;
+  note: string | null;
   qty: number;
   entry: number;
   price: number | null;
@@ -29,8 +31,8 @@ export async function positionsReport(): Promise<PositionLine[]> {
     orderBy: { id: "asc" },
   });
 
-  const lines: PositionLine[] = [];
-  for (const t of trades) {
+  // Song song — mỗi mã 1 request giá, tuần tự thì N vị thế = N× độ trễ DNSE
+  return Promise.all(trades.map(async (t): Promise<PositionLine> => {
     const [quote, held] = await Promise.all([
       getQuote(t.symbol.ticker),
       prisma.dailyBar.count({
@@ -56,8 +58,10 @@ export async function positionsReport(): Promise<PositionLine[]> {
       if (prevClose) dayPct = (price / prevClose - 1) * 100;
     }
 
-    lines.push({
+    return {
+      id: t.id,
       ticker: t.symbol.ticker,
+      note: t.note,
       qty: t.qty,
       entry: t.entryPrice,
       price,
@@ -71,9 +75,8 @@ export async function positionsReport(): Promise<PositionLine[]> {
       stop: t.stopPrice,
       target: t.targetPrice,
       sessionsHeld: held,
-    });
-  }
-  return lines;
+    };
+  }));
 }
 
 export function formatPositionsReport(lines: PositionLine[]): string {

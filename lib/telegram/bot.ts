@@ -1,7 +1,7 @@
 import { Bot } from "grammy";
 import { prisma } from "../prisma";
 import { getNum, getBool, setSetting, getSetting } from "../settings";
-import { vnToday } from "../vn-time";
+import { latestSignalDate } from "../signals";
 import { esc } from "./notify";
 import { px } from "../format";
 
@@ -39,7 +39,7 @@ export function createBot(): Bot {
     const [symbols, bars, todaySignals, openTrades] = await Promise.all([
       prisma.symbol.count({ where: { active: true } }),
       prisma.dailyBar.count(),
-      prisma.signal.count({ where: { date: vnToday() } }),
+      latestSignalDate().then((date) => (date ? prisma.signal.count({ where: { date } }) : 0)),
       prisma.trade.count({ where: { status: "open" } }),
     ]);
     const { loadPortfolio } = await import("../report/portfolio");
@@ -53,7 +53,7 @@ export function createBot(): Bot {
     await ctx.reply(
       `📊 <b>TRẠNG THÁI HỆ THỐNG</b>\n\n` +
         `📈 Dữ liệu: <b>${symbols.toLocaleString("en-US")}</b> mã · ${bars.toLocaleString("en-US")} bars\n` +
-        `🔔 Tín hiệu hôm nay: <b>${todaySignals}</b> · Vị thế mở: <b>${openTrades}</b>\n` +
+        `🔔 Tín hiệu phiên gần nhất: <b>${todaySignals}</b> · Vị thế mở: <b>${openTrades}</b>\n` +
         `⚙️ scanner <b>${scan ? "ON" : "OFF"}</b> · paper <b>${paper ? "ON" : "OFF"}</b> · kill <b>${kill ? "ON 🛑" : "off"}</b>\n` +
         `💰 NAV <b>${(pf.nav / 1e6).toFixed(2)}tr</b> (${pf.totalPct >= 0 ? "+" : ""}${pf.totalPct.toFixed(2)}% so với vốn ${(pf.initial / 1e6).toFixed(0)}tr) · risk/lệnh ${(risk * 100).toFixed(1)}% · universe <b>${(await getSetting("universe")).toUpperCase()}</b>`,
     );
@@ -61,15 +61,16 @@ export function createBot(): Bot {
 
   bot.command("signals", async (ctx) => {
     if (!allowed(ctx)) return;
+    const date = await latestSignalDate();
     const sigs = await prisma.signal.findMany({
-      where: { date: vnToday() },
+      where: { date: date ?? "" },
       include: { symbol: true, strategy: true },
       orderBy: { id: "desc" },
       take: 20,
     });
-    if (!sigs.length) return void (await ctx.reply("Không có tín hiệu hôm nay."));
+    if (!sigs.length) return void (await ctx.reply("Chưa có tín hiệu nào."));
     await ctx.reply(
-      [`🔔 <b>TÍN HIỆU HÔM NAY</b>`, ...sigs.map((s) => {
+      [`🔔 <b>TÍN HIỆU</b> — nến ${date}, cho phiên kế tiếp`, ...sigs.map((s) => {
         const up = (((s.target - s.entry) / s.entry) * 100).toFixed(1);
         const dn = (((s.entry - s.stop) / s.entry) * 100).toFixed(1);
         return (
@@ -91,7 +92,7 @@ export function createBot(): Bot {
   bot.command("orders", async (ctx) => {
     if (!allowed(ctx)) return;
     const pending = await prisma.signal.findMany({
-      where: { date: vnToday(), status: { in: ["new", "notified"] } },
+      where: { date: (await latestSignalDate()) ?? "", status: { in: ["new", "notified"] } },
       include: { symbol: true, strategy: true },
       orderBy: { id: "desc" },
       take: 15,
@@ -326,20 +327,16 @@ export function createBot(): Bot {
       if (!last) return void (await ctx.reply("❌ không có giá tham chiếu — truyền giá: /close GAS 92"));
       exit = last.close;
     }
-    const proceeds = exit * trade.qty * 1000 * (1 - 0.0025);
-    const cost = trade.entryPrice * trade.qty * 1000 * 1.0015;
-    const pnl = proceeds - cost;
-    await prisma.trade.update({
-      where: { id: trade.id },
-      data: { status: "closed", exitPrice: exit, pnl, exitReason: "manual", closedAt: new Date() },
-    });
-    const pnlPct = (pnl / (trade.entryPrice * trade.qty * 1000)) * 100;
-    const icon = pnl >= 0 ? "🟢" : "🔴";
+    const { closeTrade } = await import("../trades");
+    const r = (await closeTrade(trade.id, exit))!;
     await ctx.reply(
-      `🔒 <b>ĐÓNG ${sym.ticker}</b>\n\n` +
-        `Bán ${trade.qty.toLocaleString("en-US")}cp @ ${px(exit)} (vốn ${px(trade.entryPrice)})\n` +
-        `${icon} P&L net <b>${pnl >= 0 ? "+" : ""}${(pnl / 1e6).toFixed(2)}tr</b>` +
-        ` (${pnlPct >= 0 ? "+" : ""}${pnlPct.toFixed(2)}%) — đã trừ phí+thuế`,
+      `🔒 <b>ĐÓNG ${sym.ticker}</b>
+
+` +
+        `Bán ${trade.qty.toLocaleString("en-US")}cp @ ${px(exit)} (vốn ${px(trade.entryPrice)})
+` +
+        `${r.pnl >= 0 ? "🟢" : "🔴"} P&L net <b>${r.pnl >= 0 ? "+" : ""}${(r.pnl / 1e6).toFixed(2)}tr</b>` +
+        ` (${r.pnlPct >= 0 ? "+" : ""}${r.pnlPct.toFixed(2)}%) — đã trừ phí+thuế`,
     );
   });
 
@@ -354,29 +351,12 @@ export function createBot(): Bot {
         await ctx.answerCallbackQuery({ text: "Signal này đã xử lý" });
         return;
       }
-      const signal = await prisma.signal.update({
-        where: { id },
-        data: { status: action === "skip" ? "skipped" : "taken" },
-      });
       if (action === "taken") {
-        // Lệnh đặt tay ngoài broker → mở Trade để watcher cắt lỗ + journal.
-        // Guard: signal có thể đã có trade (bấm 2 lần / Telegram retry)
-        const dup = await prisma.trade.findFirst({
-          where: { signalId: signal.id, status: "open" },
-        });
-        if (!dup) {
-          await prisma.trade.create({
-            data: {
-              symbolId: signal.symbolId,
-              qty: signal.qty,
-              entryPrice: signal.entry,
-              stopPrice: signal.stop,
-              targetPrice: signal.target,
-              signalId: signal.id,
-              note: "manual",
-            },
-          });
-        }
+        // Lệnh đặt tay ngoài broker → mở Trade để watcher cắt lỗ + journal
+        const { takeSignal } = await import("../trades");
+        await takeSignal(id);
+      } else {
+        await prisma.signal.update({ where: { id }, data: { status: "skipped" } });
       }
       await ctx.answerCallbackQuery({ text: action === "skip" ? "Đã bỏ qua" : "Đã mở trade + bật watcher" });
     } else if (action === "setplan") {

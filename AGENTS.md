@@ -9,7 +9,8 @@ auto-deploy từ `main`. Repo: `github.com/truongpham5197/vn-trader`.
 ```bash
 pnpm install              # KHÔNG dùng npm — npm 9.6 crash resolve vitest
 pnpm dev                  # local :3000 (instrumentation bật cron+polling)
-npx next start -p 3100    # production build local
+VERCEL=1 npx next start -p 3100  # prod build local — VERCEL=1 để KHÔNG
+                          # bật cron/watcher chạy vào DB prod
 pnpm test                 # vitest run — chạy full chỉ 1 lần ở gate cuối
 pnpm vitest related <file># test liên quan trong lúc code
 npx next build            # typecheck+build — PHẢI xanh trước khi commit
@@ -68,6 +69,18 @@ app/api/settings  POST {key,value} — web dashboard chỉnh: navVnd, riskPct
                paperTrading KHÔNG sửa từ web. KHÔNG auth — user chọn
                2026-09-22 (UI không cần password); an toàn dựa vào validate
                + báo Telegram mỗi lần đổi scanner/kill
+app/api/trades, trades/[id]  CRUD vị thế từ web: POST mở, PATCH sửa /
+               {close,exit} bán (closeTrade), DELETE — báo Telegram
+app/api/signals/[id]  PATCH take|skip|reset, DELETE (gỡ link trade/order)
+app/api/strategies/[id]  PATCH {enabled, params} — params merge defaults,
+               chặn key lạ / ≤0, {} = về mặc định
+app/api/watchlist  POST/DELETE {ticker} → Setting `watchlist` (JSON) —
+               scan luôn quét các mã này (như held tickers)
+lib/trades.ts  netPnl/closeTrade/takeSignal/watchlist — dùng chung bot+web
+lib/api.ts     pos()/bad()/body() validate cho route web
+app/components/ui.tsx  Button/Modal/ModalForm/toast/useApi (refresh sau lưu)
+Trang: / (tổng quan), /signals (chip ngày + tab trạng thái), /journal,
+               /sectors, /backtest, /settings (cấu hình, chiến lược, theo dõi)
 ```
 
 Vercel Hobby: function ≤60s, không process nền, cron 1 lần/ngày → mọi job nặng
@@ -99,7 +112,8 @@ Vercel cron: eod-sync 15:20 + scan 16:50 chỉ là fallback — scan idempotent)
 - `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `CRON_SECRET` đã lộ trong chat → cần
   rotate (Neon console + @BotFather `/revoke`), update Vercel env sau.
 - Route mutating bắt buộc `cronAuthorized()` / webhook secret check.
-  Ngoại lệ duy nhất: `/api/settings` (web UI, user quyết định không password).
+  Ngoại lệ: route web `/api/settings|trades|signals|strategies|watchlist`
+  (user quyết định UI không password) — bắt buộc validate server-side.
 
 ## 5. Coding conventions (theo code hiện có)
 
@@ -154,4 +168,9 @@ Vercel cron: eod-sync 15:20 + scan 16:50 chỉ là fallback — scan idempotent)
   chặn trước 15:10 + kiểm tra độ phủ HOSE trước khi coi là xong.
 - `setTimeout(Infinity)` bị Node ép về 1ms → syncDailyBars không truyền
   deadlineMs từng làm mọi mã fail "deadline"; chỉ race khi có deadline.
+- `Signal.date` = ngày NẾN (phiên đã đóng), dùng cho phiên kế tiếp. Lọc
+  theo `vnToday()` → 0 tín hiệu tới khi scan chiều chạy → dùng
+  `latestSignalDate()` (lib/signals.ts). Trước 2026-09-23 web+bot lọc sai
+  → user thấy "tín hiệu cũ".
+- universe `vn30` cho 0 tín hiệu nhiều ngày → default giờ `liquid`.
 - Neon free: connection drop thoáng qua → retry query hoặc chấp nhận DataGap.

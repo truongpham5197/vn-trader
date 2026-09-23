@@ -1,62 +1,50 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { vnToday } from "@/lib/vn-time";
-import { getBool, getNum, getSetting } from "@/lib/settings";
+import { getBool, getSetting } from "@/lib/settings";
 import { positionsReport } from "@/lib/report/positions";
 import { loadPortfolio } from "@/lib/report/portfolio";
 import { vn30Snapshot } from "@/lib/analysis/vn30";
+import { latestSignalDate } from "@/lib/signals";
 import SignalTable from "./components/SignalTable";
-import SettingsPanel from "./components/SettingsPanel";
-import { px } from "@/lib/format";
+import PositionsTable from "./components/PositionsTable";
+import { AddTradeButton } from "./components/TradeActions";
+import AutoRefresh from "./components/AutoRefresh";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const today = vnToday();
-  const [symbolCount, barCount, todaySignals, latestSignal, positions, orders, vn30] =
-    await Promise.all([
-      prisma.symbol.count({ where: { active: true } }),
-      prisma.dailyBar.count(),
-      prisma.signal.findMany({
-        where: { date: today },
-        include: { symbol: true, strategy: true },
-        orderBy: { id: "desc" },
-      }),
-      prisma.dailyBar.findFirst({ orderBy: { date: "desc" }, select: { date: true } }),
-      positionsReport(),
-      prisma.order.findMany({
-        orderBy: { id: "desc" },
-        take: 10,
-        include: { signal: { include: { symbol: true } } },
-      }),
-      vn30Snapshot(),
-    ]);
-  const [scanEnabled, paper, kill] = await Promise.all([
+  const sigDate = await latestSignalDate();
+  const [symbolCount, latestBar, latestSignals, positions, vn30, scanEnabled, paper, kill, universe] = await Promise.all([
+    prisma.symbol.count({ where: { active: true } }),
+    prisma.dailyBar.findFirst({ orderBy: { date: "desc" }, select: { date: true } }),
+    sigDate
+      ? prisma.signal.findMany({
+          where: { date: sigDate },
+          include: { symbol: true, strategy: true },
+          orderBy: [{ rr: "desc" }, { id: "desc" }],
+        })
+      : [],
+    positionsReport(),
+    vn30Snapshot(),
     getBool("scanEnabled"),
     getBool("paperTrading"),
     getBool("killSwitch"),
+    getSetting("universe"),
   ]);
   const pf = await loadPortfolio(positions);
-  const nav = pf.initial;
-  const riskPct = await getNum("riskPct");
-  const universe = await getSetting("universe");
-  const minValue = await getNum("universeMinValueVnd");
+  const pending = latestSignals.filter((s) => s.status === "new" || s.status === "notified");
+  const UNIVERSE: Record<string, string> = { vn30: "VN30", liquid: "mã thanh khoản", all: "toàn thị trường" };
 
   return (
-    <main className="mx-auto w-full min-w-0 max-w-5xl p-4 text-sm sm:p-6">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold tracking-tight">VN Trading Assistant</h1>
-        <nav className="flex flex-wrap gap-2 text-xs">
-          {(["/signals", "/sectors", "/backtest", "/journal"] as const).map((h) => (
-            <Link
-              key={h}
-              href={h}
-              className="rounded-md border border-border bg-card px-3 py-1.5 text-muted transition-colors hover:border-accent hover:text-foreground"
-            >
-              {h.slice(1)}
-            </Link>
-          ))}
-        </nav>
+    <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
+      <AutoRefresh />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-bold tracking-tight">Tổng quan</h1>
+        <Link href="/settings" className="flex flex-wrap gap-2 text-xs" title="Đổi ở trang Cài đặt">
+          <Badge ok={scanEnabled && !kill}>{kill ? "🛑 Kill switch BẬT" : scanEnabled ? "● Đang quét" : "⏸ Tắt quét"}</Badge>
+          <Badge ok={paper}>{paper ? "Tiền ảo" : "TIỀN THẬT"}</Badge>
+          <span className="rounded-md border border-border px-2 py-1 text-muted">Phạm vi: {UNIVERSE[universe] ?? universe}</span>
+        </Link>
       </div>
 
       {/* Tài sản — NAV tự tính từ vốn ban đầu + lãi/lỗ đã chốt + giá CP đang giữ */}
@@ -119,91 +107,41 @@ export default async function Home() {
           </span>
         )}
         <span className="ml-auto">
-          Dữ liệu {symbolCount.toLocaleString("en-US")} mã · {barCount.toLocaleString("en-US")} nến · mới nhất{" "}
-          {latestSignal?.date ?? "—"}
+          Dữ liệu {symbolCount.toLocaleString("en-US")} mã · nến mới nhất <span className="num">{latestBar?.date ?? "—"}</span>
         </span>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-start gap-3">
-        <div className="flex gap-2 text-xs">
-          <Badge ok={scanEnabled}>scanner {scanEnabled ? "ON" : "OFF"}</Badge>
-          <Badge ok={paper}>paper {paper ? "ON" : "OFF"}</Badge>
-          <Badge ok={!kill}>{kill ? "🛑 kill ON" : "kill off"}</Badge>
+      {/* Tín hiệu lượt quét gần nhất — date = nến đã đóng, dùng cho phiên kế tiếp */}
+      <section className="mb-8">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-semibold">
+            Tín hiệu mới nhất{" "}
+            {sigDate && (
+              <span className="text-xs font-normal text-muted">
+                nến <span className="num">{sigDate}</span> · {pending.length} chờ xử lý / {latestSignals.length}
+              </span>
+            )}
+          </h2>
+          <Link href="/signals" className="text-xs text-accent hover:underline">
+            Xem tất cả →
+          </Link>
         </div>
-        <div className="grow">
-          <SettingsPanel
-            nav={nav}
-            riskPct={riskPct}
-            universe={universe}
-            minValue={minValue}
-            scanEnabled={scanEnabled}
-            kill={kill}
-            paper={paper}
-          />
-        </div>
-      </div>
-
-      {/* Vị thế đang giữ — giá live nến 1m */}
-      <section className="mb-6">
-        <h2 className="mb-2 font-semibold">Vị thế đang giữ</h2>
-        {positions.length === 0 ? (
-          <p className="card p-4 text-muted">
-            Chưa có vị thế. Log bằng <code className="num">/add MÃ &lt;sl&gt; &lt;giá&gt;</code> trong Telegram.
+        {pending.length === 0 ? (
+          <p className="card p-6 text-center text-muted">
+            {latestSignals.length ? "Đã xử lý hết tín hiệu của lượt quét gần nhất." : "Chưa có tín hiệu."} Lượt quét kế tiếp chạy sau khi chốt nến
+            (khoảng 15:10–17:00 T2–T6) và báo qua Telegram.
           </p>
         ) : (
-          <div className="card overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-border text-left text-muted">
-                  <th className="p-3 font-medium">Mã</th>
-                  <th className="p-3 text-right font-medium">SL</th>
-                  <th className="p-3 text-right font-medium">Giá vốn</th>
-                  <th className="p-3 text-right font-medium">Giá hiện tại</th>
-                  <th className="p-3 text-right font-medium">P&L</th>
-                  <th className="p-3 text-right font-medium">Hôm nay</th>
-                  <th className="p-3 text-right font-medium">Stop</th>
-                  <th className="p-3 text-right font-medium">Target</th>
-                  <th className="p-3 font-medium">T+</th>
-                </tr>
-              </thead>
-              <tbody>
-                {positions.map((p) => (
-                  <tr
-                    key={p.ticker}
-                    className="border-b border-border/50 last:border-0 hover:bg-white/[0.03]"
-                  >
-                    <td className="p-3 font-semibold">{p.ticker}</td>
-                    <td className="num p-3 text-right">{p.qty.toLocaleString("en-US")}</td>
-                    <td className="num p-3 text-right">{p.entry.toFixed(2)}</td>
-                    <td className="num p-3 text-right font-medium">{px(p.price, "?")}</td>
-                    <td
-                      className={`num p-3 text-right font-medium ${
-                        (p.pnlPct ?? 0) >= 0 ? "text-gain" : "text-loss"
-                      }`}
-                    >
-                      {p.pnlPct !== null ? `${p.pnlPct >= 0 ? "+" : ""}${p.pnlPct.toFixed(2)}%` : "?"}
-                      {p.pnlVnd !== null && (
-                        <span className="text-muted"> {p.pnlVnd >= 0 ? "+" : ""}{(p.pnlVnd / 1e6).toFixed(1)}tr</span>
-                      )}
-                    </td>
-                    <td
-                      className={`num p-3 text-right ${
-                        (p.dayPct ?? 0) >= 0 ? "text-gain" : "text-loss"
-                      }`}
-                    >
-                      {p.dayPct !== null ? `${p.dayPct >= 0 ? "+" : ""}${p.dayPct.toFixed(2)}%` : "?"}
-                    </td>
-                    <td className="num p-3 text-right text-loss">{px(p.stop)}</td>
-                    <td className="num p-3 text-right text-gain">{px(p.target)}</td>
-                    <td className="p-3 text-muted">
-                      {p.sessionsHeld >= 2 ? "✓ bán được" : `⏳T+${p.sessionsHeld}`}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SignalTable signals={pending.slice(0, 12)} showDate={false} />
         )}
+      </section>
+
+      <section className="mb-8">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 className="font-semibold">Vị thế đang giữ</h2>
+          <AddTradeButton />
+        </div>
+        <PositionsTable positions={positions} />
       </section>
 
       {/* VN30 watchlist — gợi ý vị thế tốt */}
@@ -252,84 +190,6 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Lệnh gần đây */}
-      <section className="mb-6">
-        <h2 className="mb-2 font-semibold">Lệnh gần đây</h2>
-        {orders.length === 0 ? (
-          <p className="card p-4 text-muted">Chưa có lệnh nào.</p>
-        ) : (
-          <div className="card overflow-x-auto">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-border text-left text-muted">
-                  <th className="p-3 font-medium">#</th>
-                  <th className="p-3 font-medium">Mã</th>
-                  <th className="p-3 font-medium">Side</th>
-                  <th className="p-3 text-right font-medium">SL đặt</th>
-                  <th className="p-3 text-right font-medium">Giá</th>
-                  <th className="p-3 text-right font-medium">Giá trị</th>
-                  <th className="p-3 font-medium">Loại</th>
-                  <th className="p-3 font-medium">Status</th>
-                  <th className="p-3 font-medium">Lệnh TCBS</th>
-                  <th className="p-3 font-medium">Thời gian</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o) => (
-                  <tr
-                    key={o.id}
-                    className="border-b border-border/50 last:border-0 hover:bg-white/[0.03]"
-                  >
-                    <td className="num p-3 text-muted">{o.id}</td>
-                    <td className="p-3 font-semibold">{o.signal?.symbol.ticker ?? "—"}</td>
-                    <td className={`p-3 font-medium ${o.side === "BUY" ? "text-gain" : "text-loss"}`}>
-                      {o.side}
-                    </td>
-                    <td className="num p-3 text-right">{o.qty.toLocaleString("en-US")}</td>
-                    <td className="num p-3 text-right">{o.price.toFixed(2)}</td>
-                    <td className="num p-3 text-right text-muted">
-                      {((o.qty * o.price * 1000) / 1e6).toFixed(1)}tr
-                    </td>
-                    <td className="p-3 text-muted">
-                      {o.type} · {o.mode}
-                    </td>
-                    <td
-                      className={`p-3 font-medium ${
-                        o.status === "filled"
-                          ? "text-gain"
-                          : o.status === "rejected" || o.status === "cancelled"
-                            ? "text-loss"
-                            : "text-accent"
-                      }`}
-                    >
-                      {o.status}
-                    </td>
-                    <td className="num p-3 text-muted">{o.tcbsOrderId ?? "—"}</td>
-                    <td className="num p-3 text-muted">
-                      {o.placedAt.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-semibold">
-          Tín hiệu hôm nay <span className="num text-muted">{today}</span> — {todaySignals.length}
-        </h2>
-        <Link href="/signals" className="text-accent hover:underline">
-          tất cả →
-        </Link>
-      </div>
-
-      {todaySignals.length === 0 ? (
-        <p className="card p-4 text-muted">Chưa có tín hiệu. Cron scan chạy 15:40 T2–T6.</p>
-      ) : (
-        <SignalTable signals={todaySignals} />
-      )}
     </main>
   );
 }

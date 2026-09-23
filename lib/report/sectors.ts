@@ -1,5 +1,6 @@
 import { prisma } from "../prisma";
 import { vn30Snapshot } from "../analysis/vn30";
+import { getWatchlist } from "../trades";
 
 export interface CorpActionInfo {
   exDate: string; // phiên GDKHQ
@@ -28,14 +29,15 @@ export interface SectorRow {
 
 /**
  * Bảng nhóm ngành: mã đang theo dõi (vị thế mở + signal ngày mới nhất
- * new/notified + setup VN30) gom theo sector ICB, kèm GDKHQ gần nhất.
+ * new/notified + setup VN30 + danh sách theo dõi) gom theo sector ICB, kèm GDKHQ gần nhất.
  * Giá live điền phía client qua /api/quotes.
  */
 export async function buildSectorBoard(): Promise<SectorRow[]> {
-  const [trades, lastSig, vn30] = await Promise.all([
+  const [trades, lastSig, vn30, watchlist] = await Promise.all([
     prisma.trade.findMany({ where: { status: "open" }, include: { symbol: true } }),
     prisma.signal.findFirst({ orderBy: { date: "desc" }, select: { date: true } }),
     vn30Snapshot(),
+    getWatchlist(),
   ]);
 
   const signals = lastSig
@@ -130,6 +132,9 @@ export async function buildSectorBoard(): Promise<SectorRow[]> {
       reason: r.note,
     });
   }
+
+  // Danh sách theo dõi (trang Cài đặt) — ngành điền từ Symbol bên dưới
+  for (const t of watchlist) if (!map.has(t)) put(t, { label: "theo dõi" });
 
   const tickers = [...map.keys()];
   if (!tickers.length) return [];

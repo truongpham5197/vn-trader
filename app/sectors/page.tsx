@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { buildSectorBoard } from "@/lib/report/sectors";
 import { currentSectorStrength } from "@/lib/analysis/sector-live";
 import SectorBoard from "../components/SectorBoard";
@@ -12,10 +11,7 @@ export default async function SectorsPage() {
 
   return (
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
-      <Link href="/" className="text-accent hover:underline">
-        ← dashboard
-      </Link>
-      <h1 className="my-4 text-xl font-bold tracking-tight">Nhóm ngành</h1>
+      <h1 className="mb-4 text-xl font-bold tracking-tight">Nhóm ngành</h1>
       <AutoRefresh />
       <SectorStrength data={strength} />
 

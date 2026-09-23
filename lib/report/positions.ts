@@ -3,6 +3,7 @@ import { ownerId } from "../user";
 import { getQuote } from "../price";
 import { px } from "../format";
 import { BUY_FEE, SELL_FEE_TAX } from "../fees";
+import { levelState } from "../risk/levels";
 
 export interface PositionLine {
   id: number; // Trade.id
@@ -79,6 +80,17 @@ export async function positionsReport(userId?: number): Promise<PositionLine[]> 
   }));
 }
 
+const LEVEL_ICON = { "stop-broken": "🛑", "near-stop": "⚠️", "target-hit": "🎯", "near-target": "🎯" } as const;
+
+/** Dòng trạng thái so với cắt lỗ/chốt lời — "ĐÃ THỦNG" khi giá ≤ cắt lỗ, "sát" chỉ khi còn trên ≤3%. */
+function level(l: PositionLine): string {
+  const s = levelState(l.price, l.stop, l.target);
+  if (!s) return "";
+  const head = s.kind === "stop-broken" || s.kind === "target-hit" ? `<b>${s.label.toUpperCase()}</b>` : s.label;
+  const t2 = s.kind === "stop-broken" && l.sessionsHeld < 2 ? " (Chưa đủ T+2 — CP về tài khoản mới bán được.)" : "";
+  return `\n  ${LEVEL_ICON[s.kind]} ${head}: ${s.detail}${t2}`;
+}
+
 export function formatPositionsReport(lines: PositionLine[]): string {
   if (!lines.length) return "📊 Không có vị thế đang mở.";
   const rows = lines.map((l) => {
@@ -98,7 +110,8 @@ export function formatPositionsReport(lines: PositionLine[]): string {
       ohlc +
       `\n  ${pnlIcon} P&L ${s(l.pnlPct)}${l.pnlPct?.toFixed(2) ?? "?"}%` +
       `${l.pnlVnd != null ? ` (${s(l.pnlVnd)}${(l.pnlVnd / 1e6).toFixed(1)}tr)` : ""}` +
-      ` · ${stop} · ${tgt}${t2}`
+      ` · ${stop} · ${tgt}${t2}` +
+      level(l)
     );
   });
   return [`📊 <b>VỊ THẾ ĐANG GIỮ</b> (${lines.length})`, ...rows].join("\n\n");

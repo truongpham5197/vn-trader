@@ -19,6 +19,13 @@ type Patch = {
   close: boolean;
 };
 
+/** Đổi cắt lỗ/chốt lời → gỡ dấu stop-hit/target-hit để watcher báo lại theo mốc mới. */
+const rearm = (note: string | null, stop: boolean, target: boolean) =>
+  (note ?? "")
+    .split(/\s+/)
+    .filter((w) => w && !(stop && w === "stop-hit") && !(target && w === "target-hit"))
+    .join(" ") || null;
+
 // Sửa vị thế (SL, giá vốn, cắt lỗ, chốt lời, giá bán, ghi chú) hoặc đóng lệnh ({close:true, exit})
 export async function PATCH(req: Request, { params }: Ctx) {
   const id = Number((await params).id);
@@ -74,7 +81,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
       entryPrice: entry,
       stopPrice: stop,
       targetPrice: target,
-      ...(b.note !== undefined && { note: String(b.note).trim() || null }),
+      note: rearm(b.note !== undefined ? String(b.note) : t.note, stop !== t.stopPrice, target !== t.targetPrice),
       // Lệnh đã đóng: sửa giá/SL thì tính lại P&L
       ...(t.status === "closed" &&
         exit && { exitPrice: exit, pnl: netPnl(entry, exit, qty) }),

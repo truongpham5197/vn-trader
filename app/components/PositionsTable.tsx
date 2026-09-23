@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { PositionLine } from "@/lib/report/positions";
 import { px } from "@/lib/format";
 import { netPnl, netPnlPct } from "@/lib/fees";
+import { levelState, type LevelState } from "@/lib/risk/levels";
 import { TradeActions } from "./TradeActions";
 import { LiveBadge, useQuotes } from "./live";
 
@@ -41,10 +42,22 @@ const tradeOf = (p: PositionLine) => ({
   price: p.price,
 });
 
+/** Badge vị thế so với cắt lỗ/chốt lời — "đã thủng" khác "sát" (giá còn trên cắt lỗ ≤3%). */
+function LevelBadge({ s }: { s: LevelState | null }) {
+  if (!s) return null;
+  const strong = s.kind === "stop-broken" || s.kind === "target-hit";
+  const cls = s.tone === "loss" ? (strong ? "bg-loss text-white" : "bg-loss/15 text-loss") : strong ? "bg-gain/25 text-gain" : "bg-gain/10 text-gain";
+  return (
+    <span title={s.detail} className={`ml-1.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-medium ${cls}`}>
+      {s.kind === "stop-broken" ? "🛑 " : ""}
+      {s.label}
+    </span>
+  );
+}
+
 /** Thẻ vị thế cho mobile. */
 function PositionCard({ p }: { p: PositionLine }) {
-  const nearStop = p.price !== null && p.stop !== null && p.price <= p.stop * 1.02;
-  const hitTarget = p.price !== null && p.target !== null && p.price >= p.target;
+  const lv = levelState(p.price, p.stop, p.target);
   return (
     <div className="card p-3 text-xs">
       <div className="flex items-start justify-between gap-2">
@@ -52,8 +65,7 @@ function PositionCard({ p }: { p: PositionLine }) {
           <Link href={`/stock/${p.ticker}`} className="text-sm font-semibold hover:text-accent">
             {p.ticker}
           </Link>
-          {nearStop && <span className="ml-1.5 rounded bg-loss/15 px-1.5 py-0.5 text-[10px] text-loss">sát cắt lỗ</span>}
-          {hitTarget && <span className="ml-1.5 rounded bg-gain/15 px-1.5 py-0.5 text-[10px] text-gain">chạm chốt lời</span>}
+          <LevelBadge s={lv} />
           <div className="text-[11px] text-muted">
             <span className="num">{p.qty.toLocaleString("en-US")}</span> cp · vốn <span className="num">{px(p.entry)}</span> ·{" "}
             {p.sessionsHeld >= 2 ? "✓ bán được" : `⏳T+${p.sessionsHeld}`}
@@ -84,6 +96,9 @@ function PositionCard({ p }: { p: PositionLine }) {
           <span className="text-gain">{px(p.target)}</span>
         </div>
       </div>
+      {lv && (lv.kind === "stop-broken" || lv.kind === "target-hit") && (
+        <p className={`mt-2 text-[11px] ${lv.tone === "loss" ? "text-loss" : "text-gain"}`}>{lv.detail}</p>
+      )}
       {p.note && !p.note.startsWith("manual") && <div className="mt-1 truncate text-[11px] text-muted">{p.note}</div>}
       <div className="mt-2 flex justify-end">
         <TradeActions t={tradeOf(p)} />
@@ -136,11 +151,7 @@ export default function PositionsTable({
           </thead>
           <tbody>
             {positions.map((p) => {
-              // Cảnh báo khi giá đã sát/qua cắt lỗ hoặc chạm chốt lời
-              const nearStop =
-                p.price !== null && p.stop !== null && p.price <= p.stop * 1.02;
-              const hitTarget =
-                p.price !== null && p.target !== null && p.price >= p.target;
+              const lv = levelState(p.price, p.stop, p.target);
               return (
                 <tr
                   key={p.id}
@@ -154,16 +165,7 @@ export default function PositionsTable({
                       >
                         {p.ticker}
                       </Link>
-                      {nearStop && (
-                        <span className="ml-1.5 rounded bg-loss/15 px-1.5 py-0.5 text-[10px] text-loss">
-                          sát cắt lỗ
-                        </span>
-                      )}
-                      {hitTarget && (
-                        <span className="ml-1.5 rounded bg-gain/15 px-1.5 py-0.5 text-[10px] text-gain">
-                          chạm chốt lời
-                        </span>
-                      )}
+                      <LevelBadge s={lv} />
                     </div>
                     {p.note && !p.note.startsWith("manual") && (
                       <div className="max-w-40 truncate text-[11px] text-muted">

@@ -26,7 +26,9 @@ export function startJobs(): void {
     async () => {
       console.log("[cron] scan start");
       const r = await runScan({ notify: true });
-      console.log("[cron] scan done", r);
+            const { runSignalHealth } = await import("./report/signal-health");
+            const expired = await runSignalHealth().catch((e) => console.error("[cron] signal-health", e));
+            console.log("[cron] scan done", r, { expired });
     },
     { timezone: TZ },
   );

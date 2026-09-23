@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import SignalTable from "../components/SignalTable";
 import { GUEST, currentUser } from "@/lib/user";
+import { latestSignalDate } from "@/lib/signals";
 
 export const dynamic = "force-dynamic";
 
@@ -17,11 +18,12 @@ export default async function SignalsPage({
 }: {
   searchParams: Promise<{ date?: string; status?: string }>;
 }) {
-  const [sp, u] = await Promise.all([searchParams, currentUser().then((x) => x ?? GUEST)]);
+  const [sp, u, latestSession] = await Promise.all([searchParams, currentUser().then((x) => x ?? GUEST), latestSignalDate()]);
   const dates = (
     await prisma.signal.groupBy({ by: ["date"], _count: { _all: true }, orderBy: { date: "desc" }, take: 10 })
   ).map((d) => ({ date: d.date, n: d._count._all }));
-  const date = sp.date === "all" ? undefined : (sp.date ?? dates[0]?.date);
+  if (latestSession && !dates.some((d) => d.date === latestSession)) dates.unshift({ date: latestSession, n: 0 });
+  const date = sp.date === "all" ? undefined : (sp.date ?? latestSession ?? dates[0]?.date);
   const tab = TABS.find((t) => t[0] === sp.status) ?? TABS[3];
   const signals = await prisma.signal.findMany({
     where: { ...(date && { date }), ...(tab[2] && { status: { in: [...tab[2]] } }) },
@@ -42,8 +44,9 @@ export default async function SignalsPage({
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
       <h1 className="text-xl font-bold tracking-tight">Tín hiệu</h1>
       <p className="mt-1 mb-4 text-xs text-muted">
-        Quét tự động sau khi chốt nến mỗi chiều T2–T6. Tín hiệu từ nến ngày <b>D</b> dùng để đặt lệnh phiên kế tiếp. Bấm vào mã để
-        xem vì sao mua: lý do kỹ thuật, tình hình kinh doanh (lợi nhuận, doanh thu theo quý) và tin công bố gần đây. Đây là gợi ý kỹ thuật, chưa chứng minh có lãi — tập bằng tiền ảo trước.
+        Quét tự động sau khi chốt nến mỗi chiều T2–T6. Tín hiệu từ nến ngày <b>D</b> dùng để đặt lệnh phiên kế tiếp.
+                Bấm mã để xem lý do, kế hoạch vốn riêng và bằng chứng hồi cố. Đây là gợi ý kỹ thuật, chưa chứng minh có lãi — tập bằng tiền ảo trước.{" "}
+                <Link href="/signals/evidence" className="text-accent hover:underline">Bằng chứng toàn bộ tín hiệu →</Link>
       </p>
 
       <div className="mb-3 flex flex-wrap gap-2">
@@ -67,7 +70,7 @@ export default async function SignalsPage({
       {signals.length === 0 ? (
         <p className="card p-6 text-center text-muted">Không có tín hiệu nào khớp bộ lọc.</p>
       ) : (
-        <SignalTable signals={signals} showDate={!date} owner={u.owner} />
+        <SignalTable signals={signals} showDate={!date} owner={u.owner} latestSession={latestSession} />
       )}
     </main>
   );

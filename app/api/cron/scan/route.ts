@@ -10,6 +10,11 @@ export const maxDuration = 60;
 async function handle(req: Request, notify: boolean) {
   if (!cronAuthorized(req)) return cronForbidden();
   const r = await runScan({ notify });
+  const { runSignalHealth } = await import("@/lib/report/signal-health");
+  const expired = await runSignalHealth().catch((e) => {
+    console.error("[scan] signal-health", e);
+    return 0;
+  });
 
   // EOD stop-check + target alert trên giá close vừa sync (backup cho watcher intraday)
   await runWatcher().catch((e) => console.error("[scan] watcher EOD", e));
@@ -24,7 +29,7 @@ async function handle(req: Request, notify: boolean) {
     await weeklyReport().catch((e) => console.error("[scan] weekly", e));
   }
 
-  return NextResponse.json(r);
+  return NextResponse.json({ ...r, expired });
 }
 
 export async function POST(req: Request) {

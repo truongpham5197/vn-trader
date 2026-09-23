@@ -32,4 +32,6 @@ export interface StrategyDef {
   fn: StrategyFn;
   defaults: Record<string, number>;
   shouldExit?: ExitCheckFn;
+  /** Số nến tối thiểu với params đã merge defaults — scan nạp theo max strategy đang bật. */
+  requiredBars?: (params: Record<string, number>) => number;
 }

@@ -32,12 +32,27 @@ lib/data/      vndirect.ts (list mã + ngành ICB), dnse.ts (OHLCV), sync.ts,
                GET /api/fundamentals (cache 3h) → SignalDetail ("vì sao?")
 lib/strategy/  pure fns → SignalCandidate {entry,stop,target,rr,reason,plan,buyZone}
                + shouldExit per strategy. Đăng ký trong lib/strategy/index.ts
-lib/backtest/  engine portfolio T+2/lot100/band ±7-10-15%/phí+thuế
-lib/scan.ts    batch-load bars → filter GTGD>5tỷ + held tickers luôn qua →
-               upsert Signal idempotent → notifySignal
+lib/backtest/  engine portfolio T+2/lot100/band ±7-10-15%/phí+thuế.
+               Equity gồm tiền chờ về T+2. Thoát theo rule lấy giá phiên sau,
+               không cùng nến đóng. Universe liquid tính as-of từng ngày.
+               Run cũ (không engineVersion) đánh dấu cũ trên /backtest.
+lib/scan.ts    nến theo requiredBars từng chiến lược (pullback mặc định 66),
+               GTGD 20 phiên gần nhất. Mã giữ/theo dõi vẫn quét nhưng không
+               mở BUY mới nếu thiếu thanh khoản hoặc thiếu lịch sử.
+               Ghi Setting latestScanDate sau vòng scan (kể cả 0 tín hiệu).
+lib/analysis/opportunity.ts  watch/waiting/actionable/extended/invalid/
+               expired/stale/blocked — vùng giá không thay xác nhận chiến lược.
+lib/quote-quality.ts  giá phút trong phiên ≤3 phút; ngoài giờ cần phiên đối chiếu.
+lib/report/signal-health.ts  sau scan: thủng SL + giá phút mới → status expired,
+               báo 1 lần, không tự bán. Cron scan gọi sau runScan.
+lib/report/signal-evidence.ts  hồi cố close vs entry 5/10/20 phiên cho MỌI
+               tín hiệu đã lưu — không phải PnL khớp lệnh. /signals/evidence chỉ owner.
+lib/risk/plan.ts + personal.ts  GET /api/signals/:id/plan — KL theo vốn user cookie,
+               không dùng Signal.qty dùng chung. Chỉ xem, không đặt lệnh.
 lib/corp-action.ts  GDKHQ: detectAdjustment (fresh/stored factor) +
                applyCorporateAction (×factor vào bars cũ + Trade/Signal mở)
-lib/risk/      sizing.ts (1% NAV, lot 100), suggest.ts (/plan gợi ý SL/TP)
+lib/risk/      sizing.ts (1% NAV, lot 100), suggest.ts (/plan gợi ý SL/TP),
+               plan.ts + personal.ts (KL theo từng user — xem mục scan ở trên)
                levels.ts — levelState(giá, SL, TP): "đã thủng cắt lỗ −X%" (giá ≤ SL)
                tách khỏi "sát cắt lỗ" (còn trên SL ≤3%), tương tự chốt lời —
                dùng chung badge web, báo cáo vị thế Telegram, cảnh báo watcher.

@@ -45,8 +45,8 @@ export default function RunForm({ strategies }: { strategies: string[] }) {
       <label className="flex flex-col gap-1">
         Universe
         <select name="universe" className="rounded border border-border bg-card px-2 py-1.5 text-foreground">
-          <option value="liquid">liquid (GTGD&gt;5tỷ)</option>
-          <option value="vn30">VN30</option>
+          <option value="liquid">liquid (GTGD as-of 20 phiên)</option>
+          <option value="vn30">VN30 (rổ hiện tại, không phải lịch sử)</option>
           <option value="all">all (chậm)</option>
         </select>
       </label>

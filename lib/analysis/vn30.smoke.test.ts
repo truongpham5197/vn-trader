@@ -1,14 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
 
-// Nạp .env thủ công (không phụ thuộc dotenv trong node_modules root)
-for (const line of readFileSync(".env", "utf8").split("\n")) {
-  const m = line.match(/^([A-Z_]+)=(.*)$/);
-  if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"|"$/g, "");
-}
 
 describe("vn30Snapshot (smoke, hits Neon)", () => {
-  it.skipIf(!process.env.DATABASE_URL)("returns ranked setups", async () => {
+  it.skipIf(process.env.RUN_LIVE_TESTS !== "1" || !process.env.DATABASE_URL)("returns ranked setups", async () => {
     const { vn30Snapshot } = await import("./vn30");
     const rows = await vn30Snapshot();
     console.log(

@@ -20,10 +20,10 @@ function marketVerdict(breadth: number): string {
 }
 
 function flowText(f: number): { text: string; cls: string } {
-  if (f >= 1.3) return { text: `💰 Tiền vào mạnh ×${f.toFixed(1)}`, cls: "text-gain" };
-  if (f >= 1.05) return { text: `Tiền vào ×${f.toFixed(2)}`, cls: "text-gain" };
+  if (f >= 1.3) return { text: `GTGD tăng ×${f.toFixed(1)}`, cls: "text-gain" };
+  if (f >= 1.05) return { text: `GTGD ×${f.toFixed(2)}`, cls: "text-gain" };
   if (f > 0.9) return { text: `Bình thường ×${f.toFixed(2)}`, cls: "text-muted" };
-  return { text: `Tiền rút ra ×${f.toFixed(2)}`, cls: "text-loss" };
+  return { text: `GTGD giảm ×${f.toFixed(2)}`, cls: "text-loss" };
 }
 
 export default function SectorStrength({ data }: { data: Data }) {
@@ -45,6 +45,8 @@ export default function SectorStrength({ data }: { data: Data }) {
           )}
         </div>
         <p className="mt-1 font-medium">{marketVerdict(market.breadth)}</p>
+        <p className="mt-1 text-xs text-muted">Bối cảnh theo quy tắc độ rộng, không phải dự báo. Ngưỡng lọc chưa chứng minh cải thiện lợi nhuận.</p>
+        {data.coverage && <p className="mt-1 text-xs text-muted">Độ phủ cùng phiên: {data.coverage.included}/{data.coverage.total} mã. Không trộn nến cũ vào xếp hạng mới.</p>}
         <div className="num mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
           <span>
             1 tuần <b className={tone(market.ret5)}>{signed(market.ret5)}</b>
@@ -62,10 +64,10 @@ export default function SectorStrength({ data }: { data: Data }) {
       {/* Top đáng chú ý */}
       {topPicks.length > 0 && (
         <section>
-          <h2 className="mb-1 font-semibold">⭐ Mã đáng chú ý nhất — thuộc các ngành đang mạnh</h2>
+          <h2 className="mb-1 font-semibold">⭐ Setup để theo dõi — chưa xác nhận mua</h2>
           <p className="mb-3 text-xs text-muted">
-            Chỉ đặt mua trong <b>vùng mua</b>. Giá đã chạy cao hơn thì bỏ qua, không đuổi theo. Mỗi thẻ ghi rõ vì sao được gợi ý và
-            tình hình kinh doanh của công ty. <LiveBadge />
+            Nằm trong vùng giá chưa đủ để mua. Chờ scanner xác nhận bằng nến đóng cửa và kiểm tra kế hoạch rủi ro riêng.
+            Nến trong phiên còn thay đổi. <LiveBadge />
           </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {topPicks.map((p) => (
@@ -76,10 +78,11 @@ export default function SectorStrength({ data }: { data: Data }) {
       )}
 
       {/* Bảng xếp hạng ngành */}
+      {!topPicks.length && <p className="card p-4 text-muted">Không có setup đạt bộ lọc hiện tại. Không bổ sung mã để đủ top; ưu tiên quan sát.</p>}
       <section>
-        <h2 className="mb-1 font-semibold">🏆 Xếp hạng nhóm ngành — tiền đang chảy vào đâu?</h2>
+        <h2 className="mb-1 font-semibold">🏆 Xếp hạng sức mạnh và hoạt động giao dịch ngành</h2>
         <p className="mb-3 text-xs text-muted">
-          Bấm vào từng ngành để xem mã gợi ý. Ngành đứng đầu = giá tăng tốt + nhiều mã cùng tăng + tiền đổ vào nhiều hơn.
+          Bấm vào ngành để xem setup. Xếp hạng tương đối theo giá, độ rộng và GTGD; ngành đứng đầu vẫn có thể giảm.
         </p>
         <div className="space-y-2">
           {sectors.map((s, i) => {
@@ -135,7 +138,7 @@ export default function SectorStrength({ data }: { data: Data }) {
                     <>
                       {s.trend === "weak" && (
                         <p className="mb-2 text-xs text-loss">
-                          ⚠️ Ngành đang yếu — dù mã có điểm mua đẹp, xác suất thành công thấp hơn. Người mới nên bỏ qua.
+                          ⚠️ Ngành đang yếu — bộ lọc thận trọng không ưu tiên mở mới. Chưa có số liệu để suy ra xác suất thắng.
                         </p>
                       )}
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -178,12 +181,12 @@ export default function SectorStrength({ data }: { data: Data }) {
             (giá cao hơn mức trung bình ~2,5 tháng). Trên 50% = cả ngành cùng khỏe, không phải chỉ 1–2 mã kéo.
           </li>
           <li>
-            <b className="text-foreground">Dòng tiền ×</b> — tiền mua bán tuần này so với trung bình tháng trước.
-            ×1,5 = sôi động gấp rưỡi → nhà đầu tư lớn đang chú ý ngành này.
+            <b className="text-foreground">GTGD ×</b> — giá trị giao dịch ước tính tuần này so với trung bình trước đó.
+            Không phải dòng tiền ròng hay bằng chứng nhà đầu tư lớn mua vào; trong phiên là ngoại suy theo thời gian, có thể sai lệch.
           </li>
           <li>
-            <b className="text-foreground">Vùng mua / Cắt lỗ / Chốt lời</b> — mua trong vùng; nếu giá rơi về mức cắt lỗ thì bán
-            để giữ vốn; lên tới chốt lời thì bán lấy lãi. Giá hiển thị bằng đồng/cổ phiếu.
+            <b className="text-foreground">Vùng theo dõi / Mốc vô hiệu / Mục tiêu mô hình</b> — kịch bản quan sát, không phải lệnh mua
+            hay dự báo. Stop không bảo đảm khớp đúng giá, đặc biệt khi chưa đủ T+2 hoặc mất thanh khoản.
           </li>
         </ul>
         <p className="mt-3 text-xs">

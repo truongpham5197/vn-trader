@@ -59,6 +59,23 @@ describe("computeSectorStrength", () => {
   it("top picks không lấy từ ngành yếu", () => {
     for (const p of r.topPicks) expect(p.sectorTrend).not.toBe("weak");
   });
+
+  it("không trộn mã thiếu phiên với phiên mới nhất", () => {
+    const current = stock("NEW", "A", 20, 30);
+    const stale = stock("OLD", "A", 20, 30);
+    stale.bars.pop(); stale.value.pop();
+    const result = computeSectorStrength([current, stale]);
+    expect(result.market.count).toBe(1);
+    expect(result.coverage).toEqual({ included: 1, total: 2 });
+  });
+
+  it("thị trường yếu không cố lấy đủ top dù có ngành tương đối mạnh", () => {
+    const result = computeSectorStrength([
+      ...["A", "B", "C"].map((t) => stock(t, "Tăng", 20, 21)),
+      ...Array.from({ length: 9 }, (_, i) => stock(`DOWN${i}`, "Giảm", 30, 20)),
+    ]);
+    expect(result.topPicks).toEqual([]);
+  });
 });
 
 describe("điểm ngành", () => {

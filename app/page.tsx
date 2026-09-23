@@ -11,6 +11,7 @@ import PositionsTable from "./components/PositionsTable";
 import { AddTradeButton } from "./components/TradeActions";
 import AutoRefresh from "./components/AutoRefresh";
 import { LivePrice } from "./components/live";
+import OpportunityStatus from "./components/OpportunityStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -183,7 +184,7 @@ export default async function Home() {
             và báo qua Telegram.
           </p>
         ) : (
-          <SignalTable signals={pending.slice(0, 12)} showDate={false} owner={u.owner} />
+          <SignalTable signals={pending.slice(0, 12)} showDate={false} owner={u.owner} latestSession={sigDate} />
         )}
       </section>
 
@@ -197,7 +198,8 @@ export default async function Home() {
 
       {/* VN30 watchlist — gợi ý vị thế tốt */}
       <section className="mb-6">
-        <h2 className="mb-2 font-semibold">VN30 — setup đáng chú ý</h2>
+        <h2 className="mb-2 font-semibold">VN30 — setup theo dõi, chưa xác nhận mua</h2>
+        <p className="mb-3 text-xs text-muted">Vùng giá là kịch bản quan sát. Chờ tín hiệu từ scanner; mục tiêu theo mô hình không phải dự báo.</p>
         <div className="flex flex-col gap-2 sm:hidden">
           {vn30.slice(0, 12).map((r) => (
             <div key={r.ticker} className="card p-3 text-xs">
@@ -229,6 +231,7 @@ export default async function Home() {
                 </div>
               </div>
               {r.note && <p className="mt-1 text-[11px] text-muted">{r.note}</p>}
+              {r.buyZone && r.stop && r.target && <OpportunityStatus ticker={r.ticker} date={r.dataDate} latestSession={sigDate} buyZone={r.buyZone} stop={r.stop} target={r.target} trigger={r.trigger} />}
             </div>
           ))}
         </div>
@@ -284,7 +287,10 @@ export default async function Home() {
                   <td className="num p-3 text-right text-gain">
                     {r.target?.toFixed(2) ?? "—"}
                   </td>
-                  <td className="p-3 text-muted">{r.note}</td>
+                  <td className="min-w-64 p-3 text-muted">
+                    {r.note}
+                    {r.buyZone && r.stop && r.target && <OpportunityStatus ticker={r.ticker} date={r.dataDate} latestSession={sigDate} buyZone={r.buyZone} stop={r.stop} target={r.target} trigger={r.trigger} />}
+                  </td>
                 </tr>
               ))}
             </tbody>

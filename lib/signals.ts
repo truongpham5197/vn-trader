@@ -5,5 +5,10 @@ import { prisma } from "./prisma";
  * phiên kế tiếp) → lọc theo vnToday() luôn ra 0 cho tới khi scan chiều chạy.
  */
 export async function latestSignalDate(): Promise<string | null> {
-  return (await prisma.signal.findFirst({ orderBy: { date: "desc" }, select: { date: true } }))?.date ?? null;
+  const [scan, signal] = await Promise.all([
+    prisma.setting.findUnique({ where: { key: "latestScanDate" } }),
+    prisma.signal.findFirst({ orderBy: { date: "desc" }, select: { date: true } }),
+  ]);
+  const date = scan?.value;
+  return date && /^\d{4}-\d{2}-\d{2}$/.test(date) && (!signal || date >= signal.date) ? date : signal?.date ?? null;
 }

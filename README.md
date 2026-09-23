@@ -35,8 +35,9 @@ npm run dev            # http://localhost:3000 — cron + bot polling tự chạ
 ## Trang
 
 - `/` — dashboard + tín hiệu hôm nay
-- `/signals` — tất cả tín hiệu (`?date=YYYY-MM-DD`)
-- `/backtest` — chạy + xem backtest (`?run=N` chi tiết)
+- `/signals` — tín hiệu; mở dòng để xem kế hoạch vốn riêng (`GET /api/signals/:id/plan`)
+- `/signals/evidence` — hồi cố giá đóng cửa sau tín hiệu (chỉ chủ app; không phải lãi khớp lệnh)
+- `/backtest` — chạy + xem backtest (`?run=N` chi tiết). Run trước bản engine mới được đánh dấu cũ.
 - `/journal` — trades, win rate, adherence
 
 Nhiều người dùng: nút 👤 trên thanh menu để chọn/tạo tên (unique), khóa bằng mã PIN 6 số —
@@ -72,9 +73,10 @@ curl -X POST localhost:3100/api/backtest -d '{
 }'
 ```
 
-Engine tôn trọng luật VN: T+2 (tiền & cổ phiếu), lot 100, biên độ ±7/10/15%,
-phí mua 0.15% + phí bán 0.15% + thuế bán 0.1%, slippage 0.2%, fill LO phiên
-sau nếu chạm giá, sizing risk% NAV cap theo tiền mặt.
+Engine tôn trọng luật VN: T+2 (tiền & cổ phiếu, equity gồm tiền chờ về), lot 100, biên độ ±7/10/15%,
+phí mua 0.15% + phí bán 0.15% + thuế bán 0.1%, slippage 0.2%. Thoát theo rule lấy giá phiên sau.
+Universe `liquid` lọc thanh khoản theo 20 phiên tính tới ngày đang mô phỏng, không dùng 20 phiên mới nhất của hôm nay.
+Số expectancy trên màn hình là quan sát lịch sử, không phải cam kết lãi.
 
 ## TCBS (phase 3 — semi-auto)
 

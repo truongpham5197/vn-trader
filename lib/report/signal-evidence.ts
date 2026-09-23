@@ -162,7 +162,7 @@ export function computeSignalEvidence(input: {
   }
 
   const statusCounts: Record<string, number> = {};
-  const groupMap = new Map<string, SignalSnapshot & { backfilled: boolean }[]>();
+  const groupMap = new Map<string, Array<SignalSnapshot & { backfilled: boolean }>>();
   for (const s of valid) {
     statusCounts[s.status] = (statusCounts[s.status] ?? 0) + 1;
     const k = `${s.strategy}\0${s.date}`;

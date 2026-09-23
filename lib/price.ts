@@ -1,7 +1,8 @@
 import { fetchDailyBars, fetchMinuteBars } from "./data/dnse";
 import { vnToday } from "./vn-time";
+import type { PriceEvidence } from "./quote-quality";
 
-export interface Quote {
+export interface Quote extends PriceEvidence {
   last: number | null; // giá mới nhất (nến 1m trong phiên, fallback daily)
   open: number | null; // O/H/L phiên hôm nay (bar daily đang hình thành)
   high: number | null;
@@ -27,11 +28,21 @@ export async function getQuote(ticker: string): Promise<Quote> {
   let high: number | null = null;
   let low: number | null = null;
   let ref: number | null = null;
+  let source: PriceEvidence["source"] = "unavailable";
+  let asOf: string | null = null;
+  let date: string | null = null;
 
   try {
     const dayStart = new Date(`${today}T00:00:00+07:00`);
     const m1 = await fetchMinuteBars(ticker, dayStart, new Date());
-    if (m1.length) last = m1[m1.length - 1].close;
+    const minute = m1.filter((b) => Number.isFinite(b.close) && b.close > 0)
+      .sort((a, b) => a.time.getTime() - b.time.getTime()).at(-1);
+    if (minute) {
+      last = minute.close;
+      source = "minute";
+      asOf = minute.time.toISOString();
+      date = minute.time.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+    }
   } catch {
     /* fallback daily */
   }
@@ -48,12 +59,19 @@ export async function getQuote(ticker: string): Promise<Quote> {
       // Ngoài giờ / không có bar hôm nay → ref là close gần nhất
       ref = bars[bars.length - 1]?.close ?? null;
     }
-    if (last === null) last = bars[bars.length - 1]?.close ?? null;
+    if (last === null) {
+      const daily = bars.at(-1);
+      if (daily && Number.isFinite(daily.close) && daily.close > 0) {
+        last = daily.close;
+        date = daily.date;
+        source = "daily";
+      }
+    }
   } catch {
     /* chỉ có last từ 1m nếu daily lỗi */
   }
 
-  const q: Quote = { last, open, high, low, ref };
+  const q: Quote = { last, open, high, low, ref, source, asOf, date };
   if (last !== null) cache.set(ticker, { q, at: Date.now() });
   return q;
 }

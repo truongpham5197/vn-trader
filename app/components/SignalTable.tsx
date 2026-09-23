@@ -4,7 +4,9 @@ import { Fragment, useState } from "react";
 import Link from "next/link";
 import { Button, Field, Modal, ModalForm, inputCls, useApi } from "./ui";
 import SignalDetail from "./SignalDetail";
+import SignalPlan from "./SignalPlan";
 import { LivePrice } from "./live";
+import OpportunityStatus from "./OpportunityStatus";
 
 export const STATUS: Record<string, [string, string]> = {
   new: ["Mới", "text-accent"],
@@ -39,11 +41,15 @@ export default function SignalTable({
   signals,
   showDate = true,
   owner = false,
+  latestSession,
+  marketWeak,
 }: {
   signals: SignalRow[];
   showDate?: boolean;
   /** Trạng thái tín hiệu dùng chung — chỉ chủ app bỏ qua/khôi phục/xóa. */
   owner?: boolean;
+  latestSession?: string | null;
+  marketWeak?: boolean;
 }) {
   const [open, setOpen] = useState<number | null>(null);
   return (
@@ -55,6 +61,8 @@ export default function SignalTable({
             s={s}
             showDate={showDate}
             owner={owner}
+            latestSession={latestSession}
+            marketWeak={marketWeak}
             expanded={open === s.id}
             toggle={() => setOpen(open === s.id ? null : s.id)}
           />
@@ -69,11 +77,11 @@ export default function SignalTable({
             <th className="p-3 font-medium">Chiến lược</th>
             <th className="p-3 text-right font-medium">Vùng mua</th>
             <th className="p-3 text-right font-medium">Cắt lỗ</th>
-            <th className="p-3 text-right font-medium">Chốt lời</th>
-            <th className="p-3 text-right font-medium">SL gợi ý</th>
+            <th className="p-3 text-right font-medium">Mục tiêu mô hình</th>
+            <th className="p-3 text-right font-medium">Kế hoạch vốn</th>
             <th
               className="p-3 text-right font-medium"
-              title="Lãi kỳ vọng / lỗ rủi ro"
+              title="Tỷ lệ mục tiêu/rủi ro tại giá tham chiếu, chưa trừ phí; không phải xác suất thắng"
             >
               R:R
             </th>
@@ -124,10 +132,15 @@ export default function SignalTable({
                     <span className="text-muted">+{up.toFixed(1)}%</span>
                   </td>
                   <td className="num p-3 text-right">
-                    {s.qty.toLocaleString("en-US")}
+                    <span className="text-accent">Xem riêng</span>
                   </td>
                   <td className="num p-3 text-right">{s.rr.toFixed(1)}</td>
-                  <td className={`p-3 whitespace-nowrap ${cls}`}>{label}</td>
+                  <td className="min-w-56 p-3">
+                    <span className={cls}>Nhật ký: {label}</span>
+                    <OpportunityStatus ticker={s.symbol.ticker} date={s.date} latestSession={latestSession} confirmed
+                      buyZone={s.buyLow !== null && s.buyHigh !== null ? [s.buyLow, s.buyHigh] : null}
+                      stop={s.stop} target={s.target} marketWeak={marketWeak} />
+                  </td>
                   <td className="p-3" onClick={(e) => e.stopPropagation()}>
                     <SignalActions s={s} owner={owner} />
                   </td>
@@ -137,11 +150,8 @@ export default function SignalTable({
                     <td colSpan={showDate ? 10 : 9} className="px-3 py-3">
                       {/* sticky + giới hạn rộng để trên mobile không phải cuộn ngang theo bảng */}
                       <div className="sticky left-3 max-w-[calc(100vw-4rem)] lg:max-w-none">
-                        <SignalDetail
-                          ticker={s.symbol.ticker}
-                          reason={s.reason}
-                          plan={s.plan}
-                        />
+                        <SignalDetail ticker={s.symbol.ticker} reason={s.reason} plan={s.plan} />
+                                                <SignalPlan signalId={s.id} />
                       </div>
                     </td>
                   </tr>
@@ -163,12 +173,16 @@ function SignalCard({
   owner,
   expanded,
   toggle,
+  latestSession,
+  marketWeak,
 }: {
   s: SignalRow;
   showDate: boolean;
   owner: boolean;
   expanded: boolean;
   toggle: () => void;
+  latestSession?: string | null;
+  marketWeak?: boolean;
 }) {
   const up = ((s.target - s.entry) / s.entry) * 100;
   const dn = ((s.entry - s.stop) / s.entry) * 100;
@@ -202,25 +216,29 @@ function SignalCard({
           <span className="text-loss">{f2(s.stop)}</span> <span className="text-[10px] text-muted">−{dn.toFixed(1)}%</span>
         </div>
         <div>
-          <div className="text-[10px] text-muted">Chốt lời</div>
+          <div className="text-[10px] text-muted">Mục tiêu mô hình</div>
           <span className="text-gain">{f2(s.target)}</span> <span className="text-[10px] text-muted">+{up.toFixed(1)}%</span>
         </div>
       </div>
       <div className="mt-1 text-[11px] text-muted">
-        SL gợi ý <span className="num text-foreground">{s.qty.toLocaleString("en-US")}</span> cp · R:R{" "}
+        R:R tham chiếu trước phí{" "}
         <span className="num text-foreground">{s.rr.toFixed(1)}</span>
       </div>
       <div className="mt-2 flex items-center justify-between gap-2">
         <button type="button" onClick={toggle} className="py-1 text-accent">
-          {expanded ? "▾ Ẩn lý do" : "▸ Vì sao?"}
+          {expanded ? "▾ Ẩn chi tiết" : "▸ Lý do & kế hoạch vốn riêng"}
         </button>
         <SignalActions s={s} owner={owner} />
       </div>
       {expanded && (
         <div className="mt-2 border-t border-border pt-2">
           <SignalDetail ticker={s.symbol.ticker} reason={s.reason} plan={s.plan} />
+          <SignalPlan signalId={s.id} />
         </div>
       )}
+      <OpportunityStatus ticker={s.symbol.ticker} date={s.date} latestSession={latestSession} confirmed
+        buyZone={s.buyLow !== null && s.buyHigh !== null ? [s.buyLow, s.buyHigh] : null}
+        stop={s.stop} target={s.target} marketWeak={marketWeak} />
     </div>
   );
 }
@@ -310,7 +328,7 @@ function SignalActions({ s, owner }: { s: SignalRow; owner: boolean }) {
                 name="qty"
                 required
                 inputMode="numeric"
-                defaultValue={s.qty}
+                placeholder="Số lượng đã khớp thực tế"
                 className={inputCls}
               />
             </Field>

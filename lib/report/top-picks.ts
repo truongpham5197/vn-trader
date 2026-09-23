@@ -3,6 +3,9 @@ import { ownerId } from "../user";
 import { getQuote } from "../price";
 import { esc } from "../telegram/notify";
 import { vnNow } from "../vn-time";
+import { latestSignalDate } from "../signals";
+import { quoteFresh, signalExpired } from "../quote-quality";
+import { assessOpportunity } from "../analysis/opportunity";
 
 export interface Pick {
   ticker: string;
@@ -18,6 +21,7 @@ export interface Pick {
   reason: string;
   last: number | null; // giá live (nến 1m DNSE, trễ ~1 phút)
   ref: number | null; // tham chiếu = close phiên trước
+  netRR?: number;
 }
 
 /** "Kỳ vọng 3–10 phiên; ..." → "3–10 phiên" (trích từ plan của strategy). */
@@ -32,28 +36,15 @@ export function zoneDistancePct(last: number, zone: [number, number]): number {
   return (Math.min(Math.abs(last - zone[0]), Math.abs(last - zone[1])) / last) * 100;
 }
 
-// Điểm xếp hạng: trong vùng mua = 0; chạy trên vùng bị phạt +2 (đuổi giá rủi ro hơn
-// mua rẻ dưới vùng). Không có zone → so khoảng cách tới entry.
-function actionability(p: Pick): number {
-  if (p.last === null) return 999;
-  if (!p.buyZone) return (Math.abs(p.last - p.entry) / p.entry) * 100;
-  const d = zoneDistancePct(p.last, p.buyZone);
-  return p.last > p.buyZone[1] ? d + 2 : d;
-}
-
 /**
- * Top N mã tiềm năng: signal mới nhất (new/notified, chưa nắm giữ, giá chưa
- * hỏng setup) xếp theo độ "vào được ngay"; thiếu thì bù bằng watchlist VN30
- * (setup có đủ vùng mua/SL/TP).
+ * Chỉ signal đã xác nhận, còn hiệu lực và giá đủ mới trong vùng.
+ * Xếp R:R ròng sau phí; không bù setup theo dõi để đủ số lượng.
  */
 export async function collectTopPicks(
   limit = 5,
 ): Promise<{ picks: Pick[]; signalDate: string | null }> {
-  const lastSig = await prisma.signal.findFirst({
-    orderBy: { date: "desc" },
-    select: { date: true },
-  });
-  const signalDate = lastSig?.date ?? null;
+  const signalDate = await latestSignalDate();
+  if (!signalDate || signalExpired(signalDate, signalDate)) return { picks: [], signalDate };
 
   const held = new Set(
     (
@@ -79,13 +70,17 @@ export async function collectTopPicks(
     if (!cur || s.rr > cur.rr) byTicker.set(s.symbol.ticker, s);
   }
 
-  const cands = [...byTicker.values()].slice(0, 10);
+  const cands = [...byTicker.values()];
   const quotes = await Promise.all(cands.map((s) => getQuote(s.symbol.ticker)));
   const picks: Pick[] = [];
   for (const [i, s] of cands.entries()) {
     const q = quotes[i];
-    // Setup đã hỏng intraday: thủng stop hoặc đã chạm target → bỏ
-    if (q.last !== null && (q.last < s.stop || q.last >= s.target)) continue;
+    const buyZone: [number, number] | null = s.buyLow !== null && s.buyHigh !== null ? [s.buyLow, s.buyHigh] : null;
+    const assessment = assessOpportunity({
+      confirmed: true, price: q.last, stop: s.stop, target: s.target, buyZone,
+      fresh: quoteFresh(q, new Date(), signalDate), expired: signalExpired(s.date, signalDate),
+    });
+    if (!assessment.actionable) continue;
     picks.push({
       ticker: s.symbol.ticker,
       sector: s.symbol.sector,
@@ -94,49 +89,18 @@ export async function collectTopPicks(
       entry: s.entry,
       stop: s.stop,
       target: s.target,
-      qty: s.qty,
-      buyZone: s.buyLow !== null && s.buyHigh !== null ? [s.buyLow, s.buyHigh] : null,
+      qty: null, // số lượng chỉ tính trong kế hoạch cá nhân, không dùng qty chung
+      buyZone,
+      netRR: assessment.netRR ?? 0,
       horizon: extractHorizon(s.plan),
       reason: s.reason ?? "",
       last: q.last,
       ref: q.ref,
     });
   }
-  picks.sort((a, b) => actionability(a) - actionability(b) || b.entry - a.entry);
+  picks.sort((a, b) => (b.netRR ?? 0) - (a.netRR ?? 0) || a.ticker.localeCompare(b.ticker));
   const top = picks.slice(0, limit);
 
-  // Bù slot trống bằng watchlist VN30 (setup chưa thành signal)
-  if (top.length < limit) {
-    const { vn30Snapshot } = await import("../analysis/vn30");
-    const chosen = new Set(top.map((p) => p.ticker));
-    const rows = (await vn30Snapshot()).filter(
-      (r) => r.buyZone && r.stop && r.target && !held.has(r.ticker) && !chosen.has(r.ticker),
-    );
-    for (const r of rows) {
-      if (top.length >= limit) break;
-      const q = await getQuote(r.ticker);
-      if (q.last !== null && (q.last < (r.stop ?? 0) || q.last >= (r.target ?? Infinity))) continue;
-      top.push({
-        ticker: r.ticker,
-        sector: r.sector,
-        label: r.setup,
-        watch: true,
-        entry: r.close,
-        stop: r.stop!,
-        target: r.target!,
-        qty: null,
-        buyZone: r.buyZone ?? null,
-        horizon: r.setup.includes("breakout")
-          ? "5–15 phiên"
-          : r.setup.includes("pullback")
-            ? "3–10 phiên"
-            : "1–5 phiên",
-        reason: r.note,
-        last: q.last,
-        ref: q.ref,
-      });
-    }
-  }
 
   return { picks: top, signalDate };
 }
@@ -149,6 +113,7 @@ function zoneTag(p: Pick): string {
 }
 
 export function formatTopPicks(picks: Pick[], signalDate: string | null): string {
+  if (!picks.length) return "Không có tín hiệu đã xác nhận còn phù hợp theo dữ liệu hiện có. Đứng ngoài cũng là một lựa chọn; không bổ sung mã chỉ để đủ top.";
   const now = vnNow();
   const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const blocks = picks.map((p, i) => {
@@ -169,12 +134,14 @@ export function formatTopPicks(picks: Pick[], signalDate: string | null): string
       `   🎯 TP <b>${p.target.toFixed(2)}</b> (+${up.toFixed(1)}%) · SL ${p.stop.toFixed(2)} (−${dn.toFixed(1)}%)` +
         (p.horizon ? ` · ⏱ ~${esc(p.horizon)}` : ""),
       `   💡 <i>${esc(p.reason)}</i>`,
+      ...(p.netRR !== undefined ? [`   R:R sau phí tại giá hiện tại: ${p.netRR.toFixed(2)} — không phải xác suất thắng`] : []),
     ].join("\n");
   });
   return [
     `🔥 <b>TOP ${picks.length} MÃ TIỀM NĂNG</b> — ${hhmm}` +
       (signalDate ? ` · <i>tín hiệu ${signalDate}</i>` : ""),
     ...blocks,
+    "<i>Mục tiêu theo mô hình, không phải dự báo. Kiểm tra kế hoạch vốn riêng; cắt lỗ không bảo đảm khớp đúng giá. Chưa chứng minh có lãi.</i>",
   ].join("\n\n");
 }
 

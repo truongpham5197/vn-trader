@@ -3,23 +3,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ALERT_KINDS, type AlertItem, type AlertKind } from "@/lib/alert-kinds";
+import { ALERT_KINDS, alertHref as href, type AlertItem, type AlertKind } from "@/lib/alert-kinds";
 import { vnNow } from "@/lib/vn-time";
 import { Modal } from "./ui";
+import { resyncPush } from "./PushSettings";
 
 // ---- Cài đặt riêng trình duyệt này (localStorage) ----
-type Prefs = { kinds: Record<AlertKind, boolean>; desktop: boolean };
+type Prefs = { kinds: Record<AlertKind, boolean> };
 const PREFS_KEY = "vt_alert_prefs";
 const DEFAULT: Prefs = {
   kinds: { signal: true, sector: true, stop: true, target: true, positions: false, system: true },
-  desktop: false,
 };
 
 function readPrefs(): Prefs {
   try {
     const p = JSON.parse(localStorage.getItem(PREFS_KEY) ?? "null") as Partial<Prefs> | null;
-    return { kinds: { ...DEFAULT.kinds, ...p?.kinds }, desktop: p?.desktop ?? false };
+    return { kinds: { ...DEFAULT.kinds, ...p?.kinds } };
   } catch {
     return DEFAULT;
   }
@@ -78,14 +77,12 @@ const TONE: Record<AlertItem["level"], string> = {
 };
 const time = (iso: string) => new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
 const day = (iso: string) => new Date(iso).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
-const href = (a: AlertItem) => (a.ticker ? `/stock/${a.ticker}` : a.kind === "signal" ? "/signals" : a.kind === "sector" ? "/sectors" : a.kind === "system" ? "/settings" : "/journal");
 /** Thời gian toast tự đóng — cảnh báo quan trọng giữ lâu hơn. */
 const ttl = (a: AlertItem) => (a.level === "danger" || a.level === "warn" ? 30_000 : 12_000);
 
 /** Chuông thông báo trên menu + thông báo nổi góc phải dưới. */
 export default function AlertCenter({ username }: { username: string | null }) {
   const user = username ?? "";
-  const router = useRouter();
   const [prefs] = usePrefs();
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
@@ -98,20 +95,15 @@ export default function AlertCenter({ username }: { username: string | null }) {
   const [detail, setDetail] = useState<AlertItem | null>(null);
   const maxId = useRef(0);
 
-  const pop = useCallback(
-    (fresh: AlertItem[]) => {
-      const show = fresh.filter((a) => prefsRef.current.kinds[a.kind] !== false).slice(0, 5);
-      if (!show.length) return;
-      const now = Date.now();
-      setToasts((xs) => [...show.reverse().map((a) => ({ ...a, until: now + ttl(a) })), ...xs].slice(0, 5));
-      if (prefsRef.current.desktop && typeof Notification !== "undefined" && Notification.permission === "granted" && document.hidden)
-        for (const a of show) {
-          const n = new Notification(a.title, { body: a.body.split("\n").slice(0, 3).join("\n"), tag: `vt-${a.id}` });
-          n.onclick = () => (window.focus(), router.push(href(a)));
-        }
-    },
-    [router],
-  );
+  // Tab ẩn / web đóng thì thông báo đẩy (service worker) lo — ở đây chỉ nổi trong trang
+  const pop = useCallback((fresh: AlertItem[]) => {
+    const show = fresh.filter((a) => prefsRef.current.kinds[a.kind] !== false).slice(0, 5);
+    if (!show.length) return;
+    const now = Date.now();
+    setToasts((xs) => [...show.reverse().map((a) => ({ ...a, until: now + ttl(a) })), ...xs].slice(0, 5));
+  }, []);
+
+  useEffect(() => void resyncPush(user), [user]);
 
   useEffect(() => {
     setMounted(true);
@@ -194,7 +186,7 @@ export default function AlertCenter({ username }: { username: string | null }) {
             </Link>
           </div>
           <ul className="max-h-[60vh] overflow-y-auto">
-            {items.length === 0 && <li className="p-4 text-center text-xs text-muted">Chưa có thông báo nào trong 7 ngày.</li>}
+            {items.length === 0 && <li className="p-4 text-center text-xs text-muted">Chưa có thông báo nào gần đây.</li>}
             {items.map((a) => (
               <li key={a.id} className="border-b border-border/50 last:border-0">
                 <button type="button" onClick={() => (setOpen(false), setDetail(a))} className="block w-full px-3 py-2 text-left text-xs hover:bg-accent/10">
@@ -259,37 +251,22 @@ export default function AlertCenter({ username }: { username: string | null }) {
   );
 }
 
-/** Mục trong /settings: chọn loại thông báo nổi + thông báo desktop (lưu riêng trình duyệt này). */
+/** Mục trong /settings: chọn loại thông báo nổi trong trang (lưu riêng trình duyệt này). */
 export function AlertPrefs() {
   const [prefs, save] = usePrefs();
-  const [perm, setPerm] = useState<string>("default");
-  useEffect(() => setPerm(typeof Notification === "undefined" ? "unsupported" : Notification.permission), []);
-  const toggleDesktop = async () => {
-    if (!prefs.desktop && typeof Notification !== "undefined" && Notification.permission !== "granted") {
-      const p = await Notification.requestPermission();
-      setPerm(p);
-      if (p !== "granted") return;
-    }
-    save({ ...prefs, desktop: !prefs.desktop });
-  };
   return (
     <div className="card p-4 text-xs">
       <div className="grid gap-2 sm:grid-cols-2">
         {(Object.keys(ALERT_KINDS) as AlertKind[]).map((k) => (
           <label key={k} className="flex cursor-pointer items-center gap-2">
-            <input type="checkbox" checked={prefs.kinds[k]} onChange={() => save({ ...prefs, kinds: { ...prefs.kinds, [k]: !prefs.kinds[k] } })} className="accent-[var(--color-accent)]" />
+            <input type="checkbox" checked={prefs.kinds[k]} onChange={() => save({ kinds: { ...prefs.kinds, [k]: !prefs.kinds[k] } })} className="accent-[var(--color-accent)]" />
             {ALERT_KINDS[k]}
           </label>
         ))}
       </div>
-      <label className="mt-3 flex cursor-pointer items-center gap-2 border-t border-border pt-3">
-        <input type="checkbox" checked={prefs.desktop} disabled={perm === "unsupported" || perm === "denied"} onChange={toggleDesktop} />
-        Báo cả khi đang mở tab khác (thông báo của trình duyệt)
-        {perm === "denied" && <span className="text-loss">— trình duyệt đang chặn, mở lại quyền thông báo cho trang này</span>}
-      </label>
       <p className="mt-2 text-muted">
-        Hỏi thông báo mới theo lịch cron: trong phiên 30 giây/lần, 15h–17h30 (đồng bộ giá + quét tín hiệu) 1 phút/lần, còn lại 5 phút. Cắt lỗ/chốt lời báo
-        cho mọi người dùng; Telegram chỉ gửi cho chủ app. Thông báo tự đóng sau 12 giây (cắt lỗ / cảnh báo: 30 giây), rê chuột vào để giữ lại; xem lại trong chuông 🔔.
+        Hỏi thông báo mới theo lịch cron: trong phiên 30 giây/lần, 15h–17h30 (đồng bộ giá + quét tín hiệu) 1 phút/lần, còn lại 5 phút. Thông báo tự đóng sau 12
+        giây (cắt lỗ / cảnh báo: 30 giây), rê chuột vào để giữ lại; xem lại trong chuông 🔔.
       </p>
     </div>
   );

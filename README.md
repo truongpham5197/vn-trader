@@ -46,6 +46,16 @@ Chủ app `TruongMỡ` giữ Telegram, TCBS, watcher và cấu hình hệ thốn
 Thông báo nổi trên web (🔔 trên menu): cùng nội dung cảnh báo Telegram từ cron — tín hiệu mới,
 mã vào vùng mua/ngành dẫn đầu, chạm cắt lỗ/chốt lời, báo cáo vị thế, hệ thống. User khác chủ app
 cũng nhận cảnh báo cắt lỗ/chốt lời cho vị thế của mình (chỉ trên web). Chọn loại ở Cài đặt → Thông báo.
+Thông báo nổi tự đóng sau 12 giây (cảnh báo 30 giây), bấm vào để xem đủ nội dung. Lịch sử tự xóa:
+báo cáo vị thế 2 ngày, cơ hội trong phiên 3 ngày, còn lại 7 ngày.
+
+Ngoài web còn có (Cài đặt → Thông báo → Thông báo đẩy & Telegram riêng, lưu theo tên người dùng):
+- **Thông báo đẩy** về điện thoại/máy tính kể cả khi đóng web (Web Push, khóa VAPID tự sinh lưu DB).
+  iPhone/iPad: Chia sẻ → "Thêm vào MH chính", mở app từ màn hình chính rồi bật (iOS 16.4+).
+- **Telegram riêng** cho user khác chủ app: bấm "Kết nối Telegram" → mở bot → Start (`/start <mã>`);
+  `/stop` trong bot để ngừng nhận.
+
+Giao diện điện thoại: thanh tab ở đáy màn hình, bảng tín hiệu/vị thế/VN30 hiện dạng thẻ.
 
 ## Backtest
 

@@ -97,6 +97,23 @@ model User {
   watchlist String[] @default([])
   createdAt DateTime @default(now())
   trades    Trade[]
+  // Telegram riêng (user khác owner — owner dùng TELEGRAM_CHAT_ID): liên kết qua /start <code>
+  tgChatId   String?   @unique
+  tgLinkCode String?   @unique
+  // Loại thông báo nhận qua Telegram riêng + thông báo đẩy (web push)
+  alertKinds String[]  @default(["signal", "sector", "stop", "target", "system"])
+  pushSubs   PushSub[]
+}
+
+/// Web Push subscription — mỗi trình duyệt/thiết bị 1 dòng
+model PushSub {
+  id        Int      @id @default(autoincrement())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
 
 model Trade {

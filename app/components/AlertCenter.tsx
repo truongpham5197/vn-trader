@@ -79,7 +79,8 @@ const TONE: Record<AlertItem["level"], string> = {
 const time = (iso: string) => new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
 const day = (iso: string) => new Date(iso).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
 const href = (a: AlertItem) => (a.ticker ? `/stock/${a.ticker}` : a.kind === "signal" ? "/signals" : a.kind === "sector" ? "/sectors" : a.kind === "system" ? "/settings" : "/journal");
-const sticky = (a: AlertItem) => a.level === "danger" || a.level === "warn";
+/** Thời gian toast tự đóng — cảnh báo quan trọng giữ lâu hơn. */
+const ttl = (a: AlertItem) => (a.level === "danger" || a.level === "warn" ? 30_000 : 12_000);
 
 /** Chuông thông báo trên menu + thông báo nổi góc phải dưới. */
 export default function AlertCenter({ username }: { username: string | null }) {
@@ -90,7 +91,8 @@ export default function AlertCenter({ username }: { username: string | null }) {
   prefsRef.current = prefs;
   const [items, setItems] = useState<AlertItem[]>([]);
   const [seen, setSeenState] = useState<number>(0);
-  const [toasts, setToasts] = useState<AlertItem[]>([]);
+  const [toasts, setToasts] = useState<(AlertItem & { until: number })[]>([]);
+  const hover = useRef(false);
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [detail, setDetail] = useState<AlertItem | null>(null);
@@ -100,9 +102,8 @@ export default function AlertCenter({ username }: { username: string | null }) {
     (fresh: AlertItem[]) => {
       const show = fresh.filter((a) => prefsRef.current.kinds[a.kind] !== false).slice(0, 5);
       if (!show.length) return;
-      setToasts((xs) => [...show.reverse(), ...xs].slice(0, 5));
-      for (const a of show)
-        if (!sticky(a)) setTimeout(() => setToasts((xs) => xs.filter((x) => x.id !== a.id)), 20_000);
+      const now = Date.now();
+      setToasts((xs) => [...show.reverse().map((a) => ({ ...a, until: now + ttl(a) })), ...xs].slice(0, 5));
       if (prefsRef.current.desktop && typeof Notification !== "undefined" && Notification.permission === "granted" && document.hidden)
         for (const a of show) {
           const n = new Notification(a.title, { body: a.body.split("\n").slice(0, 3).join("\n"), tag: `vt-${a.id}` });
@@ -146,6 +147,16 @@ export default function AlertCenter({ username }: { username: string | null }) {
     return () => ((stop = true), clearTimeout(timer));
   }, [user, pop]);
 
+  // Đếm giờ tự đóng; rê chuột / chạm vào thì tạm dừng (dời hạn thêm 1s mỗi nhịp)
+  useEffect(() => {
+    if (!toasts.length) return;
+    const t = setInterval(() => {
+      const now = Date.now();
+      setToasts((xs) => (hover.current ? xs.map((x) => ({ ...x, until: x.until + 1000 })) : xs.filter((x) => x.until > now)));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [toasts.length]);
+
   const unread = items.filter((a) => a.id > seen).length;
   const markRead = () => {
     const top = items[0]?.id ?? 0;
@@ -153,6 +164,7 @@ export default function AlertCenter({ username }: { username: string | null }) {
     setSeenState(top);
   };
   const dismiss = (a: AlertItem) => {
+    hover.current = false;
     setToasts((xs) => xs.filter((x) => x.id !== a.id));
     if (a.id > seen && toasts.length <= 1) markRead();
   };
@@ -204,7 +216,12 @@ export default function AlertCenter({ username }: { username: string | null }) {
         createPortal(
           <div className="pointer-events-none fixed right-4 bottom-16 z-[60] flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2">
             {toasts.map((a) => (
-              <div key={a.id} role="alert" className={`pointer-events-auto rounded-lg border-l-4 border bg-card/95 p-3 text-xs shadow-2xl backdrop-blur ${TONE[a.level].split(" ")[0]}`}>
+              <div
+                key={a.id}
+                role="alert"
+                onPointerEnter={() => (hover.current = true)}
+                onPointerLeave={() => (hover.current = false)}
+                className={`pointer-events-auto rounded-lg border-l-4 border bg-card/95 p-3 text-xs shadow-2xl backdrop-blur ${TONE[a.level].split(" ")[0]}`}>
                 <div className="flex items-start gap-2">
                   <button type="button" onClick={() => (dismiss(a), setDetail(a))} className="min-w-0 flex-1 text-left">
                     <div className={`font-semibold break-words ${TONE[a.level].split(" ")[1]}`}>{a.title}</div>
@@ -272,7 +289,7 @@ export function AlertPrefs() {
       </label>
       <p className="mt-2 text-muted">
         Hỏi thông báo mới theo lịch cron: trong phiên 30 giây/lần, 15h–17h30 (đồng bộ giá + quét tín hiệu) 1 phút/lần, còn lại 5 phút. Cắt lỗ/chốt lời báo
-        cho mọi người dùng; Telegram chỉ gửi cho chủ app. Chạm cắt lỗ / ngoại lệ sẽ nằm trên màn hình tới khi bạn đóng.
+        cho mọi người dùng; Telegram chỉ gửi cho chủ app. Thông báo tự đóng sau 12 giây (cắt lỗ / cảnh báo: 30 giây), rê chuột vào để giữ lại; xem lại trong chuông 🔔.
       </p>
     </div>
   );

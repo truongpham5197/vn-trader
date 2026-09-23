@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import StockSearch from "./StockSearch";
 import UserSwitcher from "./UserSwitcher";
 import AlertCenter from "./AlertCenter";
+import { InstallButton } from "./InstallApp";
 
 // [href, nhãn desktop, icon mobile, nhãn ngắn mobile]
 const LINKS = [
@@ -43,6 +44,7 @@ export default function Nav({ username }: { username: string | null }) {
           })}
         </nav>
         <StockSearch />
+        <InstallButton />
         <AlertCenter username={username} />
         <UserSwitcher username={username} />
       </div>

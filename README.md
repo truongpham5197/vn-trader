@@ -39,7 +39,9 @@ npm run dev            # http://localhost:3000 — cron + bot polling tự chạ
 - `/backtest` — chạy + xem backtest (`?run=N` chi tiết)
 - `/journal` — trades, win rate, adherence
 
-Nhiều người dùng, không mật khẩu: nút 👤 trên thanh menu để chọn/tạo tên (unique).
+Nhiều người dùng: nút 👤 trên thanh menu để chọn/tạo tên (unique), khóa bằng mã PIN 6 số —
+tên chưa có PIN thì tạo lúc vào lần đầu; nhập đúng 1 lần thì thiết bị nhớ 1 năm. Sai 5 lần khóa 15 phút.
+Đổi PIN ở nút 👤 (thiết bị khác phải nhập lại); quên PIN: gửi `/resetpin` cho bot từ chat đã kết nối.
 Mỗi tên có vị thế, nhật ký, danh sách theo dõi, vốn/rủi ro riêng; tín hiệu + nhóm ngành dùng chung.
 Chủ app `TruongMỡ` giữ Telegram, TCBS, watcher và cấu hình hệ thống.
 
@@ -56,6 +58,8 @@ Ngoài web còn có (Cài đặt → Thông báo → Thông báo đẩy & Telegr
   `/stop` trong bot để ngừng nhận.
 
 Giao diện điện thoại: thanh tab ở đáy màn hình, bảng tín hiệu/vị thế/VN30 hiện dạng thẻ.
+Cài như app (PWA): nút 📲 trên menu (Chrome/Edge/Android), iPhone: Safari → Chia sẻ → "Thêm vào MH chính";
+hướng dẫn thêm ở Cài đặt → Thông báo → Cài app.
 
 ## Backtest
 

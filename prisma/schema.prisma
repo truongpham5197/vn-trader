@@ -103,6 +103,11 @@ model User {
   // Loại thông báo nhận qua Telegram riêng + thông báo đẩy (web push)
   alertKinds String[]  @default(["signal", "sector", "stop", "target", "system"])
   pushSubs   PushSub[]
+  // Mã PIN 6 số (scrypt salt:hash) — vào trang cá nhân; sai 5 lần khóa 15 phút
+  pinHash      String?
+  pinFails     Int       @default(0)
+  pinLockUntil DateTime?
+  sessionVer   Int       @default(0) // tăng khi đổi/xóa PIN → cookie thiết bị cũ hết hiệu lực
 }
 
 /// Web Push subscription — mỗi trình duyệt/thiết bị 1 dòng

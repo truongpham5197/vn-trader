@@ -1,8 +1,10 @@
+import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 import { getNum } from "./settings";
+import { readSession, signSession } from "./pin";
 
-/** Không login — người dùng chọn username (cookie). Owner = chủ app: Telegram, TCBS, watcher. */
+/** Chọn username + mã PIN 6 số (cookie có chữ ký, nhớ 1 năm). Owner = chủ app: Telegram, TCBS, watcher. */
 export const OWNER = "TruongMỡ";
 export const USER_COOKIE = "vt_user";
 
@@ -19,11 +21,29 @@ export async function ownerId(): Promise<number> {
   return (ownerCache = u.id);
 }
 
-/** Người đang xem web (cookie) — null khi chưa chọn tên. */
+let secret: string | undefined;
+
+/** Khóa ký cookie phiên — env SESSION_SECRET hoặc tự sinh lưu Setting "sessionSecret" (như vapidKeys). */
+async function sessionSecret(): Promise<string> {
+  if (secret) return secret;
+  if (process.env.SESSION_SECRET) return (secret = process.env.SESSION_SECRET);
+  await prisma.setting.createMany({ data: [{ key: "sessionSecret", value: randomBytes(32).toString("base64url") }], skipDuplicates: true });
+  return (secret = (await prisma.setting.findUniqueOrThrow({ where: { key: "sessionSecret" } })).value);
+}
+
+export const sessionCookie = async (u: { id: number; sessionVer: number }) => signSession(u.id, u.sessionVer, await sessionSecret());
+
+/** Người đang xem web (cookie đã ký + đúng sessionVer) — null khi chưa chọn tên / nhập PIN, cookie cũ không chữ ký. */
 export async function currentUser(): Promise<AppUser | null> {
-  const id = Number((await cookies()).get(USER_COOKIE)?.value);
-  if (!Number.isInteger(id) || id <= 0) return null;
-  return prisma.user.findUnique({ where: { id } });
+  const s = readSession((await cookies()).get(USER_COOKIE)?.value, await sessionSecret());
+  if (!s) return null;
+  const u = await prisma.user.findUnique({
+    where: { id: s.id },
+    select: { id: true, username: true, owner: true, navVnd: true, riskPct: true, watchlist: true, sessionVer: true },
+  });
+  if (!u || u.sessionVer !== s.ver) return null;
+  const { sessionVer: _, ...user } = u;
+  return user;
 }
 
 /** Vốn + % rủi ro: owner dùng Setting chung (bot/scan), user khác lưu riêng, trống thì lấy mặc định. */
@@ -43,5 +63,5 @@ export const findByName = (username: string) =>
 /** Chưa chọn tên → id 0: danh sách trống, vốn/rủi ro mặc định. */
 export const GUEST: AppUser = { id: 0, username: "", owner: false, navVnd: null, riskPct: null, watchlist: [] };
 
-export const NEED_USER = "Chọn hoặc tạo tên người dùng ở góc trên trước";
+export const NEED_USER = "Chọn tên người dùng ở góc trên và nhập mã PIN trước";
 export const ONLY_OWNER = `Chỉ ${OWNER} (chủ app) được đổi mục này`;

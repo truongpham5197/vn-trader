@@ -132,7 +132,6 @@ export default async function Home() {
           <h2 className="font-semibold">Vị thế đang giữ</h2>
           <AddTradeButton />
         </div>
-        <p className="mb-2 text-xs text-muted">Một câu xử lý theo cắt lỗ/chốt lời bạn đã đặt. Không phải khuyến nghị có lãi.</p>
         <PositionsTable positions={positions} />
       </section>
 

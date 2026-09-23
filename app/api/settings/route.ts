@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       key === "killSwitch"
         ? value === "true" ? "🛑 KILL SWITCH ON (từ web) — scanner dừng, mọi order bị chặn." : "✅ Kill switch OFF (từ web)"
         : value === "true" ? "▶️ Scanner ON (từ web)" : "⏸ Scanner OFF (từ web)";
-    await sendTelegram(msg).catch(() => false);
+    await sendTelegram(msg, undefined, { kind: "system", level: key === "killSwitch" && value === "true" ? "danger" : "info", userId: null }).catch(() => false);
   }
   return NextResponse.json({ ok: true });
 }

@@ -86,6 +86,8 @@ export async function placeSignalOrder(signalId: number): Promise<PlaceResult> {
     await prisma.signal.update({ where: { id: signal.id }, data: { status: "ordered" } });
     await sendTelegram(
       `📤 Đã đặt LO mua <b>${signal.symbol.ticker}</b> ${signal.qty}cp @ ${px(signal.entry)} (order ${r.orderId ?? "?"})`,
+      undefined,
+      { kind: "system", ticker: signal.symbol.ticker },
     );
     return { ok: true, message: `đã gửi lệnh TCBS, id=${r.orderId ?? "?"}`, orderId: order.id };
   } catch (e) {

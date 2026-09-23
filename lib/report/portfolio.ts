@@ -96,7 +96,7 @@ export function formatPortfolio(p: Portfolio): string {
 }
 
 /** Tin vị thế + tóm tắt tài sản — dùng chung bot/cron/watcher. */
-export async function positionsMessage(lines?: PositionLine[]): Promise<string> {
-  const ls = lines ?? (await positionsReport());
-  return `${formatPositionsReport(ls)}\n\n${formatPortfolio(await loadPortfolio(ls))}`;
+export async function positionsMessage(lines?: PositionLine[], user?: AppUser): Promise<string> {
+  const ls = lines ?? (await positionsReport(user?.id));
+  return `${formatPositionsReport(ls)}\n\n${formatPortfolio(await loadPortfolio(ls, user))}`;
 }

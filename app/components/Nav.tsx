@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import StockSearch from "./StockSearch";
 import UserSwitcher from "./UserSwitcher";
+import AlertCenter from "./AlertCenter";
 
 const LINKS = [
   ["/", "Tổng quan"],
@@ -39,6 +40,7 @@ export default function Nav({ username }: { username: string | null }) {
           })}
         </nav>
         <StockSearch />
+        <AlertCenter username={username} />
         <UserSwitcher username={username} />
       </div>
     </header>

@@ -58,7 +58,21 @@ lib/analysis/  vn30.ts (scoreSetup — vùng mua/SL/TP + `plain` cho người m�
                watcher qua after(), tự giãn 5ph, báo mã vào vùng mua +
                ngành lên dẫn đầu, dedup/ngày (Setting sectorAlerted)
 lib/telegram/  bot.ts (createBot — dùng chung polling+webhook), notify.ts
-               (sendTelegram + esc() — PHẢI escape text động, parse_mode=HTML)
+               (sendTelegram + esc() — PHẢI escape text động, parse_mode=HTML).
+               sendTelegram(text, buttons?, web?) — web: WebAlert {kind, level,
+               ticker, userId} → ghi thêm thông báo web (lib/alerts.ts pushAlert;
+               userId bỏ trống = owner, null = mọi người). Cảnh báo mới từ cron
+               nhớ gắn web để hiện nổi trên web
+lib/alerts.ts  model Alert (giữ 7 ngày), pushAlert/listAlerts/htmlToAlert;
+               lib/alert-kinds.ts = ALERT_KINDS + type dùng chung client.
+               watcher.watchOthers(): vị thế user khác owner chạm SL/TP → chỉ
+               báo web (không Telegram, không tự đóng), note stop-hit/target-hit
+               để báo 1 lần; positions-report cũng push báo cáo cho từng user
+app/api/alerts  GET ?after=id → thông báo của user hiện tại + chung.
+               Client app/components/AlertCenter.tsx: chuông 🔔 trên Nav + toast
+               nổi (portal) — poll 30s trong phiên, 60s 15h–17h30, 5ph còn lại,
+               lần đầu mở không bắn lại cũ; chọn loại ở /settings#thong-bao
+               (localStorage vt_alert_prefs) + tùy chọn Notification desktop
 lib/tcbs/      OpenAPI client (spec: docs/tcbs-openapi.json)
 lib/jobs.ts    node-cron local — SKIP khi process.env.VERCEL
 app/api/cron/  eod-sync (cursor resume qua Setting eodSyncCursor + chain

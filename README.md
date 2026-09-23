@@ -43,6 +43,10 @@ Nhiều người dùng, không mật khẩu: nút 👤 trên thanh menu để ch
 Mỗi tên có vị thế, nhật ký, danh sách theo dõi, vốn/rủi ro riêng; tín hiệu + nhóm ngành dùng chung.
 Chủ app `TruongMỡ` giữ Telegram, TCBS, watcher và cấu hình hệ thống.
 
+Thông báo nổi trên web (🔔 trên menu): cùng nội dung cảnh báo Telegram từ cron — tín hiệu mới,
+mã vào vùng mua/ngành dẫn đầu, chạm cắt lỗ/chốt lời, báo cáo vị thế, hệ thống. User khác chủ app
+cũng nhận cảnh báo cắt lỗ/chốt lời cho vị thế của mình (chỉ trên web). Chọn loại ở Cài đặt → Thông báo.
+
 ## Backtest
 
 ```bash

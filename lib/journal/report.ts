@@ -45,6 +45,6 @@ export async function weeklyReport(): Promise<string> {
     );
   }
   const text = lines.join("\n");
-  await sendTelegram(text);
+  await sendTelegram(text, undefined, { kind: "positions" });
   return text;
 }

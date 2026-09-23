@@ -3,6 +3,7 @@
 import { assessOpportunity, type OpportunityAssessment } from "../../lib/analysis/opportunity";
 import { quoteFresh, signalExpired } from "../../lib/quote-quality";
 import { useQuote } from "./live";
+import { More } from "./More";
 
 export function OpportunityText({ assessment: a, trigger, date }: {
   assessment: OpportunityAssessment; trigger?: string; date?: string;
@@ -19,6 +20,10 @@ export function OpportunityText({ assessment: a, trigger, date }: {
   );
 }
 
+const toneOf = (a: OpportunityAssessment) =>
+  a.actionable ? "text-gain" : ["invalid", "expired"].includes(a.state) ? "text-loss" : "text-amber-300";
+
+/** Nhãn quyết định hiện luôn; giải thích, R:R, nguồn giá nằm sau "Xem thêm". */
 export default function OpportunityStatus({ ticker, date, latestSession, confirmed = false, buyZone, stop, target, trigger, marketWeak }: {
   ticker: string; date?: string; latestSession?: string | null; confirmed?: boolean;
   buyZone: [number, number] | null; stop: number; target: number; trigger?: string; marketWeak?: boolean;
@@ -27,14 +32,17 @@ export default function OpportunityStatus({ ticker, date, latestSession, confirm
   const now = new Date();
   const assessment = assessOpportunity({ confirmed, price: quote?.last ?? null, stop, target, buyZone, marketWeak,
     fresh: quoteFresh(quote, now, latestSession ?? date), expired: !!date && signalExpired(date, latestSession, now) });
+  const quoteLine = quote?.source === "minute" && quote.asOf
+    ? `Giá nến 1 phút: ${new Date(quote.asOf).toLocaleTimeString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })} (${quote.date})`
+    : quote?.source === "daily" ? `Giá dự phòng nến ngày ${quote.date} — không phải realtime` : "Chưa có nguồn giá mới";
   return (
-    <div ref={ref}>
-      {confirmed && <p className="mt-1 text-xs text-muted">Đã xác nhận điều kiện kỹ thuật khi đóng nến; chưa phải quyết định mua.</p>}
-      <OpportunityText assessment={assessment} trigger={trigger} date={date} />
-      <p className="mt-1 text-[11px] text-muted">
-        {quote?.source === "minute" && quote.asOf ? `Giá nến 1 phút: ${new Date(quote.asOf).toLocaleTimeString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })} (${quote.date})`
-          : quote?.source === "daily" ? `Giá dự phòng nến ngày ${quote.date} — không phải realtime` : "Chưa có nguồn giá mới"}
-      </p>
+    <div ref={ref} className="mt-1">
+      <p className={`text-xs font-medium ${toneOf(assessment)}`}>{assessment.label}</p>
+      <More label="Vì sao">
+        {confirmed && <p className="text-xs text-muted">Đã xác nhận điều kiện kỹ thuật khi đóng nến; chưa phải quyết định mua.</p>}
+        <OpportunityText assessment={assessment} trigger={trigger} date={date} />
+        <p className="text-[11px] text-muted">{quoteLine}</p>
+      </More>
     </div>
   );
 }

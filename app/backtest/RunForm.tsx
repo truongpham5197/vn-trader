@@ -43,11 +43,11 @@ export default function RunForm({ strategies }: { strategies: string[] }) {
         </select>
       </label>
       <label className="flex flex-col gap-1">
-        Universe
+        Nhóm mã
         <select name="universe" className="rounded border border-border bg-card px-2 py-1.5 text-foreground">
-          <option value="liquid">liquid (GTGD as-of 20 phiên)</option>
-          <option value="vn30">VN30 (rổ hiện tại, không phải lịch sử)</option>
-          <option value="all">all (chậm)</option>
+          <option value="liquid">mã thanh khoản</option>
+          <option value="vn30">VN30 hiện tại</option>
+          <option value="all">toàn thị trường (chậm)</option>
         </select>
       </label>
       <label className="flex flex-col gap-1">
@@ -74,7 +74,7 @@ export default function RunForm({ strategies }: { strategies: string[] }) {
         disabled={busy}
         className="rounded bg-accent font-medium text-background px-4 py-2 disabled:opacity-50"
       >
-        {busy ? "Đang chạy…" : "Chạy backtest"}
+        {busy ? "Đang chạy…" : "Chạy thử"}
       </button>
       {error && <span className="text-loss">{error}</span>}
     </form>

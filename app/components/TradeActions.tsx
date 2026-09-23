@@ -164,7 +164,7 @@ export function TradeActions({ t }: { t: TradeRow }) {
   const closed = t.status === "closed";
   const url = `/api/trades/${t.id}`;
   return (
-    <div className="flex justify-end gap-1">
+    <div className="flex flex-wrap justify-end gap-1">
       {!closed && (
         <Button size="sm" tone="gain" onClick={() => setMode("close")}>
           Bán

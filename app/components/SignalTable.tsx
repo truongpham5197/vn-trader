@@ -77,16 +77,15 @@ export default function SignalTable({
             <th className="p-3 font-medium">Chiến lược</th>
             <th className="p-3 text-right font-medium">Vùng mua</th>
             <th className="p-3 text-right font-medium">Cắt lỗ</th>
-            <th className="p-3 text-right font-medium">Mục tiêu mô hình</th>
-            <th className="p-3 text-right font-medium">Kế hoạch vốn</th>
+            <th className="p-3 text-right font-medium">Mục tiêu</th>
             <th
               className="p-3 text-right font-medium"
               title="Tỷ lệ mục tiêu/rủi ro tại giá tham chiếu, chưa trừ phí; không phải xác suất thắng"
             >
               R:R
             </th>
-            <th className="p-3 font-medium">Trạng thái</th>
-            <th className="p-3" />
+            <th className="p-3 font-medium">Việc cần làm</th>
+            <th className="sticky right-0 z-10 bg-card p-3" />
           </tr>
         </thead>
         <tbody>
@@ -131,23 +130,20 @@ export default function SignalTable({
                     {f2(s.target)}{" "}
                     <span className="text-muted">+{up.toFixed(1)}%</span>
                   </td>
-                  <td className="num p-3 text-right">
-                    <span className="text-accent">Xem riêng</span>
-                  </td>
                   <td className="num p-3 text-right">{s.rr.toFixed(1)}</td>
-                  <td className="min-w-56 p-3">
-                    <span className={cls}>Nhật ký: {label}</span>
+                  <td className="p-3">
+                    <span className={cls}>{label}</span>
                     <OpportunityStatus ticker={s.symbol.ticker} date={s.date} latestSession={latestSession} confirmed
                       buyZone={s.buyLow !== null && s.buyHigh !== null ? [s.buyLow, s.buyHigh] : null}
                       stop={s.stop} target={s.target} marketWeak={marketWeak} />
                   </td>
-                  <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                  <td className="sticky right-0 z-10 bg-card p-3 shadow-[-6px_0_8px_-6px_rgba(0,0,0,.45)]" onClick={(e) => e.stopPropagation()}>
                     <SignalActions s={s} owner={owner} />
                   </td>
                 </tr>
                 {expanded && (
                   <tr className="border-b border-border/50 bg-white/[0.02]">
-                    <td colSpan={showDate ? 10 : 9} className="px-3 py-3">
+                    <td colSpan={showDate ? 9 : 8} className="px-3 py-3">
                       {/* sticky + giới hạn rộng để trên mobile không phải cuộn ngang theo bảng */}
                       <div className="sticky left-3 max-w-[calc(100vw-4rem)] lg:max-w-none">
                         <SignalDetail ticker={s.symbol.ticker} reason={s.reason} plan={s.plan} />
@@ -224,9 +220,9 @@ function SignalCard({
         R:R tham chiếu trước phí{" "}
         <span className="num text-foreground">{s.rr.toFixed(1)}</span>
       </div>
-      <div className="mt-2 flex items-center justify-between gap-2">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <button type="button" onClick={toggle} className="py-1 text-accent">
-          {expanded ? "▾ Ẩn chi tiết" : "▸ Lý do & kế hoạch vốn riêng"}
+          {expanded ? "▾ Ẩn" : "▸ Chi tiết"}
         </button>
         <SignalActions s={s} owner={owner} />
       </div>
@@ -249,7 +245,7 @@ function SignalActions({ s, owner }: { s: SignalRow; owner: boolean }) {
   const url = `/api/signals/${s.id}`;
   const pending = s.status === "new" || s.status === "notified";
   return (
-    <div className="flex justify-end gap-1 whitespace-nowrap">
+    <div className="flex flex-wrap justify-end gap-1">
       {pending ? (
         <>
           <Button size="sm" tone="gain" onClick={() => setBuy(true)}>

@@ -79,7 +79,9 @@ lib/alerts.ts  model Alert, pushAlert/listAlerts/htmlToAlert; pruneAlerts xóa
                báo web (không Telegram, không tự đóng), note stop-hit/target-hit
                để báo 1 lần; positions-report cũng push báo cáo cho từng user
 app/api/push   GET {publicKey} · POST PushSubscription.toJSON() (upsert theo
-               endpoint, gắn user cookie) · DELETE {endpoint}. public/sw.js nhận
+               endpoint, gắn user cookie) · DELETE {endpoint}. POST /api/push/test
+               gửi thử tới thiết bị của user (payload force → sw.js hiện cả khi
+               web đang focus; bình thường bỏ qua vì đã có toast) — nút 🔔 Gửi thử. public/sw.js nhận
                push (bỏ qua nếu web đang focus), app/manifest.ts = PWA (iOS
                16.4+ phải "Thêm vào MH chính" mới có push). InstallApp.tsx:
                đăng ký sw.js khi mở web (điều kiện cài PWA), giữ

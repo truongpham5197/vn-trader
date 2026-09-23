@@ -7,6 +7,7 @@ import { StrategyCard, WatchlistEditor } from "../components/SettingsEditors";
 import { AlertPrefs } from "../components/AlertCenter";
 import PushSettings from "../components/PushSettings";
 import { InstallCard } from "../components/InstallApp";
+import { ThemeCard } from "../components/ThemeToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,11 @@ export default async function SettingsPage() {
   return (
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
       <h1 className="mb-4 text-xl font-bold tracking-tight">Cài đặt</h1>
+
+      <section className="mb-8">
+        <h2 className="mb-2 font-semibold">Giao diện</h2>
+        <ThemeCard />
+      </section>
 
       <section className="mb-8">
         <h2 className="mb-2 font-semibold">Cấu hình chung</h2>

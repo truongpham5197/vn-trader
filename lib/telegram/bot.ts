@@ -1,5 +1,6 @@
 import { Bot } from "grammy";
 import { prisma } from "../prisma";
+import { ownerId } from "../user";
 import { getNum, getBool, setSetting, getSetting } from "../settings";
 import { latestSignalDate } from "../signals";
 import { esc } from "./notify";
@@ -40,7 +41,7 @@ export function createBot(): Bot {
       prisma.symbol.count({ where: { active: true } }),
       prisma.dailyBar.count(),
       latestSignalDate().then((date) => (date ? prisma.signal.count({ where: { date } }) : 0)),
-      prisma.trade.count({ where: { status: "open" } }),
+      prisma.trade.count({ where: { status: "open", userId: await ownerId() } }),
     ]);
     const { loadPortfolio } = await import("../report/portfolio");
     const [scan, paper, kill, pf, risk] = await Promise.all([
@@ -254,6 +255,7 @@ ${formatFundamentalsTg(f)}`, {
     if (!sym) return void (await ctx.reply(`❌ không tìm thấy mã ${ticker.toUpperCase()}`));
     const trade = await prisma.trade.create({
       data: {
+        userId: await ownerId(),
         symbolId: sym.id,
         qty,
         entryPrice: entry,
@@ -296,7 +298,7 @@ ${formatFundamentalsTg(f)}`, {
     const sym = await prisma.symbol.findUnique({ where: { ticker: ticker.toUpperCase() } });
     if (!sym) return void (await ctx.reply(`❌ không tìm thấy mã ${ticker.toUpperCase()}`));
     const trade = await prisma.trade.findFirst({
-      where: { symbolId: sym.id, status: "open" },
+      where: { symbolId: sym.id, status: "open", userId: await ownerId() },
       orderBy: { id: "desc" },
     });
     if (!trade) return void (await ctx.reply(`❌ ${sym.ticker} không có trade đang mở`));
@@ -330,7 +332,7 @@ ${formatFundamentalsTg(f)}`, {
     const sym = await prisma.symbol.findUnique({ where: { ticker: ticker.toUpperCase() } });
     if (!sym) return void (await ctx.reply(`❌ không tìm thấy mã ${ticker.toUpperCase()}`));
     const trade = await prisma.trade.findFirst({
-      where: { symbolId: sym.id, status: "open" },
+      where: { symbolId: sym.id, status: "open", userId: await ownerId() },
       orderBy: { id: "desc" },
     });
     if (!trade) return void (await ctx.reply(`❌ ${sym.ticker} không có trade đang mở`));

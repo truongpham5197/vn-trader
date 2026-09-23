@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { scoreSetup } from "@/lib/analysis/vn30";
 import { currentSectorStrength } from "@/lib/analysis/sector-live";
-import { getWatchlist } from "@/lib/trades";
+import { GUEST, currentUser } from "@/lib/user";
 import { netPnlPct } from "@/lib/fees";
 import { px } from "@/lib/format";
 import type { Bar } from "@/lib/data/types";
@@ -103,6 +103,7 @@ export default async function StockPage({
   const ticker = (await params).ticker.toUpperCase();
   const sym = await prisma.symbol.findUnique({ where: { ticker } });
   if (!sym) notFound();
+  const u = (await currentUser()) ?? GUEST;
 
   const [desc, signals, trades, position, watchlist, sectors] =
     await Promise.all([
@@ -117,9 +118,9 @@ export default async function StockPage({
         take: 5,
         include: { strategy: { select: { name: true } } },
       }),
-      prisma.trade.findMany({ where: { symbolId: sym.id, status: "open" } }),
-      prisma.position.findUnique({ where: { symbolId: sym.id } }),
-      getWatchlist(),
+      prisma.trade.findMany({ where: { symbolId: sym.id, status: "open", userId: u.id } }),
+      u.owner ? prisma.position.findUnique({ where: { symbolId: sym.id } }) : null,
+      u.watchlist,
       currentSectorStrength().catch(() => null),
     ]);
   const bars: Bar[] = desc

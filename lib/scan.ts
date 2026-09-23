@@ -6,7 +6,7 @@ import { loadPortfolio } from "./report/portfolio";
 import { notifySignal } from "./telegram/notify";
 import type { Bar } from "./data/types";
 import { VN30 } from "./data/vn30";
-import { getWatchlist } from "./trades";
+import { allWatchlists } from "./trades";
 import { fetchFundamentals, formatFundamentalsTg } from "./data/fundamentals";
 
 const BARS_NEEDED = 60;
@@ -40,7 +40,7 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
   const universe = await getSetting("universe"); // vn30 | liquid | all
   const notify = opts?.notify ?? true;
 
-  // Mã đang nắm giữ + danh sách theo dõi luôn được scan — bypass filter thanh khoản
+  // Mã đang nắm giữ + danh sách theo dõi (mọi user) luôn được scan — bypass filter thanh khoản
   const heldTickers = new Set([
     ...(
       await prisma.trade.findMany({
@@ -48,7 +48,7 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
         include: { symbol: { select: { ticker: true } } },
       })
     ).map((t) => t.symbol.ticker),
-    ...(await getWatchlist()),
+    ...(await allWatchlists()),
   ]);
 
   // universe=vn30 → chỉ load bars 30 mã (+ mã đang giữ/theo dõi), nhẹ hơn nhiều trên serverless

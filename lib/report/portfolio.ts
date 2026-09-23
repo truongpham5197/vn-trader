@@ -1,5 +1,5 @@
 import { prisma } from "../prisma";
-import { getNum } from "../settings";
+import { ownerId, userNum, type AppUser } from "../user";
 import { formatPositionsReport, positionsReport, type PositionLine } from "./positions";
 import { BUY_FEE, SELL_FEE_TAX } from "../fees";
 
@@ -64,13 +64,14 @@ export function computePortfolio(initial: number, open: Open[], closed: Closed[]
   };
 }
 
-/** Truyền `lines` nếu đã gọi positionsReport() để khỏi lấy giá 2 lần. */
-export async function loadPortfolio(lines?: PositionLine[]): Promise<Portfolio> {
+/** Truyền `lines` nếu đã gọi positionsReport() để khỏi lấy giá 2 lần. Không truyền user = owner. */
+export async function loadPortfolio(lines?: PositionLine[], user?: AppUser): Promise<Portfolio> {
+  const userId = user?.id ?? (await ownerId());
   const [initial, open, closed] = await Promise.all([
-    getNum("navVnd"),
-    lines ?? positionsReport(),
+    userNum(user ?? { owner: true, navVnd: null, riskPct: null }, "navVnd"),
+    lines ?? positionsReport(userId),
     prisma.trade.findMany({
-      where: { status: "closed", pnl: { not: null } },
+      where: { status: "closed", pnl: { not: null }, userId },
       select: { pnl: true, symbol: { select: { ticker: true } } },
     }),
   ]);

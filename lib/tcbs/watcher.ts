@@ -1,4 +1,5 @@
 import { prisma } from "../prisma";
+import { ownerId } from "../user";
 import { getBool, getSetting, setSetting } from "../settings";
 import { getQuote, formatQuoteLine } from "../price";
 import { getOrder, getPositions, placeOrder, tcbsConfigured } from "./client";
@@ -23,8 +24,9 @@ async function sessionsHeld(symbolId: number, openedAt: Date): Promise<number> {
 export async function runWatcher(): Promise<void> {
   if (await getBool("killSwitch")) return;
 
+  // Chỉ vị thế của owner — cảnh báo đi Telegram owner, lệnh live bắn vào TCBS owner
   const allOpen = await prisma.trade.findMany({
-    where: { status: "open" },
+    where: { status: "open", userId: await ownerId() },
     include: { symbol: true },
   });
   const openTrades = allOpen.filter((t) => t.stopPrice !== null);
@@ -155,6 +157,7 @@ async function syncPendingOrders(): Promise<void> {
           const signal = await prisma.signal.findUnique({ where: { id: o.signalId } });
           const trade = await prisma.trade.create({
             data: {
+              userId: await ownerId(),
               symbolId: o.signalId ? (await prisma.signal.findUnique({ where: { id: o.signalId }, select: { symbolId: true } }))!.symbolId : 0,
               qty: o.qty,
               entryPrice: fillPrice,

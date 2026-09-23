@@ -1,16 +1,18 @@
 import { prisma } from "../prisma";
+import { ownerId } from "../user";
 import { sendTelegram } from "../telegram/notify";
 
 /** Báo cáo tuần: P&L, win rate, adherence (theo tín hiệu + giữ stop). */
 export async function weeklyReport(): Promise<string> {
   const since = new Date(Date.now() - 7 * 86400e3);
+  const userId = await ownerId();
   const [closed, opened, openPos] = await Promise.all([
     prisma.trade.findMany({
-      where: { status: "closed", closedAt: { gte: since } },
+      where: { status: "closed", closedAt: { gte: since }, userId },
       include: { symbol: true, signal: { include: { strategy: true } } },
     }),
-    prisma.trade.count({ where: { openedAt: { gte: since } } }),
-    prisma.trade.findMany({ where: { status: "open" }, include: { symbol: true } }),
+    prisma.trade.count({ where: { openedAt: { gte: since }, userId } }),
+    prisma.trade.findMany({ where: { status: "open", userId }, include: { symbol: true } }),
   ]);
 
   const pnl = closed.reduce((s, t) => s + (t.pnl ?? 0), 0);

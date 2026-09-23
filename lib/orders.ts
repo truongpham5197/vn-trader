@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { ownerId } from "./user";
 import { getBool } from "./settings";
 import { placeOrder as tcbsPlace, tcbsConfigured } from "./tcbs/client";
 import { sendTelegram } from "./telegram/notify";
@@ -23,7 +24,8 @@ export async function placeSignalOrder(signalId: number): Promise<PlaceResult> {
     return { ok: false, message: `signal đã ở trạng thái ${signal.status}` };
   }
 
-  const openCount = await prisma.trade.count({ where: { status: "open" } });
+  const userId = await ownerId();
+  const openCount = await prisma.trade.count({ where: { status: "open", userId } });
   const maxPos = Number(
     (await prisma.setting.findUnique({ where: { key: "maxPositions" } }))?.value ?? 5,
   );
@@ -50,6 +52,7 @@ export async function placeSignalOrder(signalId: number): Promise<PlaceResult> {
     // Paper: fill ngay tại entry → mở Trade
     const trade = await prisma.trade.create({
       data: {
+        userId,
         symbolId: signal.symbolId,
         qty: signal.qty,
         entryPrice: signal.entry,

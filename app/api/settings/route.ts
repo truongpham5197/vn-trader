@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { setSetting } from "@/lib/settings";
 import { sendTelegram } from "@/lib/telegram/notify";
+import { prisma } from "@/lib/prisma";
+import { NEED_USER, ONLY_OWNER, currentUser } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,14 @@ export async function POST(req: Request) {
   const key = body?.key ?? "";
   const value = String(body?.value ?? "");
   if (!EDITABLE[key]?.(value)) return NextResponse.json({ error: "Giá trị không hợp lệ" }, { status: 400 });
+  const u = await currentUser();
+  if (!u) return NextResponse.json({ error: NEED_USER }, { status: 401 });
+  // Vốn/rủi ro: của riêng từng user (owner vẫn lưu ở Setting — bot/scan dùng). Còn lại là cấu hình hệ thống → chỉ owner.
+  if (!u.owner) {
+    if (key !== "navVnd" && key !== "riskPct") return NextResponse.json({ error: ONLY_OWNER }, { status: 403 });
+    await prisma.user.update({ where: { id: u.id }, data: { [key]: Number(value) } });
+    return NextResponse.json({ ok: true });
+  }
 
   await setSetting(key, value);
   // Giống /kill: bật kill switch thì dừng luôn scanner

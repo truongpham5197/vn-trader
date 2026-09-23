@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import StockSearch from "./StockSearch";
+import UserSwitcher from "./UserSwitcher";
 
 const LINKS = [
   ["/", "Tổng quan"],
@@ -13,7 +14,7 @@ const LINKS = [
   ["/settings", "Cài đặt"],
 ] as const;
 
-export default function Nav() {
+export default function Nav({ username }: { username: string | null }) {
   const path = usePathname();
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur">
@@ -38,6 +39,7 @@ export default function Nav() {
           })}
         </nav>
         <StockSearch />
+        <UserSwitcher username={username} />
       </div>
     </header>
   );

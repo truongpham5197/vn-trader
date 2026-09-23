@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { positionsReport } from "@/lib/report/positions";
+import { GUEST, currentUser } from "@/lib/user";
 import { px } from "@/lib/format";
 import PositionsTable from "../components/PositionsTable";
 import { AddTradeButton, TradeActions } from "../components/TradeActions";
@@ -18,15 +19,16 @@ const EXIT: Record<string, string> = {
 };
 
 export default async function JournalPage() {
+  const u = (await currentUser()) ?? GUEST;
   const [positions, closed, orders] = await Promise.all([
-    positionsReport(),
+    positionsReport(u.id),
     prisma.trade.findMany({
-      where: { status: "closed" },
+      where: { status: "closed", userId: u.id },
       include: { symbol: true, signal: { include: { strategy: true } } },
       orderBy: { closedAt: "desc" },
       take: 200,
     }),
-    prisma.order.findMany({ orderBy: { id: "desc" }, take: 15, include: { signal: { include: { symbol: true } } } }),
+    !u.owner ? [] : prisma.order.findMany({ orderBy: { id: "desc" }, take: 15, include: { signal: { include: { symbol: true } } } }),
   ]);
 
   const wins = closed.filter((t) => (t.pnl ?? 0) > 0).length;

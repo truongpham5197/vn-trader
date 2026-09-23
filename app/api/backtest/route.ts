@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { runBacktestFromDb } from "@/lib/backtest/run";
 import { STRATEGIES } from "@/lib/strategy";
+import { BACKTEST_LIMITATIONS, ENGINE_VERSION } from "@/lib/backtest/report";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -21,7 +22,12 @@ export async function GET() {
       createdAt: true,
     },
   });
-  return NextResponse.json({ strategies: Object.keys(STRATEGIES), runs });
+  return NextResponse.json({
+    strategies: Object.keys(STRATEGIES),
+    runs,
+    engineVersion: ENGINE_VERSION,
+    limitations: BACKTEST_LIMITATIONS,
+  });
 }
 
 export async function POST(req: Request) {

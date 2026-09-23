@@ -2,42 +2,25 @@ import { prisma } from "../prisma";
 import { STRATEGIES } from "../strategy";
 import { runBacktest, DEFAULT_BT_CONFIG, type BacktestConfig, type BtResult } from "./engine";
 import type { Bar } from "../data/types";
+import { VN30_TICKERS, makeAsOfLiquidFilter, type ValueBar } from "./universe";
+import { serializeRunParams } from "./report";
 
-export const VN30 = [
-  "ACB", "BID", "BVH", "CTG", "FPT", "GAS", "GVR", "HDB", "HPG", "KDH",
-  "LPB", "MBB", "MSN", "MWG", "PLX", "SAB", "SSB", "SSI", "STB", "TCB",
-  "TPB", "VCB", "VHM", "VIB", "VIC", "VJC", "VNM", "VPB", "VRE", "SHB",
-];
+/** @deprecated dùng VN30_TICKERS — list hiện tại, không phải lịch sử rổ. */
+export const VN30 = VN30_TICKERS;
 
 const WARMUP_DAYS = 150;
 
+/**
+ * Tập mã nạp bars. liquid = mọi mã active (lọc thanh khoản as-of từng ngày trong engine),
+ * không lấy 20 phiên mới nhất hiện tại.
+ */
 export async function resolveUniverse(
   universe: string,
-  minValueVnd: number,
+  _minValueVnd: number,
 ): Promise<string[]> {
-  if (universe === "vn30") return VN30;
-  if (universe === "all") {
-    const s = await prisma.symbol.findMany({ where: { active: true }, select: { ticker: true } });
-    return s.map((x) => x.ticker);
-  }
-  // "liquid": avg value 20 phiên gần nhất >= minValue
-  const symbols = await prisma.symbol.findMany({
-    where: { active: true },
-    select: { id: true, ticker: true },
-  });
-  const out: string[] = [];
-  for (const s of symbols) {
-    const bars = await prisma.dailyBar.findMany({
-      where: { symbolId: s.id },
-      orderBy: { date: "desc" },
-      take: 20,
-      select: { value: true },
-    });
-    if (bars.length < 20) continue;
-    const avg = bars.reduce((x, b) => x + b.value, 0) / bars.length;
-    if (avg >= minValueVnd) out.push(s.ticker);
-  }
-  return out;
+  if (universe === "vn30") return [...VN30_TICKERS];
+  const s = await prisma.symbol.findMany({ where: { active: true }, select: { ticker: true } });
+  return s.map((x) => x.ticker);
 }
 
 export async function runBacktestFromDb(opts: {
@@ -67,10 +50,10 @@ export async function runBacktestFromDb(opts: {
     where: { ticker: { in: tickers } },
     select: { id: true, ticker: true, bandPct: true },
   });
-  const idByTicker = new Map(symbols.map((s) => [s.ticker, s.id]));
   const bandPct = new Map(symbols.map((s) => [s.ticker, s.bandPct]));
+  const tickerById = new Map(symbols.map((s) => [s.id, s.ticker]));
 
-  const barsByTicker = new Map<string, Bar[]>();
+  const barsByTicker = new Map<string, ValueBar[]>();
   const rows = await prisma.dailyBar.findMany({
     where: {
       symbolId: { in: symbols.map((s) => s.id) },
@@ -79,7 +62,8 @@ export async function runBacktestFromDb(opts: {
     orderBy: [{ symbolId: "asc" }, { date: "asc" }],
   });
   for (const r of rows) {
-    const t = symbols.find((s) => s.id === r.symbolId)!.ticker;
+    const t = tickerById.get(r.symbolId);
+    if (!t) continue;
     const arr = barsByTicker.get(t) ?? [];
     arr.push({
       date: r.date,
@@ -88,10 +72,10 @@ export async function runBacktestFromDb(opts: {
       low: r.low,
       close: r.close,
       volume: r.volume,
+      value: r.value,
     });
     barsByTicker.set(t, arr);
   }
-  void idByTicker;
 
   const cfg: BacktestConfig = {
     ...DEFAULT_BT_CONFIG,
@@ -99,12 +83,21 @@ export async function runBacktestFromDb(opts: {
     fromDate: opts.fromDate,
     ...opts.overrides,
   };
-  const result = runBacktest(barsByTicker, bandPct, strategy, cfg);
+  if (opts.universe === "liquid") {
+    cfg.isEntryEligible = makeAsOfLiquidFilter(barsByTicker, minValue);
+  }
+  const result = runBacktest(barsByTicker as Map<string, Bar[]>, bandPct, strategy, cfg);
 
   const run = await prisma.backtestRun.create({
     data: {
       strategyType: opts.strategyType,
-      params: JSON.stringify(cfg.params),
+      params: serializeRunParams({
+        strategyParams: cfg.params,
+        cfg,
+        universe: opts.universe,
+        fromDate: opts.fromDate,
+        toDate: opts.toDate,
+      }),
       universe: `${opts.universe}(${tickers.length})`,
       periodStart: opts.fromDate,
       periodEnd: opts.toDate,

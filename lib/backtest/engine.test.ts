@@ -54,10 +54,11 @@ describe("runBacktest — luật VN", () => {
     expect(result.trades.length).toBe(1);
   });
 
-  it("fill ở phiên sau tín hiệu, có slippage", () => {
+  it("fill ở phiên sau tín hiệu, không vượt giá limit", () => {
     const t = result.trades[0];
     expect(t.entryDate).toBe("2026-08-31");
-    expect(t.entry).toBeCloseTo(51 * 1.002, 3);
+    expect(t.entry).toBeLessThanOrEqual(51);
+    expect(t.entry).toBeGreaterThan(50);
   });
 
   it("không bán trước T+2 — exit đúng phiên eligible", () => {

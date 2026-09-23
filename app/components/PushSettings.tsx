@@ -104,6 +104,29 @@ export default function PushSettings({ username }: { username: string }) {
     }
   };
 
+  const testPush = async () => {
+    setBusy(true);
+    try {
+      // Gắn lại subscription của thiết bị này với user hiện tại trước (đổi tên / sub cũ bị xóa)
+      const sub = await currentSub();
+      if (!sub) return (setOn(false), toast("Thiết bị này chưa đăng ký — bấm Bật lại", false));
+      await fetch("/api/push", json("POST", sub.toJSON()));
+      const r = await fetch("/api/push/test", json("POST"));
+      const j = await r.json();
+      if (!r.ok) return toast(j.error ?? `Lỗi ${r.status}`, false);
+      toast(
+        j.ok
+          ? `Đã gửi tới ${j.ok}/${j.total} thiết bị — không thấy thông báo thì kiểm tra cài đặt thông báo của điện thoại (chế độ không làm phiền, tiết kiệm pin)`
+          : "Dịch vụ push từ chối — bấm Tắt rồi Bật lại",
+        j.ok > 0,
+      );
+    } catch (e) {
+      toast(`Lỗi: ${(e as Error).message}`, false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const setKinds = async (k: AlertKind) => {
     if (!me) return;
     const kinds = me.alertKinds.includes(k) ? me.alertKinds.filter((x) => x !== k) : [...me.alertKinds, k];
@@ -148,6 +171,11 @@ export default function PushSettings({ username }: { username: string }) {
               {on ? "Tắt" : "Bật"}
             </Button>
             <span className={on ? "text-gain" : "text-muted"}>{on ? "đang bật" : "đang tắt"}</span>
+            {on && (
+              <Button size="sm" disabled={busy} onClick={() => void testPush()}>
+                🔔 Gửi thử
+              </Button>
+            )}
             {perm === "denied" && <span className="text-loss">— trình duyệt đang chặn, mở lại quyền thông báo cho trang này</span>}
           </>
         )}
@@ -192,8 +220,9 @@ export default function PushSettings({ username }: { username: string }) {
         )}
       </div>
       <p className="mt-3 text-muted">
-        Thông báo đẩy hiện cả khi đã đóng web (Android/máy tính; iPhone cần thêm vào màn hình chính). Tín hiệu mua gửi cho mọi người; cắt lỗ/chốt lời chỉ gửi cho
-        chủ vị thế. Tín hiệu dựa trên giá + khối lượng, chỉ để tham khảo — không phải khuyến nghị.
+        Thông báo đẩy hiện khi web đang đóng hoặc chạy nền (đang mở web thì hiện nổi trong trang); Android/máy tính dùng được ngay, iPhone cần thêm vào màn hình
+        chính. Chỉ gửi khi có sự kiện thuộc loại đã tick ở trên — tín hiệu mua ra sau khi chốt dữ liệu phiên (khoảng 15h30–17h), cơ hội trong phiên 9h–15h; muốn nhận báo cáo vị thế mỗi
+        30 phút thì tick “Báo cáo vị thế định kỳ”. Tín hiệu mua gửi cho mọi người; cắt lỗ/chốt lời chỉ gửi cho chủ vị thế. Tín hiệu dựa trên giá + khối lượng, chỉ để tham khảo — không phải khuyến nghị.
       </p>
     </div>
   );

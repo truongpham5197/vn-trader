@@ -13,7 +13,7 @@ self.addEventListener("push", (e) => {
   e.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((cs) => {
       // Đang mở & nhìn thấy web → chuông/toast trong trang đã báo, khỏi hiện trùng
-      if (cs.some((c) => c.visibilityState === "visible" && c.focused)) return;
+      if (!d.force && cs.some((c) => c.visibilityState === "visible" && c.focused)) return;
       return self.registration.showNotification(d.title || "VN Trader", {
         body: d.body || "",
         tag: d.tag,

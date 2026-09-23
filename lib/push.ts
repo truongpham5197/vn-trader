@@ -16,20 +16,23 @@ export async function vapidKeys(): Promise<Vapid> {
   return (vapid = JSON.parse(saved.value) as Vapid);
 }
 
-export type PushPayload = { title: string; body: string; url: string; tag: string };
+/** force: hiện cả khi web đang mở (gửi thử) — bình thường sw.js bỏ qua vì trang đã có toast. */
+export type PushPayload = { title: string; body: string; url: string; tag: string; force?: boolean };
 
-/** Gửi 1 thông báo đẩy; subscription hết hạn (404/410) → xóa. */
-export async function sendPush(sub: { id: number; endpoint: string; p256dh: string; auth: string }, payload: PushPayload): Promise<void> {
+/** Gửi 1 thông báo đẩy; subscription hết hạn (404/410) → xóa. Trả mã HTTP của dịch vụ push (0 = lỗi mạng). */
+export async function sendPush(sub: { id: number; endpoint: string; p256dh: string; auth: string }, payload: PushPayload): Promise<number> {
   const { publicKey, privateKey } = await vapidKeys();
   try {
-    await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify(payload), {
+    const r = await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify(payload), {
       TTL: 3600,
       timeout: 5000,
       vapidDetails: { subject: "https://vn-trader.vercel.app", publicKey, privateKey },
     });
+    return r.statusCode;
   } catch (e) {
-    const code = (e as { statusCode?: number }).statusCode;
+    const code = (e as { statusCode?: number }).statusCode ?? 0;
     if (code === 404 || code === 410) await prisma.pushSub.delete({ where: { id: sub.id } }).catch(() => {});
     else console.error("[push]", code, (e as Error).message);
+    return code;
   }
 }

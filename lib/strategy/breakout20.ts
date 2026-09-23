@@ -45,7 +45,7 @@ export const breakout20: StrategyFn = ({ bars, params, bandPct }) => {
     stop,
     target,
     rr: p.rrTarget,
-    reason: `close ${entry} > đỉnh ${p.donchian}phiên ${hh.toFixed(2)}, vol ${(last.volume / avgVol).toFixed(1)}x`,
+    reason: `Giá đóng cửa ${entry} vượt đỉnh ${p.donchian} phiên (${hh.toFixed(2)}), khối lượng gấp ${(last.volume / avgVol).toFixed(1)}× trung bình 20 phiên → dòng tiền vào mạnh, có thể mở nhịp tăng mới`,
     plan: `SL = vào − 2×ATR (${a.toFixed(2)}) = ${stop}; TP = vào + 2×rủi ro = ${target.toFixed(2)}. Kỳ vọng 5–15 phiên; thoát sớm nếu đóng cửa < MA10 (trailing).`,
     buyZone: [floorTick(hh), floorTick(entry * 1.01)], // retest đỉnh cũ → tối đa +1%
   };

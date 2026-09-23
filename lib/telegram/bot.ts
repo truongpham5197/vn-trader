@@ -159,6 +159,22 @@ export function createBot(): Bot {
     await ctx.reply(formatTopPicks(picks, signalDate));
   });
 
+  // /cb FPT — tình hình kinh doanh + tin công bố gần đây
+  bot.command("cb", async (ctx) => {
+    if (!allowed(ctx)) return;
+    const ticker = (ctx.match ?? "").trim().split(/\s+/)[0]?.toUpperCase();
+    if (!ticker) return void (await ctx.reply("Dùng: /cb &lt;MÃ&gt; — vd: /cb FPT"));
+    const sym = await prisma.symbol.findUnique({ where: { ticker } });
+    if (!sym) return void (await ctx.reply(`❌ không tìm thấy mã ${esc(ticker)}`));
+    const { fetchFundamentals, formatFundamentalsTg } = await import("../data/fundamentals");
+    const f = await fetchFundamentals(ticker);
+    await ctx.reply(`🔎 <b>${ticker}</b>${sym.companyName ? ` — ${esc(sym.companyName)}` : ""}
+
+${formatFundamentalsTg(f)}`, {
+      link_preview_options: { is_disabled: true },
+    });
+  });
+
   // /help — giải thích các chỉ báo trong alert
   bot.command("help", async (ctx) => {
     if (!allowed(ctx)) return;
@@ -178,7 +194,7 @@ export function createBot(): Bot {
         "<b>Pullback-MA20</b> — mua khi giá trong uptrend hồi về đúng trung bình 20 phiên.",
         "<b>RSI(2)</b> — chỉ báo quá bán ngắn hạn: RSI 2 phiên &lt; 5 trong uptrend → hồi kỹ thuật.",
         "",
-        "Lệnh: /nganh /status /signals /orders /positions /vn30 /picks /plan &lt;MÃ&gt; /add /close /pause /resume /kill /otp /auth",
+        "Lệnh: /cb &lt;MÃ&gt; (kinh doanh + tin) /nganh /status /signals /orders /positions /vn30 /picks /plan &lt;MÃ&gt; /add /close /pause /resume /kill /otp /auth",
       ].join("\n"),
     );
   });

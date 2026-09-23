@@ -45,7 +45,7 @@ export const rsi2Revert: StrategyFn = ({ bars, params, bandPct }) => {
     stop,
     target,
     rr: p.rrTarget,
-    reason: `RSI2=${r.toFixed(1)} < ${p.rsiBuyBelow} trong uptrend (>MA${p.trendMa})`,
+    reason: `Xu hướng dài vẫn tăng (giá > MA${p.trendMa}) nhưng vừa giảm mạnh ngắn hạn (RSI2 = ${r.toFixed(1)} < ${p.rsiBuyBelow}, quá bán) → thường có nhịp hồi kỹ thuật vài phiên`,
     plan: `SL = vào − ${p.stopPct}% = ${stop}; TP = vào + ${p.rrTarget}×rủi ro = ${target.toFixed(2)}. Kỳ vọng 1–5 phiên; thoát khi RSI>70 hoặc quá 5 phiên.`,
     buyZone: [floorTick(entry * (1 - p.stopPct / 200)), entry], // hồi nhẹ dưới entry
   };

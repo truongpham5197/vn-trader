@@ -7,6 +7,7 @@ import { notifySignal } from "./telegram/notify";
 import type { Bar } from "./data/types";
 import { VN30 } from "./data/vn30";
 import { getWatchlist } from "./trades";
+import { fetchFundamentals, formatFundamentalsTg } from "./data/fundamentals";
 
 const BARS_NEEDED = 60;
 
@@ -78,6 +79,7 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
   let filtered = 0;
   let signals = 0;
   let notified = 0;
+  const pending: Parameters<typeof notifySignal>[0][] = [];
 
   for (const sym of symbols) {
     const rows = (rowsBySymbol.get(sym.id) ?? []).slice(0, BARS_NEEDED);
@@ -148,7 +150,7 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
       signals++;
 
       if (notify && signal.status === "new") {
-        const ok = await notifySignal({
+        pending.push({
           signalId: signal.id,
           ticker: sym.ticker,
           sector: sym.sector ?? undefined,
@@ -165,11 +167,23 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
           dayBar: bars[bars.length - 1],
           ref: bars[bars.length - 2]?.close,
         });
-        if (ok) {
-          await prisma.signal.update({ where: { id: signal.id }, data: { status: "notified" } });
-          notified++;
-        }
       }
+    }
+  }
+
+  // Kèm tình hình kinh doanh + tin công bố — lấy song song, tối đa 6s, lỗi thì gửi không kèm
+  const fund = new Map(
+    await Promise.all(
+      [...new Set(pending.map((p) => p.ticker))].slice(0, 20).map(async (t) => {
+        const f = await Promise.race([fetchFundamentals(t).catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 6000))]);
+        return [t, f ? formatFundamentalsTg(f) : undefined] as const;
+      }),
+    ),
+  );
+  for (const p of pending) {
+    if (await notifySignal({ ...p, fundamentals: fund.get(p.ticker) })) {
+      await prisma.signal.update({ where: { id: p.signalId }, data: { status: "notified" } });
+      notified++;
     }
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { roundTick } from "@/lib/strategy/breakout20";
+import { QUICK_PCT, quickExit } from "@/lib/risk/quick";
 import { Button, Field, Modal, ModalForm, inputCls, useApi } from "./ui";
 import { SymbolHits, useSymbolHits } from "./StockSearch";
 
@@ -45,17 +45,22 @@ function TickerInput({ onPicked }: { onPicked: (ticker: string) => void }) {
   );
 }
 
-const PCT = 8; // chọn nhanh chốt lời +8% / cắt lỗ −8% theo giá vốn
 const fmt = (n: number) => String(+n.toFixed(2));
 
-/** Ô nhập SL/giá/stop/target dùng chung cho thêm + sửa. */
+/**
+ * Ô nhập SL/giá/stop/target dùng chung cho thêm + sửa. Cắt lỗ/chốt lời TỰ TÍNH
+ * −/+8% theo giá vốn (đổi giá vốn là tính lại) cho tới khi user sửa tay ô đó.
+ */
 function TradeFields({ t, withTicker }: { t?: Partial<TradeRow>; withTicker?: boolean }) {
   const [entry, setEntry] = useState(v(t?.entry));
-  const [stop, setStop] = useState(v(t?.stop));
-  const [target, setTarget] = useState(v(t?.target));
+  const [manual, setManual] = useState<{ stop: string | null; target: string | null }>({
+    stop: t?.stop != null ? v(t.stop) : null,
+    target: t?.target != null ? v(t.target) : null,
+  });
   const e = Number(entry);
-  const ok = e > 0;
-  const quick = (pct: number) => fmt(roundTick(e * (1 + pct / 100)));
+  const auto = (pct: number) => (e > 0 ? fmt(quickExit(e, pct)) : "");
+  const stop = manual.stop ?? auto(-QUICK_PCT);
+  const target = manual.target ?? auto(QUICK_PCT);
   const prefill = async (ticker: string) => {
     const q = await fetch(`/api/quotes?tickers=${ticker}`)
       .then((r) => r.json())
@@ -63,18 +68,23 @@ function TradeFields({ t, withTicker }: { t?: Partial<TradeRow>; withTicker?: bo
     const last = q?.[ticker]?.last;
     if (last) setEntry((cur) => cur || fmt(last));
   };
-  const chip = (pct: number, set: (s: string) => void, tone: string) => (
-    <button
-      type="button"
-      disabled={!ok}
-      onClick={() => set(quick(pct))}
-      title={ok ? `Giá vốn ${pct > 0 ? "+" : "−"}${PCT}%` : "Nhập giá vốn trước"}
-      className={`self-start rounded border border-border px-1.5 py-0.5 text-[11px] font-medium hover:bg-accent/10 disabled:opacity-40 ${tone}`}
-    >
-      {pct > 0 ? "+" : "−"}
-      {PCT}%{ok && ` → ${quick(pct)}`}
-    </button>
-  );
+  const note = (k: "stop" | "target", pct: number) =>
+    manual[k] === null ? (
+      <span className="text-[11px] text-muted">
+        Tự tính {pct > 0 ? "+" : "−"}
+        {QUICK_PCT}% theo giá vốn
+      </span>
+    ) : (
+      <button
+        type="button"
+        disabled={!(e > 0)}
+        onClick={() => setManual((m) => ({ ...m, [k]: null }))}
+        className={`self-start rounded border border-border px-1.5 py-0.5 text-[11px] font-medium hover:bg-accent/10 disabled:opacity-40 ${pct > 0 ? "text-gain" : "text-loss"}`}
+      >
+        ↺ Tự tính {pct > 0 ? "+" : "−"}
+        {QUICK_PCT}%{e > 0 && ` → ${auto(pct)}`}
+      </button>
+    );
   return (
     <>
       {withTicker && (
@@ -89,13 +99,13 @@ function TradeFields({ t, withTicker }: { t?: Partial<TradeRow>; withTicker?: bo
         <Field label="Giá vốn (nghìn đ)">
           <input name="entry" required inputMode="decimal" value={entry} onChange={(x) => setEntry(x.target.value)} placeholder="95.5" className={inputCls} />
         </Field>
-        <Field label="Cắt lỗ (nghìn đ)" hint="Để trống = không canh">
-          <input name="stop" inputMode="decimal" value={stop} onChange={(x) => setStop(x.target.value)} className={inputCls} />
-          {chip(-PCT, setStop, "text-loss")}
+        <Field label="Cắt lỗ (nghìn đ)">
+          <input name="stop" inputMode="decimal" value={stop} onChange={(x) => setManual((m) => ({ ...m, stop: x.target.value }))} className={inputCls} />
+          {note("stop", -QUICK_PCT)}
         </Field>
         <Field label="Chốt lời (nghìn đ)">
-          <input name="target" inputMode="decimal" value={target} onChange={(x) => setTarget(x.target.value)} className={inputCls} />
-          {chip(PCT, setTarget, "text-gain")}
+          <input name="target" inputMode="decimal" value={target} onChange={(x) => setManual((m) => ({ ...m, target: x.target.value }))} className={inputCls} />
+          {note("target", QUICK_PCT)}
         </Field>
       </div>
     </>

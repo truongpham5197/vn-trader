@@ -81,7 +81,8 @@ app/api/settings  POST {key,value} — web dashboard chỉnh: navVnd, riskPct
                paperTrading KHÔNG sửa từ web. KHÔNG auth — user chọn
                2026-09-22 (UI không cần password); an toàn dựa vào validate
                + báo Telegram mỗi lần đổi scanner/kill
-app/api/trades, trades/[id]  CRUD vị thế từ web: POST mở, PATCH sửa /
+app/api/trades, trades/[id]  CRUD vị thế từ web: POST mở (thiếu SL/TP →
+               lib/risk/quick.ts −/+8% theo giá vốn, form web tự tính sẵn), PATCH sửa /
                {close,exit} bán (closeTrade), DELETE — báo Telegram
 app/api/signals/[id]  PATCH take|skip|reset, DELETE (gỡ link trade/order)
 app/api/strategies/[id]  PATCH {enabled, params} — params merge defaults,

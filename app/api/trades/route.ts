@@ -4,6 +4,7 @@ import { NEED_USER, currentUser } from "@/lib/user";
 import { bad, body, pos } from "@/lib/api";
 import { sendTelegram } from "@/lib/telegram/notify";
 import { px } from "@/lib/format";
+import { quickExits } from "@/lib/risk/quick";
 
 export const dynamic = "force-dynamic";
 
@@ -24,11 +25,13 @@ export async function POST(req: Request) {
     .toUpperCase();
   const qty = pos(b.qty);
   const entry = pos(b.entry);
-  const stop = b.stop ? pos(b.stop) : null;
-  const target = b.target ? pos(b.target) : null;
+  if (!entry) return bad("Giá vốn không hợp lệ");
+  // Không nhập cắt lỗ/chốt lời → tự đặt −/+8% theo giá vốn
+  const auto = quickExits(entry);
+  const stop = b.stop ? pos(b.stop) : auto.stop;
+  const target = b.target ? pos(b.target) : auto.target;
   if (!qty || !Number.isInteger(qty))
     return bad("Số lượng phải là số nguyên dương");
-  if (!entry) return bad("Giá vốn không hợp lệ");
   if ((b.stop && !stop) || (b.target && !target))
     return bad("Giá cắt lỗ/chốt lời không hợp lệ");
   if (stop && target && stop >= target)

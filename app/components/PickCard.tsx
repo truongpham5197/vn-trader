@@ -60,10 +60,10 @@ export default function PickCard({ p, sector }: { p: SectorPick; sector?: string
         </div>
       </dl>
       <OpportunityStatus ticker={p.ticker} date={p.dataDate} buyZone={p.buyZone} stop={p.stop} target={p.target} trigger={p.trigger} marketWeak={p.marketWeak} />
-      <p className="mt-1 text-[11px] text-muted">Điểm phù hợp điều kiện: {p.score.toFixed(0)} — không phải xác suất thắng.</p>
       <p className="mt-2 text-xs leading-relaxed text-foreground/90">{p.plain}</p>
-      <details className="mt-1 text-xs" open>
+      <details className="mt-1 text-xs">
         <summary className="cursor-pointer text-muted hover:text-foreground">Vì sao gợi ý?</summary>
+        <p className="mt-1 text-muted">Điểm khớp điều kiện: {p.score.toFixed(0)} — không phải xác suất thắng.</p>
         <ul className="mt-1 list-disc space-y-0.5 pl-4 leading-relaxed text-muted">
           {p.why.map((w, i) => (
             <li key={i}>{w}</li>

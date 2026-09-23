@@ -305,3 +305,28 @@ function median(xs: number[]): number | null {
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2;
 }
+
+const signedPct = (v: number | null) => (v === null ? null : `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)}%`);
+
+/** Một câu cho người mới: giá sau tín hiệu đi đâu — không phải lãi/lỗ đã khớp. */
+export function plainEvidenceVerdict(r: Pick<SignalEvidenceReport, "analyzed" | "horizons" | "periodStart" | "periodEnd">): {
+  title: string;
+  line: string;
+} {
+  const h5 = r.horizons.find((h) => h.sessions === 5);
+  if (!r.analyzed) {
+    return { title: "Chưa có gì để kiểm tra", line: "90 ngày qua app chưa lưu tín hiệu nào." };
+  }
+  if (!h5 || h5.mature === 0) {
+    return {
+      title: "Mới báo, chưa đủ ngày",
+      line: `Có ${r.analyzed} tín hiệu từ ${r.periodStart} đến ${r.periodEnd}. Chưa mã nào đủ 5 phiên sau ngày báo để so giá.`,
+    };
+  }
+  const up = h5.positiveDenom ? ` ${h5.positiveCount}/${h5.positiveDenom} mã giá cao hơn lúc báo.` : "";
+  const thin = h5.mature < 20 || h5.sampleWarning ? " Mẫu còn ít — chưa kết luận chiến lược có lãi." : "";
+  return {
+    title: "Sau 5 phiên, giá đi đâu?",
+    line: `Trong ${h5.mature} tín hiệu đã qua 5 phiên, giá đóng cửa trung bình ${signedPct(h5.mean)} so với giá ghi trên tín hiệu.${up}${thin}`,
+  };
+}

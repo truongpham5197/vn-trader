@@ -8,6 +8,7 @@ import {
   isLegacyRun,
   parseStoredCfg,
 } from "@/lib/backtest/report";
+import { plainBacktestVerdict } from "@/lib/backtest/plain";
 
 export const dynamic = "force-dynamic";
 
@@ -61,29 +62,50 @@ export default async function BacktestPage({
     : [];
   const legacy = selected ? isLegacyRun(metrics, selected.params) : false;
   const cfg = selected ? parseStoredCfg(selected.params) : null;
+  const focus = selected ?? runs[0] ?? null;
+  const focusMetrics: Metrics | null = focus ? JSON.parse(focus.metrics) : null;
+  const verdict = focus && focusMetrics
+    ? plainBacktestVerdict(focusMetrics, focus.strategyType, isLegacyRun(focusMetrics, focus.params))
+    : null;
 
   return (
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
-      <h1 className="mb-4 text-xl font-bold">Backtest</h1>
+      <h1 className="text-xl font-bold">Thử quá khứ</h1>
+      <p className="mt-1 mb-4 max-w-2xl text-xs text-muted">
+        Giả lập mua bán theo luật trên dữ liệu cũ, có phí. Không tự chạy khi mở trang, và không tự sửa luật —
+        chỉnh cho vừa quá khứ dễ làm lần sau tệ hơn. Khác với mục Sau tín hiệu: trang kia chỉ xem giá đi đâu sau khi app đã báo.
+      </p>
+      {verdict ? (
+        <div className={`card mb-4 p-4 ${verdict.tone === "loss" ? "border-loss/40" : ""}`}>
+          <p>{verdict.line}</p>
+          {focus && !selected && (
+            <Link href={`/backtest?run=${focus.id}`} className="mt-2 inline-block text-xs text-accent hover:underline">
+              Xem từng lệnh của lần chạy gần nhất →
+            </Link>
+          )}
+        </div>
+      ) : (
+        <p className="card mb-4 p-4 text-xs text-muted">Chưa có lần chạy nào. Bấm nút bên dưới khi muốn xem — mỗi lần chạy khá nặng.</p>
+      )}
 
       <RunForm strategies={Object.keys(STRATEGIES)} />
 
       <Limitations />
 
       <div className="mb-8">
-        <h2 className="mb-2 font-semibold">Runs gần đây</h2>
+        <h2 className="mb-2 font-semibold">Các lần đã chạy</h2>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr className="border-b border-border text-left text-muted">
                 <th className="p-2">#</th>
-                <th className="p-2">Strategy</th>
-                <th className="p-2">Universe</th>
-                <th className="p-2">Period</th>
-                <th className="p-2 text-right">Return</th>
-                <th className="p-2 text-right">MaxDD</th>
-                <th className="p-2 text-right">WinRate</th>
-                <th className="p-2 text-right">Trades</th>
+                <th className="p-2">Luật</th>
+                <th className="p-2">Nhóm mã</th>
+                <th className="p-2">Khoảng</th>
+                <th className="p-2 text-right">Lãi/lỗ</th>
+                <th className="p-2 text-right">Lúc tệ nhất</th>
+                <th className="p-2 text-right">Lệnh lãi</th>
+                <th className="p-2 text-right">Số lệnh</th>
               </tr>
             </thead>
             <tbody>
@@ -144,10 +166,10 @@ export default async function BacktestPage({
           )}
 
           <div className="mb-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
-            <Stat label="Total return" value={`${metrics.totalReturnPct.toFixed(1)}%`} />
-            <Stat label="CAGR" value={`${metrics.cagrPct.toFixed(1)}%`} />
-            <Stat label="Max drawdown" value={`${metrics.maxDrawdownPct.toFixed(1)}%`} />
-            <Stat label="Win rate (đóng)" value={`${metrics.winRatePct.toFixed(1)}%`} />
+            <Stat label="Lãi/lỗ cả kỳ" value={`${metrics.totalReturnPct.toFixed(1)}%`} />
+            <Stat label="Lãi/năm" value={`${metrics.cagrPct.toFixed(1)}%`} />
+            <Stat label="Lúc tệ nhất tụt" value={`${metrics.maxDrawdownPct.toFixed(1)}%`} />
+            <Stat label="Tỷ lệ lệnh lãi" value={`${metrics.winRatePct.toFixed(1)}%`} />
             <Stat
               label="Lệnh đóng / mở"
               value={`${metrics.closedTrades ?? metrics.trades} / ${metrics.openTrades ?? 0}`}
@@ -242,7 +264,7 @@ function Limitations() {
   return (
     <details className="mb-6 text-xs text-muted">
       <summary className="cursor-pointer font-medium text-foreground">
-        Giới hạn engine v{ENGINE_VERSION} (đọc trước khi tin số)
+        Giới hạn — đọc trước khi tin số
       </summary>
       <ul className="mt-2 list-disc space-y-1 pl-5">
         {BACKTEST_LIMITATIONS.map((l) => (

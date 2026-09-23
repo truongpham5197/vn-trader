@@ -4,9 +4,10 @@ import Link from "next/link";
 import type { PositionLine } from "@/lib/report/positions";
 import { px } from "@/lib/format";
 import { netPnl, netPnlPct } from "@/lib/fees";
-import { levelState, type LevelState } from "@/lib/risk/levels";
+import { positionAdvice } from "@/lib/risk/advice";
 import { TradeActions } from "./TradeActions";
 import { LiveBadge, useQuotes } from "./live";
+import { More } from "./More";
 
 const pct = (v: number | null) =>
   v === null ? "?" : `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
@@ -42,22 +43,23 @@ const tradeOf = (p: PositionLine) => ({
   price: p.price,
 });
 
-/** Badge vị thế so với cắt lỗ/chốt lời — "đã thủng" khác "sát" (giá còn trên cắt lỗ ≤3%). */
-function LevelBadge({ s }: { s: LevelState | null }) {
-  if (!s) return null;
-  const strong = s.kind === "stop-broken" || s.kind === "target-hit";
-  const cls = s.tone === "loss" ? (strong ? "bg-loss text-white" : "bg-loss/15 text-loss") : strong ? "bg-gain/25 text-gain" : "bg-gain/10 text-gain";
+const sticky = "sticky right-0 z-10 bg-card shadow-[-6px_0_8px_-6px_rgba(0,0,0,.45)]";
+
+function AdviceLine({ p }: { p: PositionLine }) {
+  const a = positionAdvice(p);
+  const cls = a.tone === "gain" ? "text-gain" : a.tone === "loss" ? "text-loss" : "text-amber-300";
   return (
-    <span title={s.detail} className={`ml-1.5 whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-medium ${cls}`}>
-      {s.kind === "stop-broken" ? "🛑 " : ""}
-      {s.label}
-    </span>
+    <div className="mt-1 max-w-56">
+      <p className={`text-[11px] font-medium ${cls}`}>{a.line}</p>
+      <More label="Vì sao">
+        <p className="text-[11px] text-muted">{a.detail}</p>
+      </More>
+    </div>
   );
 }
 
 /** Thẻ vị thế cho mobile. */
 function PositionCard({ p }: { p: PositionLine }) {
-  const lv = levelState(p.price, p.stop, p.target);
   return (
     <div className="card p-3 text-xs">
       <div className="flex items-start justify-between gap-2">
@@ -65,11 +67,11 @@ function PositionCard({ p }: { p: PositionLine }) {
           <Link href={`/stock/${p.ticker}`} className="text-sm font-semibold hover:text-accent">
             {p.ticker}
           </Link>
-          <LevelBadge s={lv} />
           <div className="text-[11px] text-muted">
             <span className="num">{p.qty.toLocaleString("en-US")}</span> cp · vốn <span className="num">{px(p.entry)}</span> ·{" "}
             {p.sessionsHeld >= 2 ? "✓ bán được" : `⏳T+${p.sessionsHeld}`}
           </div>
+          <AdviceLine p={p} />
         </div>
         <div className="num shrink-0 text-right">
           <div className="text-sm font-medium">{px(p.price, "?")}</div>
@@ -96,11 +98,7 @@ function PositionCard({ p }: { p: PositionLine }) {
           <span className="text-gain">{px(p.target)}</span>
         </div>
       </div>
-      {lv && (lv.kind === "stop-broken" || lv.kind === "target-hit") && (
-        <p className={`mt-2 text-[11px] ${lv.tone === "loss" ? "text-loss" : "text-gain"}`}>{lv.detail}</p>
-      )}
-      {p.note && !p.note.startsWith("manual") && <div className="mt-1 truncate text-[11px] text-muted">{p.note}</div>}
-      <div className="mt-2 flex justify-end">
+      <div className="mt-2 flex flex-wrap justify-end gap-1">
         <TradeActions t={tradeOf(p)} />
       </div>
     </div>
@@ -146,13 +144,11 @@ export default function PositionsTable({
               <th className="p-3 text-right font-medium">Cắt lỗ</th>
               <th className="p-3 text-right font-medium">Chốt lời</th>
               <th className="p-3 font-medium">T+</th>
-              <th className="p-3" />
+              <th className={`p-3 ${sticky}`} />
             </tr>
           </thead>
           <tbody>
-            {positions.map((p) => {
-              const lv = levelState(p.price, p.stop, p.target);
-              return (
+            {positions.map((p) => (
                 <tr
                   key={p.id}
                   className="border-b border-border/50 last:border-0 hover:bg-white/[0.03]"
@@ -165,13 +161,8 @@ export default function PositionsTable({
                       >
                         {p.ticker}
                       </Link>
-                      <LevelBadge s={lv} />
                     </div>
-                    {p.note && !p.note.startsWith("manual") && (
-                      <div className="max-w-40 truncate text-[11px] text-muted">
-                        {p.note}
-                      </div>
-                    )}
+                    <AdviceLine p={p} />
                   </td>
                   <td className="num p-3 text-right">
                     {p.qty.toLocaleString("en-US")}
@@ -203,12 +194,11 @@ export default function PositionsTable({
                       ? "✓ bán được"
                       : `⏳T+${p.sessionsHeld}`}
                   </td>
-                  <td className="p-3">
+                  <td className={`p-3 ${sticky}`}>
                     <TradeActions t={tradeOf(p)} />
                   </td>
                 </tr>
-              );
-            })}
+            ))}
           </tbody>
         </table>
       </div>

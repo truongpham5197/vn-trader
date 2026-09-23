@@ -12,6 +12,7 @@ import { AddTradeButton } from "./components/TradeActions";
 import AutoRefresh from "./components/AutoRefresh";
 import { LivePrice } from "./components/live";
 import OpportunityStatus from "./components/OpportunityStatus";
+import { More } from "./components/More";
 
 export const dynamic = "force-dynamic";
 
@@ -86,80 +87,55 @@ export default async function Home() {
         <Stat
           label="Tổng tài sản"
           value={tr(pf.nav)}
-          sub={`= tiền mặt + cổ phiếu (nếu bán hết hôm nay) · ${signed(pf.totalPct)}% so với vốn ${tr(pf.initial)}`}
+          sub={`${signed(pf.totalPct)}% so với vốn ${tr(pf.initial)}`}
           tone={pf.totalPnl}
         />
         <Stat
           label="Tiền mặt còn lại"
           value={tr(pf.cash)}
-          sub={`Vốn ${tr(pf.initial)} − đã mua CP ${tr(pf.invested)} (gồm phí)${pf.realized ? ` ${trSigned(pf.realized)} lãi/lỗ đã chốt` : ""}`}
+          sub={pf.cash < 0 ? "đã mua nhiều hơn vốn khai báo" : "còn để mua thêm"}
           tone={pf.cash < 0 ? -1 : 0}
         />
         <Stat
           label="Cổ phiếu đang giữ"
           value={tr(pf.marketValue)}
-          sub={`Giá trị theo giá hiện tại · mua vào ${tr(pf.invested)}`}
+          sub={`mua vào ${tr(pf.invested)}`}
         />
         <Stat
           label="Tổng lãi/lỗ"
           value={trSigned(pf.totalPnl)}
-          sub={`Đã bán chốt ${trSigned(pf.realized)} · đang giữ (tạm tính) ${trSigned(pf.unrealized)}${pf.dayPnl === null ? "" : ` · riêng hôm nay ${trSigned(pf.dayPnl)}`}`}
+          sub={pf.dayPnl === null ? "đã chốt + đang giữ" : `hôm nay ${trSigned(pf.dayPnl)}`}
           tone={pf.totalPnl}
         />
       </div>
       {pf.cash < 0 && (
         <p className="card mb-2 border-loss/40 p-3 text-xs text-loss">
-          ⚠️ Tiền mặt âm {tr(pf.cash)}: số tiền đã mua cổ phiếu (
-          {tr(pf.invested)}, gồm phí 0,15%) lớn hơn vốn ban đầu (
-          {tr(pf.initial)}) — tức là bạn đã mua nhiều hơn số vốn khai báo. Sửa
-          &quot;Vốn ban đầu&quot; ở phần Cấu hình cho đúng số tiền thật bạn bỏ
-          ra (ít nhất {Math.ceil((pf.invested - pf.realized) / 1e6)}tr) để số
-          liệu chính xác.
+          Tiền mặt âm {tr(pf.cash)}. Sửa vốn ban đầu ở Cài đặt cho đủ số đã bỏ ra (ít nhất {Math.ceil((pf.invested - pf.realized) / 1e6)}tr) thì lãi/lỗ mới đúng.
         </p>
       )}
-      <div className="card mb-4 flex flex-wrap gap-x-6 gap-y-1 p-3 text-xs text-muted">
-        <span>
-          Lệnh đã đóng <b className="num text-foreground">{pf.closedCount}</b>
-        </span>
-        <span>
-          Tỷ lệ thắng{" "}
-          <b className="num text-foreground">
-            {pf.winRate === null
-              ? "—"
-              : `${pf.wins}/${pf.closedCount} (${pf.winRate.toFixed(0)}%)`}
-          </b>
-        </span>
-        <span>
-          Lãi TB/lệnh thắng{" "}
-          <b className="num text-gain">
-            {pf.avgWin === null ? "—" : trSigned(pf.avgWin)}
-          </b>
-        </span>
-        <span>
-          Lỗ TB/lệnh thua{" "}
-          <b className="num text-loss">
-            {pf.avgLoss === null ? "—" : trSigned(pf.avgLoss)}
-          </b>
-        </span>
-        {pf.best && pf.best.pnl > 0 && (
-          <span>
-            Tốt nhất <b className="text-foreground">{pf.best.ticker}</b>{" "}
-            <b className="num text-gain">{trSigned(pf.best.pnl)}</b>
-          </span>
-        )}
-        {pf.worst && pf.worst.pnl < 0 && (
-          <span>
-            Tệ nhất <b className="text-foreground">{pf.worst.ticker}</b>{" "}
-            <b className="num text-loss">{trSigned(pf.worst.pnl)}</b>
-          </span>
-        )}
-        <span className="ml-auto">
-          Dữ liệu {symbolCount.toLocaleString("en-US")} mã · nến mới nhất{" "}
-          <span className="num">{latestBar?.date ?? "—"}</span>
-        </span>
+      <div className="mb-4">
+        <More label="Số lệnh đã đóng, tỷ lệ thắng">
+          <div className="card flex flex-wrap gap-x-6 gap-y-1 p-3 text-xs text-muted">
+            <span>Đã đóng <b className="num text-foreground">{pf.closedCount}</b></span>
+            <span>Thắng <b className="num text-foreground">{pf.winRate === null ? "—" : `${pf.wins}/${pf.closedCount} (${pf.winRate.toFixed(0)}%)`}</b></span>
+            <span>Lãi TB <b className="num text-gain">{pf.avgWin === null ? "—" : trSigned(pf.avgWin)}</b></span>
+            <span>Lỗ TB <b className="num text-loss">{pf.avgLoss === null ? "—" : trSigned(pf.avgLoss)}</b></span>
+            {pf.best && pf.best.pnl > 0 && <span>Tốt nhất <b className="text-foreground">{pf.best.ticker}</b> <b className="num text-gain">{trSigned(pf.best.pnl)}</b></span>}
+            {pf.worst && pf.worst.pnl < 0 && <span>Tệ nhất <b className="text-foreground">{pf.worst.ticker}</b> <b className="num text-loss">{trSigned(pf.worst.pnl)}</b></span>}
+            <span>Nến mới nhất <span className="num">{latestBar?.date ?? "—"}</span> · {symbolCount.toLocaleString("en-US")} mã</span>
+          </div>
+        </More>
       </div>
 
-      {/* Tín hiệu lượt quét gần nhất — date = nến đã đóng, dùng cho phiên kế tiếp */}
+      <section className="mb-8">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 className="font-semibold">Vị thế đang giữ</h2>
+          <AddTradeButton />
+        </div>
+        <p className="mb-2 text-xs text-muted">Một câu xử lý theo cắt lỗ/chốt lời bạn đã đặt. Không phải khuyến nghị có lãi.</p>
+        <PositionsTable positions={positions} />
+      </section>
+
       <section className="mb-8">
         <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-semibold">
@@ -177,29 +153,15 @@ export default async function Home() {
         </div>
         {pending.length === 0 ? (
           <p className="card p-6 text-center text-muted">
-            {latestSignals.length
-              ? "Đã xử lý hết tín hiệu của lượt quét gần nhất."
-              : "Chưa có tín hiệu."}{" "}
-            Lượt quét kế tiếp chạy sau khi chốt nến (khoảng 15:10–17:00 T2–T6)
-            và báo qua Telegram.
+            {latestSignals.length ? "Đã xử lý hết tín hiệu mới." : "Chưa có tín hiệu mới."}
           </p>
         ) : (
           <SignalTable signals={pending.slice(0, 12)} showDate={false} owner={u.owner} latestSession={sigDate} />
         )}
       </section>
 
-      <section className="mb-8">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <h2 className="font-semibold">Vị thế đang giữ</h2>
-          <AddTradeButton />
-        </div>
-        <PositionsTable positions={positions} />
-      </section>
-
-      {/* VN30 watchlist — gợi ý vị thế tốt */}
       <section className="mb-6">
-        <h2 className="mb-2 font-semibold">VN30 — setup theo dõi, chưa xác nhận mua</h2>
-        <p className="mb-3 text-xs text-muted">Vùng giá là kịch bản quan sát. Chờ tín hiệu từ scanner; mục tiêu theo mô hình không phải dự báo.</p>
+        <h2 className="mb-2 font-semibold">VN30 — đang theo dõi, chưa phải lệnh mua</h2>
         <div className="flex flex-col gap-2 sm:hidden">
           {vn30.slice(0, 12).map((r) => (
             <div key={r.ticker} className="card p-3 text-xs">
@@ -230,7 +192,12 @@ export default async function Home() {
                   <span className="text-gain">{r.target?.toFixed(2) ?? "—"}</span>
                 </div>
               </div>
-              {r.note && <p className="mt-1 text-[11px] text-muted">{r.note}</p>}
+              {(r.plain || r.note) && (
+                <More label="Vì sao theo dõi">
+                  {r.plain && <p className="text-[11px]">{r.plain}</p>}
+                  {r.note && <p className="text-[11px] text-muted">{r.note}</p>}
+                </More>
+              )}
               {r.buyZone && r.stop && r.target && <OpportunityStatus ticker={r.ticker} date={r.dataDate} latestSession={sigDate} buyZone={r.buyZone} stop={r.stop} target={r.target} trigger={r.trigger} />}
             </div>
           ))}
@@ -245,9 +212,9 @@ export default async function Home() {
                   Giá (%)
                 </th>
                 <th className="p-3 text-right font-medium">Vùng mua</th>
-                <th className="p-3 text-right font-medium">Stop</th>
-                <th className="p-3 text-right font-medium">Target</th>
-                <th className="p-3 font-medium">Ghi chú</th>
+                <th className="p-3 text-right font-medium">Cắt lỗ</th>
+                <th className="p-3 text-right font-medium">Chốt lời</th>
+                <th className="p-3 font-medium">Việc cần làm</th>
               </tr>
             </thead>
             <tbody>
@@ -287,9 +254,14 @@ export default async function Home() {
                   <td className="num p-3 text-right text-gain">
                     {r.target?.toFixed(2) ?? "—"}
                   </td>
-                  <td className="min-w-64 p-3 text-muted">
-                    {r.note}
+                  <td className="p-3">
                     {r.buyZone && r.stop && r.target && <OpportunityStatus ticker={r.ticker} date={r.dataDate} latestSession={sigDate} buyZone={r.buyZone} stop={r.stop} target={r.target} trigger={r.trigger} />}
+                    {(r.plain || r.note) && (
+                      <More label="Vì sao theo dõi">
+                        {r.plain && <p className="text-[11px]">{r.plain}</p>}
+                        {r.note && <p className="text-[11px] text-muted">{r.note}</p>}
+                      </More>
+                    )}
                   </td>
                 </tr>
               ))}

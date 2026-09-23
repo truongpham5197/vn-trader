@@ -171,3 +171,16 @@ model DataGap {
   reason    String
   createdAt DateTime @default(now())
 }
+
+// Thông báo nổi trên web — ghi song song Telegram từ cron (watcher, scan, positions-report...)
+model Alert {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  kind      String // signal | sector | stop | target | positions | system
+  level     String   @default("info") // info | success | warn | danger
+  title     String
+  body      String   @default("")
+  ticker    String?
+  userId    Int? // null = mọi người
+  @@index([userId, id])
+}

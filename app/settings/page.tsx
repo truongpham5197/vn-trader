@@ -4,6 +4,7 @@ import { GUEST, currentUser, userNum } from "@/lib/user";
 import { STRATEGIES, ensureStrategies } from "@/lib/strategy";
 import SettingsPanel from "../components/SettingsPanel";
 import { StrategyCard, WatchlistEditor } from "../components/SettingsEditors";
+import { AlertPrefs } from "../components/AlertCenter";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +76,15 @@ export default async function SettingsPage() {
           Mã trong danh sách luôn được quét tín hiệu mỗi ngày, kể cả khi không đạt ngưỡng thanh khoản / không thuộc phạm vi quét.
         </p>
         <WatchlistEditor tickers={watchlist} />
+      </section>
+
+      <section id="thong-bao" className="mb-8 scroll-mt-20">
+        <h2 className="font-semibold">Thông báo nổi trên web</h2>
+        <p className="mt-1 mb-3 text-xs text-muted">
+          Cùng nội dung với cảnh báo Telegram từ các cron (watcher, quét tín hiệu, báo cáo vị thế). Chọn loại muốn hiện nổi — chuông 🔔 trên menu vẫn giữ đủ
+          lịch sử 7 ngày. Lưu riêng trên trình duyệt này.
+        </p>
+        <AlertPrefs />
       </section>
     </main>
   );

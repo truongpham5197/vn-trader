@@ -1,3 +1,5 @@
+import { pushAlert, type WebAlert } from "../alerts";
+
 const TOKEN = () => process.env.TELEGRAM_BOT_TOKEN ?? "";
 const CHAT_ID = () => process.env.TELEGRAM_CHAT_ID ?? "";
 
@@ -8,7 +10,9 @@ export function telegramConfigured(): boolean {
 export async function sendTelegram(
   text: string,
   buttons?: { text: string; callback_data: string }[][],
+  web?: WebAlert,
 ): Promise<boolean> {
+  if (web) await pushAlert(text, web);
   if (!telegramConfigured()) {
     console.log("[telegram:dry]", text);
     return true;
@@ -90,5 +94,5 @@ export async function notifySignal(s: {
       { text: "✅ Đã vào tay", callback_data: `taken:${s.signalId}` },
       { text: "⏭ Bỏ qua", callback_data: `skip:${s.signalId}` },
     ],
-  ]);
+  ], { kind: "signal", ticker: s.ticker, userId: null });
 }

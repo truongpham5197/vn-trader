@@ -3,7 +3,8 @@ import { ownerId } from "../user";
 import { getBool, getSetting, setSetting } from "../settings";
 import { getQuote, formatQuoteLine } from "../price";
 import { getOrder, getPositions, placeOrder, tcbsConfigured } from "./client";
-import { sendTelegram } from "../telegram/notify";
+import { esc, sendTelegram } from "../telegram/notify";
+import { pushAlert } from "../alerts";
 import { vnToday } from "../vn-time";
 import { px } from "../format";
 
@@ -23,6 +24,7 @@ async function sessionsHeld(symbolId: number, openedAt: Date): Promise<number> {
  */
 export async function runWatcher(): Promise<void> {
   if (await getBool("killSwitch")) return;
+  await watchOthers();
 
   // Chỉ vị thế của owner — cảnh báo đi Telegram owner, lệnh live bắn vào TCBS owner
   const allOpen = await prisma.trade.findMany({
@@ -51,6 +53,8 @@ export async function runWatcher(): Promise<void> {
       if (!eligible) {
         await sendTelegram(
           `⚠️ <b>${t.symbol.ticker}</b> chạm stop ${px(t.stopPrice)} nhưng chưa đủ T+2 (held ${held} phiên) — theo dõi tay!\n${qLine}`,
+          undefined,
+          { kind: "stop", level: "warn", ticker: t.symbol.ticker },
         );
         continue;
       }
@@ -63,12 +67,42 @@ export async function runWatcher(): Promise<void> {
       });
       await sendTelegram(
         `🎯 <b>${t.symbol.ticker}</b> chạm target ${px(t.targetPrice)} (giá ${px(price)})\n${qLine}`,
+        undefined,
+        { kind: "target", level: "success", ticker: t.symbol.ticker },
       );
     }
   }
 
   // 3. Heartbeat — chỉ gửi khi P&L dịch ≥1%pt so với lần báo trước (hoặc vị thế mới)
   await heartbeat();
+}
+
+/**
+ * Vị thế của user khác owner: chỉ báo trên web (không Telegram, không tự đóng lệnh
+ * — họ tự bán). Đánh dấu stop-hit/target-hit vào note để báo 1 lần.
+ */
+async function watchOthers(): Promise<void> {
+  const trades = await prisma.trade.findMany({
+    where: { status: "open", userId: { not: await ownerId() }, OR: [{ stopPrice: { not: null } }, { targetPrice: { not: null } }] },
+    include: { symbol: true },
+  });
+  for (const t of trades) {
+    const hitStop = t.stopPrice !== null && !t.note?.includes("stop-hit");
+    const hitTarget = t.targetPrice !== null && !t.note?.includes("target-hit");
+    if (!hitStop && !hitTarget) continue;
+    const quote = await getQuote(t.symbol.ticker);
+    const price = quote.last;
+    if (price === null) continue;
+    const kind = hitStop && price <= t.stopPrice! ? "stop" : hitTarget && price >= t.targetPrice! ? "target" : null;
+    if (!kind) continue;
+    await prisma.trade.update({ where: { id: t.id }, data: { note: `${t.note ?? ""} ${kind}-hit`.trim() } });
+    await pushAlert(
+      kind === "stop"
+        ? `🛑 <b>${t.symbol.ticker}</b> chạm cắt lỗ ${px(t.stopPrice)} (giá ${px(price)})\nCân nhắc bán để giữ vốn. Bán xong bấm "Bán" ở trang Vị thế để ghi nhật ký.\n${formatQuoteLine(quote)}`
+        : `🎯 <b>${t.symbol.ticker}</b> chạm chốt lời ${px(t.targetPrice)} (giá ${px(price)})\nCân nhắc chốt lời. Bán xong bấm "Bán" ở trang Vị thế để ghi nhật ký.\n${formatQuoteLine(quote)}`,
+      { kind, level: kind === "stop" ? "danger" : "success", ticker: t.symbol.ticker, userId: t.userId },
+    );
+  }
 }
 
 const HEARTBEAT_DELTA_PCT = 1;
@@ -87,7 +121,7 @@ async function heartbeat(): Promise<void> {
     if (p === undefined || Math.abs((l.pnlPct ?? 0) - p) >= HEARTBEAT_DELTA_PCT) moved = true;
   }
   if (!moved) return;
-  await sendTelegram(await positionsMessage(lines));
+  await sendTelegram(await positionsMessage(lines), undefined, { kind: "positions" });
   await setSetting("heartbeatPnl", JSON.stringify(cur));
 }
 
@@ -116,6 +150,8 @@ async function executeStop(
     });
     await sendTelegram(
       `🛑 STOP <b>${t.symbol.ticker}</b> bán ${t.qty}cp @ ${price} — P&L ${((proceeds - cost) / 1e6).toFixed(2)}tr (paper)\n${qLine}`,
+      undefined,
+      { kind: "stop", level: "danger", ticker: t.symbol.ticker },
     );
     return;
   }
@@ -131,10 +167,14 @@ async function executeStop(
     });
     await sendTelegram(
       `🛑 STOP <b>${t.symbol.ticker}</b> — đã bắn lệnh bán MP ${t.qty}cp (order ${r.orderId ?? "?"})`,
+      undefined,
+      { kind: "stop", level: "danger", ticker: t.symbol.ticker },
     );
   } catch (e) {
     await sendTelegram(
-      `❌ STOP <b>${t.symbol.ticker}</b> đặt lệnh thất bại: ${e instanceof Error ? e.message : "?"}`,
+      `❌ STOP <b>${t.symbol.ticker}</b> đặt lệnh thất bại: ${esc(e instanceof Error ? e.message : "?")}`,
+      undefined,
+      { kind: "stop", level: "danger", ticker: t.symbol.ticker },
     );
   }
 }
@@ -169,7 +209,7 @@ async function syncPendingOrders(): Promise<void> {
           await prisma.order.update({ where: { id: o.id }, data: { tradeId: trade.id } });
           await prisma.signal.update({ where: { id: o.signalId }, data: { status: "filled" } });
         }
-        await sendTelegram(`✅ Lệnh ${o.side} ${o.qty}cp khớp @ ${px(od.price)}`);
+        await sendTelegram(`✅ Lệnh ${o.side} ${o.qty}cp khớp @ ${px(od.price)}`, undefined, { kind: "system", level: "success" });
       } else if (/cancel|reject/i.test(od.status)) {
         await prisma.order.update({ where: { id: o.id }, data: { status: "cancelled" } });
       }

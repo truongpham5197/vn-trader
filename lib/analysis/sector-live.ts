@@ -63,6 +63,8 @@ export async function runSectorAlerts(): Promise<number> {
       ),
       `<i>Gợi ý kỹ thuật tự động, chưa chứng minh có lãi — tập bằng tiền ảo trước. Xem: /nganh</i>`,
     ].join("\n"),
+    undefined,
+    { kind: "sector", userId: null, ticker: picks.length === 1 ? picks[0].ticker : undefined },
   );
   await setSetting(
     "sectorAlerted",

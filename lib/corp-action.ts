@@ -107,6 +107,8 @@ export async function applyCorporateAction(
     `📋 <b>${esc(ticker)}</b> GDKHQ ${exDate} — hệ số điều chỉnh ×${factor.toFixed(4)} (${
       split ? "chia tách/thưởng — qty ÷ hệ số, làm tròn lot 100" : "cổ tức tiền — qty giữ nguyên"
     }).\nĐã điều chỉnh giá vốn/stop/target vị thế mở + lịch sử bars. Kiểm tra lại nếu khớp thực tế khác.`,
+    undefined,
+    { kind: "system", level: "warn", ticker, userId: null },
   );
 
   return { barsAdjusted, tradesAdjusted, signalsAdjusted };

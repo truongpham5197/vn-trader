@@ -70,10 +70,10 @@ export default async function BacktestPage({
 
   return (
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
-      <h1 className="text-xl font-bold">Thử quá khứ</h1>
+      <h1 className="text-xl font-bold">Giả lập mua bán</h1>
       <p className="mt-1 mb-4 max-w-2xl text-xs text-muted">
         Giả lập mua bán theo luật trên dữ liệu cũ, có phí. Không tự chạy khi mở trang, và không tự sửa luật —
-        chỉnh cho vừa quá khứ dễ làm lần sau tệ hơn. Khác với mục Sau tín hiệu: trang kia chỉ xem giá đi đâu sau khi app đã báo.
+        chỉnh cho vừa quá khứ dễ làm lần sau tệ hơn. Khác với mục Giá sau báo: trang kia chỉ xem giá đi đâu sau khi app đã báo.
       </p>
       {verdict ? (
         <div className={`card mb-4 p-4 ${verdict.tone === "loss" ? "border-loss/40" : ""}`}>

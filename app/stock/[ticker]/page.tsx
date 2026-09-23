@@ -9,6 +9,7 @@ import { px } from "@/lib/format";
 import type { Bar } from "@/lib/data/types";
 import { LiveBadge, LivePrice } from "../../components/live";
 import { StockFundamentals, WatchButton } from "../../components/StockActions";
+import PriceChart from "../../components/PriceChart";
 
 export const dynamic = "force-dynamic";
 
@@ -28,54 +29,6 @@ export async function generateMetadata({
   params: Promise<{ ticker: string }>;
 }) {
   return { title: `${(await params).ticker.toUpperCase()} — vn-trader` };
-}
-
-/** Biểu đồ giá đóng cửa + MA20, SVG thuần render phía server. */
-function Spark({ closes }: { closes: number[] }) {
-  const W = 600;
-  const H = 140;
-  const ma = closes.map((_, i) =>
-    i >= 19 ? avg(closes.slice(i - 19, i + 1)) : null,
-  );
-  const all = [...closes, ...ma.filter((v): v is number => v !== null)];
-  const lo = Math.min(...all);
-  const hi = Math.max(...all);
-  const x = (i: number) => (i / (closes.length - 1)) * W;
-  const y = (v: number) => H - 4 - ((v - lo) / (hi - lo || 1)) * (H - 8);
-  const line = (vs: (number | null)[]) =>
-    vs
-      .map((v, i) =>
-        v === null
-          ? ""
-          : `${vs[i - 1] == null ? "M" : "L"}${x(i).toFixed(1)},${y(v).toFixed(1)}`,
-      )
-      .join("");
-  const up = closes.at(-1)! >= closes[0];
-  return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className="h-36 w-full"
-      preserveAspectRatio="none"
-      role="img"
-      aria-label="Biểu đồ giá"
-    >
-      <path
-        d={line(ma)}
-        fill="none"
-        stroke="currentColor"
-        className="text-muted"
-        strokeWidth="1.2"
-        strokeDasharray="4 3"
-      />
-      <path
-        d={line(closes)}
-        fill="none"
-        stroke="currentColor"
-        className={up ? "text-gain" : "text-loss"}
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
 }
 
 function Stat({
@@ -185,7 +138,7 @@ export default async function StockPage({
         {bars.length > 20 ? (
           <>
             <div className="mt-3">
-              <Spark closes={closes} />
+              <PriceChart points={bars.map((b) => ({ date: b.date, close: b.close }))} />
               <div className="flex justify-between text-xs text-muted">
                 <span>{bars[0].date}</span>
                 <span>— giá đóng cửa · - - trung bình 20 phiên</span>

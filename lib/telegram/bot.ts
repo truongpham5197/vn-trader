@@ -139,8 +139,8 @@ export function createBot(): Bot {
     await ctx.reply(`🔭 <b>VN30 WATCHLIST</b>\n\n` + parts.join("\n\n"));
   });
 
-  // /nganh — xếp hạng nhóm ngành + mã đáng chú ý thuộc ngành mạnh
-  bot.command("nganh", async (ctx) => {
+  // /nganh (alias /sectors) — xếp hạng nhóm ngành + mã đáng chú ý thuộc ngành mạnh
+  bot.command(["nganh", "sectors"], async (ctx) => {
     if (!allowed(ctx)) return;
     const { loadSectorStrength, formatSectorStrength } = await import("../analysis/sector-strength");
     const { inLiveWindow } = await import("../analysis/sector-live");

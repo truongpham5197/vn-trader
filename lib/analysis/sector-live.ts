@@ -61,7 +61,7 @@ export async function runSectorAlerts(): Promise<number> {
           `🎯 <b>${p.ticker}</b> (${esc(p.sector ?? "")}) giá ${dong(p.close)} — trong vùng mua ${dong(p.buyZone[0])}–${dong(p.buyZone[1])}\n` +
           `    cắt lỗ ${dong(p.stop)} (−${p.riskPct.toFixed(1)}%) · chốt lời ${dong(p.target)} (+${p.upsidePct.toFixed(1)}%)`,
       ),
-      `<i>Gợi ý kỹ thuật tự động, chưa chứng minh có lãi — tập bằng tiền ảo trước. Xem: /sectors</i>`,
+      `<i>Gợi ý kỹ thuật tự động, chưa chứng minh có lãi — tập bằng tiền ảo trước. Xem: /nganh</i>`,
     ].join("\n"),
   );
   await setSetting(

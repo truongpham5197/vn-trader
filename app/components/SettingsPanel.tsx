@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-
-type State = "idle" | "saving" | "saved" | "error";
+import { useApi } from "./ui";
 
 const input =
   "num rounded border border-border bg-background px-2 py-1.5 text-foreground focus:border-accent focus:outline-none";
@@ -47,28 +45,22 @@ export default function SettingsPanel(p: {
   kill: boolean;
   paper: boolean;
 }) {
-  const router = useRouter();
+  const { call } = useApi();
   const [navV, setNavV] = useState(String(p.nav / 1e6));
   const [riskV, setRiskV] = useState(String(+(p.riskPct * 100).toFixed(2)));
   const [minV, setMinV] = useState(String(p.minValue / 1e9));
-  const [state, setState] = useState<State>("idle");
-  const [err, setErr] = useState("");
-
-  async function save(key: string, value: string) {
-    setState("saving");
-    const res = await fetch("/api/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, value }),
-    });
-    setState(res.ok ? "saved" : "error");
-    setErr(res.ok ? "" : ((await res.json().catch(() => null))?.error ?? `lỗi ${res.status}`));
-    if (res.ok) router.refresh();
-  }
+  // Ô số: chỉ lưu khi giá trị thực sự đổi (tránh toast mỗi lần bấm ra ngoài)
+  const saved: Record<string, string> = {
+    navVnd: String(p.nav),
+    riskPct: String(p.riskPct),
+    universeMinValueVnd: String(p.minValue),
+  };
+  const save = (key: string, value: string) =>
+    (key in saved && Number(saved[key]) === Number(value)) || call("POST", "/api/settings", { key, value }, "Đã lưu cấu hình");
 
   return (
     <div className="card p-3">
-      <div className="text-xs text-muted">Cấu hình — lưu ngay khi sửa (bấm ra ngoài ô)</div>
+      <div className="text-xs text-muted">Lưu ngay khi sửa (bấm ra ngoài ô). Đổi Kill switch / Quét tín hiệu sẽ báo Telegram.</div>
       <div className="mt-2 flex flex-wrap items-end gap-3 text-xs">
         <Toggle
           label="Quét tín hiệu"
@@ -138,9 +130,6 @@ export default function SettingsPanel(p: {
             {p.paper ? "📝 Tiền ảo (paper)" : "💸 TIỀN THẬT"}
           </span>
         </div>
-        {state === "saving" && <span className="text-muted">đang lưu…</span>}
-        {state === "saved" && <span className="text-gain">✓ đã lưu</span>}
-        {state === "error" && <span className="text-loss">{err || "lỗi"}</span>}
       </div>
     </div>
   );

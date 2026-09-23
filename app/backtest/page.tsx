@@ -46,11 +46,8 @@ export default async function BacktestPage({
     : [];
 
   return (
-    <main className="mx-auto max-w-5xl p-6 text-sm">
-      <Link href="/" className="text-accent hover:underline">
-        ← dashboard
-      </Link>
-      <h1 className="my-4 text-xl font-bold">Backtest</h1>
+    <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
+      <h1 className="mb-4 text-xl font-bold">Backtest</h1>
 
       <RunForm strategies={Object.keys(STRATEGIES)} />
 

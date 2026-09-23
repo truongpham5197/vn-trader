@@ -4,31 +4,69 @@ import SignalTable from "../components/SignalTable";
 
 export const dynamic = "force-dynamic";
 
+const TABS = [
+  ["pending", "Chờ xử lý", ["new", "notified"]],
+  ["taken", "Đã mua", ["taken", "filled", "ordered"]],
+  ["skipped", "Bỏ qua", ["skipped", "expired"]],
+  ["all", "Tất cả", null],
+] as const;
+
 export default async function SignalsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; status?: string }>;
 }) {
-  const { date } = await searchParams;
+  const sp = await searchParams;
+  const dates = (
+    await prisma.signal.groupBy({ by: ["date"], _count: { _all: true }, orderBy: { date: "desc" }, take: 10 })
+  ).map((d) => ({ date: d.date, n: d._count._all }));
+  const date = sp.date === "all" ? undefined : (sp.date ?? dates[0]?.date);
+  const tab = TABS.find((t) => t[0] === sp.status) ?? TABS[3];
   const signals = await prisma.signal.findMany({
-    where: date ? { date } : {},
+    where: { ...(date && { date }), ...(tab[2] && { status: { in: [...tab[2]] } }) },
     include: { symbol: true, strategy: true },
-    orderBy: [{ date: "desc" }, { id: "desc" }],
-    take: 200,
+    orderBy: [{ date: "desc" }, { rr: "desc" }],
+    take: 300,
   });
+  const q = (p: { date?: string; status?: string }) => {
+    const u = new URLSearchParams({ date: p.date ?? date ?? "all", status: p.status ?? tab[0] });
+    return `/signals?${u}`;
+  };
+  const chip = (active: boolean) =>
+    `rounded-full border px-3 py-1 text-xs transition-colors ${
+      active ? "border-accent bg-accent/15 text-foreground" : "border-border text-muted hover:border-accent hover:text-foreground"
+    }`;
 
   return (
-    <main className="mx-auto max-w-5xl p-6 text-sm">
-      <Link href="/" className="text-accent hover:underline">
-        ← dashboard
-      </Link>
-      <h1 className="my-4 text-xl font-bold tracking-tight">
-        Tín hiệu {date ? `ngày ${date}` : "(200 gần nhất)"} — {signals.length}
-      </h1>
+    <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
+      <h1 className="text-xl font-bold tracking-tight">Tín hiệu</h1>
+      <p className="mt-1 mb-4 text-xs text-muted">
+        Quét tự động sau khi chốt nến mỗi chiều T2–T6. Tín hiệu từ nến ngày <b>D</b> dùng để đặt lệnh phiên kế tiếp. Bấm vào dòng để
+        xem lý do + kế hoạch. Đây là gợi ý kỹ thuật, chưa chứng minh có lãi — tập bằng tiền ảo trước.
+      </p>
+
+      <div className="mb-3 flex flex-wrap gap-2">
+        {dates.map((d) => (
+          <Link key={d.date} href={q({ date: d.date })} className={`num ${chip(d.date === date)}`}>
+            {d.date.slice(5)} <span className="text-muted">· {d.n}</span>
+          </Link>
+        ))}
+        <Link href={q({ date: "all" })} className={chip(!date)}>
+          Mọi ngày
+        </Link>
+      </div>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {TABS.map(([k, label]) => (
+          <Link key={k} href={q({ status: k })} className={chip(k === tab[0])}>
+            {label}
+          </Link>
+        ))}
+      </div>
+
       {signals.length === 0 ? (
-        <p className="card p-4 text-muted">Chưa có tín hiệu nào.</p>
+        <p className="card p-6 text-center text-muted">Không có tín hiệu nào khớp bộ lọc.</p>
       ) : (
-        <SignalTable signals={signals} />
+        <SignalTable signals={signals} showDate={!date} />
       )}
     </main>
   );

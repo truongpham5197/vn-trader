@@ -6,6 +6,7 @@ import { loadPortfolio } from "./report/portfolio";
 import { notifySignal } from "./telegram/notify";
 import type { Bar } from "./data/types";
 import { VN30 } from "./data/vn30";
+import { getWatchlist } from "./trades";
 
 const BARS_NEEDED = 60;
 
@@ -38,17 +39,18 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
   const universe = await getSetting("universe"); // vn30 | liquid | all
   const notify = opts?.notify ?? true;
 
-  // Mã đang nắm giữ luôn được scan — bypass filter thanh khoản
-  const heldTickers = new Set(
-    (
+  // Mã đang nắm giữ + danh sách theo dõi luôn được scan — bypass filter thanh khoản
+  const heldTickers = new Set([
+    ...(
       await prisma.trade.findMany({
         where: { status: "open" },
         include: { symbol: { select: { ticker: true } } },
       })
     ).map((t) => t.symbol.ticker),
-  );
+    ...(await getWatchlist()),
+  ]);
 
-  // universe=vn30 → chỉ load bars 30 mã (+ mã đang giữ), nhẹ hơn nhiều trên serverless
+  // universe=vn30 → chỉ load bars 30 mã (+ mã đang giữ/theo dõi), nhẹ hơn nhiều trên serverless
   const vn30Only = universe === "vn30";
   const symbols = await prisma.symbol.findMany({
     where: {

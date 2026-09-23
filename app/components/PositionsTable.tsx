@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { PositionLine } from "@/lib/report/positions";
 import { px } from "@/lib/format";
 import { netPnl, netPnlPct } from "@/lib/fees";
-import { positionAdvice } from "@/lib/risk/advice";
+import { bookAdvice, positionAdvice } from "@/lib/risk/advice";
 import { TradeActions } from "./TradeActions";
 import { LiveBadge, useQuotes } from "./live";
 import { More } from "./More";
@@ -44,6 +44,37 @@ const tradeOf = (p: PositionLine) => ({
 });
 
 const sticky = "sticky right-0 z-10 bg-card shadow-[-6px_0_8px_-6px_rgba(0,0,0,.45)]";
+
+function BookGuide({ rows }: { rows: PositionLine[] }) {
+  const a = bookAdvice(rows);
+  if (!a) return null;
+  const cls = a.tone === "gain" ? "border-gain/40" : a.tone === "loss" ? "border-loss/40" : "";
+  return (
+    <section className={`card mb-3 p-3 text-xs ${cls}`}>
+      <p className="text-[10px] font-medium uppercase tracking-wide text-muted">Gợi ý chung · đang tập</p>
+      <p className="mt-1 text-sm font-semibold">{a.headline}</p>
+      <div className="mt-3 space-y-2">
+        <div>
+          <p className="text-muted">Vì sao</p>
+          <p className="mt-0.5 leading-relaxed">{a.why}</p>
+        </div>
+        <div>
+          <p className="text-muted">Làm thế nào</p>
+          <ol className="mt-0.5 list-decimal space-y-1 pl-4 leading-relaxed">
+            {a.steps.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ol>
+        </div>
+        <div>
+          <p className="text-muted">Giữ vốn</p>
+          <p className="mt-0.5 leading-relaxed">{a.protect}</p>
+        </div>
+      </div>
+      <p className="mt-2 text-[11px] text-muted">Theo cắt lỗ và chốt lời bạn đã đặt. Không phải dự báo sẽ lãi.</p>
+    </section>
+  );
+}
 
 function AdviceLine({ p }: { p: PositionLine }) {
   const a = positionAdvice(p);
@@ -123,6 +154,7 @@ export default function PositionsTable({
   }
   return (
     <div>
+      <BookGuide rows={positions} />
       <div className="mb-1 text-right">
         <LiveBadge />
       </div>

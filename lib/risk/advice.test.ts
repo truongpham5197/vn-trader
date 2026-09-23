@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { positionAdvice } from "./advice";
+import { bookAdvice, positionAdvice, type BookPosition } from "./advice";
 
 const base = { price: 100, stop: 92, target: 110, pnlPct: 0, sessionsHeld: 3 };
 
@@ -33,5 +33,57 @@ describe("positionAdvice", () => {
 
   it("chưa có giá → không kết luận", () => {
     expect(positionAdvice({ ...base, price: null }).line).toBe("Chờ giá mới");
+  });
+});
+
+describe("bookAdvice", () => {
+  const row = (over: Partial<BookPosition> & { ticker: string }): BookPosition => ({
+    price: 100,
+    stop: 92,
+    target: 110,
+    pnlPct: 0,
+    sessionsHeld: 3,
+    qty: 100,
+    entry: 100,
+    ...over,
+  });
+
+  it("mã thủng cắt lỗ được ưu tiên bán để giữ vốn", () => {
+    const a = bookAdvice([
+      row({ ticker: "GAS", price: 85, pnlPct: -15 }),
+      row({ ticker: "FPT", pnlPct: 1 }),
+    ])!;
+    expect(a.headline).toContain("bán GAS");
+    expect(a.why).toContain("ngoài kế hoạch");
+    expect(a.steps[0]).toContain("Bán GAS");
+    expect(a.protect).toContain("đừng chờ về giá mua");
+    expect(a.protect).toContain("đừng mua mã mới");
+  });
+
+  it("chưa có cắt lỗ thì việc đầu tiên là đặt mức thoát", () => {
+    const a = bookAdvice([row({ ticker: "VCB", stop: null })])!;
+    expect(a.headline).toContain("đặt cắt lỗ");
+    expect(a.why).toContain("lỗ có trần");
+  });
+
+  it("rổ còn trong kế hoạch thì không bảo bán gấp", () => {
+    const a = bookAdvice([row({ ticker: "FPT" }), row({ ticker: "VNM", qty: 100 })])!;
+    expect(a.headline).toContain("Giữ theo kế hoạch");
+    expect(a.steps.join(" ")).not.toContain("Bán ngay");
+    expect(a.protect).toContain("Không mua thêm mã đang lỗ");
+  });
+
+  it("một mã chiếm phần lớn thì nhắc đừng mua thêm mã đó", () => {
+    const a = bookAdvice([
+      row({ ticker: "HPG", qty: 1000 }),
+      row({ ticker: "FPT", qty: 100 }),
+      row({ ticker: "VNM", qty: 100 }),
+    ])!;
+    expect(a.why).toContain("HPG");
+    expect(a.protect).toContain("Đừng mua thêm HPG");
+  });
+
+  it("không có vị thế thì không gợi ý", () => {
+    expect(bookAdvice([])).toBeNull();
   });
 });

@@ -1,51 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import Link from "next/link";
 import type { SectorRow } from "@/lib/report/sectors";
-
-interface LiveQuote {
-  last: number | null;
-  ref: number | null;
-}
+import { LiveBadge, useQuotes } from "./live";
 
 const KIND_LABEL: Record<string, string> = {
   cash: "cổ tức tiền",
   split: "chia tách/thưởng",
 };
 
-// Phiên VN: T2–T6 9:00–15:00 — trong phiên poll 30s, ngoài phiên 5 phút
-function inVnSession(): boolean {
-  const n = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Ho_Chi_Minh" }));
-  const m = n.getHours() * 60 + n.getMinutes();
-  return n.getDay() >= 1 && n.getDay() <= 5 && m >= 9 * 60 && m < 15 * 60;
-}
-
 export default function SectorBoard({ rows }: { rows: SectorRow[] }) {
-  const [quotes, setQuotes] = useState<Record<string, LiveQuote>>({});
-  const [at, setAt] = useState<Date | null>(null);
-  const tickers = rows.map((r) => r.ticker).join(",");
-
-  useEffect(() => {
-    let dead = false;
-    let timer: ReturnType<typeof setTimeout>;
-    async function tick() {
-      try {
-        const res = await fetch(`/api/quotes?tickers=${encodeURIComponent(tickers)}`);
-        if (res.ok) {
-          setQuotes(await res.json());
-          setAt(new Date());
-        }
-      } catch {
-        /* giữ số liệu cũ */
-      }
-      if (!dead) timer = setTimeout(tick, inVnSession() ? 30_000 : 300_000);
-    }
-    void tick();
-    return () => {
-      dead = true;
-      clearTimeout(timer);
-    };
-  }, [tickers]);
+  const quotes = useQuotes(useMemo(() => rows.map((r) => r.ticker), [rows]));
 
   const groups = useMemo(() => {
     const m = new Map<string, SectorRow[]>();
@@ -70,9 +36,7 @@ export default function SectorBoard({ rows }: { rows: SectorRow[] }) {
   return (
     <div>
       <div className="mb-3 text-xs text-muted">
-        Giá gần realtime — nến 1m DNSE (trễ ~1 phút), tự cập nhật{" "}
-        {inVnSession() ? "30s" : "5 phút"}
-        {at ? ` · lần cuối ${at.toLocaleTimeString("vi-VN")}` : ""}
+        Giá gần realtime — nến 1 phút DNSE (trễ ~1 phút). <LiveBadge />
       </div>
       {groups.map(([sector, list]) => {
         const pcts = list.map(livePct).filter((v): v is number => v !== null);
@@ -113,7 +77,9 @@ export default function SectorBoard({ rows }: { rows: SectorRow[] }) {
                         className="border-b border-border/50 align-top last:border-0 hover:bg-white/[0.03]"
                       >
                         <td className="p-3">
-                          <span className="font-semibold">{r.ticker}</span>
+                          <Link href={`/stock/${r.ticker}`} className="font-semibold hover:text-accent">
+                            {r.ticker}
+                          </Link>
                           {r.held && (
                             <span className="ml-1.5 rounded border border-accent/40 bg-accent/10 px-1 py-0.5 text-xs text-accent">
                               giữ

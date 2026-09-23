@@ -24,6 +24,7 @@ export interface SectorPick extends Vn30Row {
   target: number;
   upsidePct: number; // target so với giữa vùng mua
   riskPct: number; // stop so với giữa vùng mua
+  why: string[]; // vì sao gợi ý: bối cảnh ngành + lý do kỹ thuật cụ thể
 }
 
 export type SectorTrend = "lead" | "strong" | "neutral" | "weak";
@@ -40,6 +41,10 @@ export interface SectorStat {
   trend: SectorTrend;
   lowConfidence: boolean; // < 3 mã
   picks: SectorPick[]; // setup có vùng mua, tốt nhất trước
+  rank: number | null; // hạng trong các ngành đủ mã (null = ít mã)
+  summary: string; // 1 câu: vì sao ngành đứng hạng này
+  why: string[]; // từng thước đo kèm hạng
+  leaders: { ticker: string; ret20: number }[]; // mã kéo ngành (1 tháng)
 }
 
 export interface SectorStrength {
@@ -58,6 +63,7 @@ const median = (xs: number[]) => {
 };
 const pct = (a: number, b: number) => (a / b - 1) * 100;
 const sum = (xs: number[]) => xs.reduce((s, v) => s + v, 0);
+const sg = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
 
 /** Percentile rank 0–1 của v trong xs (ties lấy trung bình; v ngoài pool bị kẹp về [0,1]). */
 const rankOf = (xs: number[], v: number) => {
@@ -117,6 +123,7 @@ export function computeSectorStrength(stocks: StockInput[]): SectorStrength {
           companyName: m.s.companyName,
           upsidePct: pct(r.target, mid),
           riskPct: -pct(r.stop, mid),
+          why: r.facts,
         };
       })
       .filter((p): p is SectorPick => p !== null)
@@ -133,6 +140,10 @@ export function computeSectorStrength(stocks: StockInput[]): SectorStrength {
       trend: "neutral",
       lowConfidence: ms.length < 3,
       picks,
+      rank: null,
+      summary: "",
+      why: [],
+      leaders: [...ms].sort((a, b) => b.ret20 - a.ret20).slice(0, 3).map((m) => ({ ticker: m.s.ticker, ret20: m.ret20 })),
     };
   });
 
@@ -151,6 +162,8 @@ export function computeSectorStrength(stocks: StockInput[]): SectorStrength {
   const order = (a: SectorStat, b: SectorStat) =>
     Number(a.lowConfidence) - Number(b.lowConfidence) || b.score - a.score;
   sectors.sort(order);
+  sectors.filter((s) => !s.lowConfidence).forEach((s, i) => (s.rank = i + 1));
+  for (const s of sectors) explainSector(s, market, pool);
 
   sectors.forEach((s, i) => {
     const up = s.ret20 > market.ret20 && s.breadth >= 50;
@@ -164,6 +177,14 @@ export function computeSectorStrength(stocks: StockInput[]): SectorStrength {
             ? "weak"
             : "neutral";
   });
+
+  // Mỗi gợi ý kèm bối cảnh ngành ở đầu lý do
+  for (const s of sectors) {
+    const ctx = s.lowConfidence
+      ? `Ngành ${s.sector} chỉ có ${s.count} mã thanh khoản — xu hướng ngành kém tin cậy`
+      : `Thuộc ngành ${s.sector} — ${TREND_TEXT[s.trend]} (hạng ${s.rank}/${ranked.length}, 1 tháng ${sg(s.ret20)})`;
+    for (const p of s.picks) p.why = [ctx, ...p.why];
+  }
 
   // Top đáng chú ý: setup tốt nhất thuộc ngành dẫn đầu/mạnh trước
   const trendBonus: Record<SectorTrend, number> = { lead: 30, strong: 15, neutral: 0, weak: -30 };
@@ -266,9 +287,54 @@ export async function loadSectorStrength(opts: { live?: boolean } = {}): Promise
 export const liveTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh", hour: "2-digit", minute: "2-digit" });
 
+const TREND_TEXT: Record<SectorTrend, string> = {
+  lead: "ngành đang dẫn đầu thị trường",
+  strong: "ngành đang mạnh",
+  neutral: "ngành đi ngang",
+  weak: "ngành đang yếu",
+};
+const METRIC = { ret20: "tăng giá 1 tháng", ret5: "tăng giá 1 tuần", breadth: "nhiều mã cùng tăng", flow: "tiền đổ vào" } as const;
+
+/** Viết lý do xếp hạng cho 1 ngành: từng thước đo kèm hạng so với các ngành khác. */
+function explainSector(s: SectorStat, market: SectorStrength["market"], pool: SectorStat[]) {
+  const n = pool.length;
+  const place = (k: keyof typeof METRIC) => [...pool].sort((a, b) => b[k] - a[k]).findIndex((x) => x === s) + 1 || null;
+  const r = (k: keyof typeof METRIC) => {
+    const p = place(k);
+    return p ? ` — hạng ${p}/${n}` : "";
+  };
+  s.why = [
+    `Giá 1 tháng ${sg(s.ret20)} (thị trường ${sg(market.ret20)})${r("ret20")}`,
+    `Giá 1 tuần ${sg(s.ret5)} (thị trường ${sg(market.ret5)})${r("ret5")}`,
+    `${s.breadth.toFixed(0)}% mã trong ngành đang xu hướng tăng${
+      s.breadth >= 60 ? " → cả ngành cùng khỏe" : s.breadth < 40 ? " → chỉ vài mã giữ được xu hướng" : ""
+    }${r("breadth")}`,
+    `Tiền giao dịch tuần này ×${s.flow.toFixed(2)} so với tháng trước${
+      s.flow >= 1.2 ? " → dòng tiền đang đổ vào" : s.flow < 0.9 ? " → tiền đang rút ra" : ""
+    }${r("flow")}`,
+    ...(s.leaders.length
+      ? [`Mã tăng tốt nhất ngành (1 tháng): ${s.leaders.map((l) => `${l.ticker} ${sg(l.ret20)}`).join(", ")}`]
+      : []),
+  ];
+  if (s.lowConfidence) {
+    s.summary = `Chỉ ${s.count} mã đủ thanh khoản — 1–2 mã tăng/giảm mạnh không đại diện cho cả ngành, không xếp hạng.`;
+    return;
+  }
+  // Điểm mạnh/yếu = thước đo nằm top/bottom 30% các ngành
+  const pos = (k: keyof typeof METRIC) => (n > 1 ? 1 - ((place(k) ?? n) - 1) / (n - 1) : 0.5);
+  const keys = Object.keys(METRIC) as (keyof typeof METRIC)[];
+  const good = keys.filter((k) => pos(k) >= 0.7).map((k) => METRIC[k]);
+  const bad = keys.filter((k) => pos(k) <= 0.3).map((k) => METRIC[k]);
+  s.summary =
+    `Hạng ${s.rank}/${n}` +
+    (good.length ? ` — mạnh ở: ${good.join(", ")}` : "") +
+    (bad.length ? `${good.length ? ";" : " —"} yếu ở: ${bad.join(", ")}` : "") +
+    (!good.length && !bad.length ? " — các thước đo ở mức trung bình" : "") +
+    ".";
+}
+
 const TREND_TG: Record<SectorTrend, string> = { lead: "🚀", strong: "📈", neutral: "➖", weak: "📉" };
 const dong = (p: number) => `${Math.round(p * 1000).toLocaleString("vi-VN")}đ`;
-const sg = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
 
 /** Tin Telegram /nganh — parse_mode HTML, tên ngành có "&" nên phải esc. */
 export function formatSectorStrength(r: SectorStrength): string {
@@ -285,6 +351,8 @@ export function formatSectorStrength(r: SectorStrength): string {
     ...top.map(
       (s, i) =>
         `${i + 1}. ${TREND_TG[s.trend]} <b>${esc(s.sector)}</b> — 1 tháng ${sg(s.ret20)} · ${s.breadth.toFixed(0)}% mã tăng · tiền ×${s.flow.toFixed(1)}` +
+        `
+    <i>${esc(s.summary)}</i>` +
         (s.picks.length ? `\n    gợi ý: ${s.picks.slice(0, 3).map((p) => p.ticker).join(", ")}` : ""),
     ),
     ...(weak.length ? [``, `📉 Nên tránh: ${weak.join(", ")}`] : []),
@@ -296,7 +364,9 @@ export function formatSectorStrength(r: SectorStrength): string {
             (p) =>
               `<b>${p.ticker}</b> (${esc(p.sector ?? "")}) — mua ${dong(p.buyZone[0])}–${dong(p.buyZone[1])}\n` +
               `    cắt lỗ ${dong(p.stop)} (−${p.riskPct.toFixed(1)}%) · chốt lời ${dong(p.target)} (+${p.upsidePct.toFixed(1)}%)\n` +
-              `    <i>${esc(p.plain)}</i>`,
+              `    <i>${esc(p.plain)}</i>` +
+              (p.why[1] ? `
+    • ${esc(p.why[1])}` : ""),
           ),
         ]
       : []),

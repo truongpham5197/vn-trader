@@ -1,12 +1,8 @@
 import { prisma } from "./prisma";
 import { getSetting, setSetting } from "./settings";
+import { netPnl } from "./fees";
 
-const BUY_FEE = 0.0015;
-const SELL_FEE_TAX = 0.0025; // phí bán 0.15% + thuế 0.1%
-
-/** P&L net (VND) sau phí mua + phí bán + thuế. Giá nghìn đồng. */
-export const netPnl = (entry: number, exit: number, qty: number) =>
-  exit * qty * 1000 * (1 - SELL_FEE_TAX) - entry * qty * 1000 * (1 + BUY_FEE);
+export { netPnl };
 
 /** Đóng trade mở — dùng chung /close Telegram + web. */
 export async function closeTrade(id: number, exit: number, reason = "manual") {

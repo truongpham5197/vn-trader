@@ -1,9 +1,7 @@
 import { prisma } from "../prisma";
 import { getNum } from "../settings";
 import { formatPositionsReport, positionsReport, type PositionLine } from "./positions";
-
-const BUY_FEE = 0.0015;
-const SELL_FEE_TAX = 0.0015 + 0.001;
+import { BUY_FEE, SELL_FEE_TAX } from "../fees";
 
 export interface Portfolio {
   initial: number; // vốn ban đầu (Setting navVnd)

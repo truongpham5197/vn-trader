@@ -1,4 +1,7 @@
-import { liveTime, type SectorPick, type SectorStrength as Data, type SectorTrend } from "@/lib/analysis/sector-strength";
+import Link from "next/link";
+import { liveTime, type SectorStrength as Data, type SectorTrend } from "@/lib/analysis/sector-strength";
+import PickCard from "./PickCard";
+import { LiveBadge } from "./live";
 
 const TREND: Record<SectorTrend, { label: string; cls: string }> = {
   lead: { label: "🚀 Dẫn đầu", cls: "border-gain/40 bg-gain/15 text-gain" },
@@ -7,8 +10,6 @@ const TREND: Record<SectorTrend, { label: string; cls: string }> = {
   weak: { label: "📉 Yếu", cls: "border-loss/30 bg-loss/5 text-loss" },
 };
 
-// Giá trong DB = nghìn đồng → hiển thị đồng cho người mới (31.4 → 31.400đ)
-const dong = (p: number) => `${Math.round(p * 1000).toLocaleString("vi-VN")}đ`;
 const signed = (v: number, d = 1) => `${v >= 0 ? "+" : ""}${v.toFixed(d)}%`;
 const tone = (v: number) => (v >= 0 ? "text-gain" : "text-loss");
 
@@ -25,56 +26,6 @@ function flowText(f: number): { text: string; cls: string } {
   return { text: `Tiền rút ra ×${f.toFixed(2)}`, cls: "text-loss" };
 }
 
-function zoneStatus(close: number, [lo, hi]: [number, number]): { text: string; cls: string } {
-  if (close > hi) return { text: `Cao hơn vùng mua ${(((close - hi) / hi) * 100).toFixed(1)}% — chờ giá về`, cls: "text-muted" };
-  if (close < lo) return { text: `Thấp hơn vùng mua ${(((lo - close) / lo) * 100).toFixed(1)}% — chờ hồi lại`, cls: "text-muted" };
-  return { text: "✅ Đang trong vùng mua", cls: "text-gain" };
-}
-
-function PickCard({ p, sector }: { p: SectorPick; sector?: string }) {
-  const zone = zoneStatus(p.close, p.buyZone);
-  return (
-    <div className="card min-w-0 p-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-base font-bold">{p.ticker}</span>
-        <span className="truncate text-xs text-muted">{p.setup}</span>
-      </div>
-      {(p.companyName || sector) && (
-        <div className="truncate text-xs text-muted">{[sector, p.companyName].filter(Boolean).join(" · ")}</div>
-      )}
-      <dl className="num mt-2 space-y-0.5 text-xs">
-        <div className="flex flex-wrap justify-between gap-x-2">
-          <dt className="text-muted">Giá hiện tại</dt>
-          <dd className="font-semibold">
-            {dong(p.close)}
-            {p.chgPct !== null && <span className={`ml-1 ${tone(p.chgPct)}`}>({signed(p.chgPct)})</span>}
-          </dd>
-        </div>
-        <div className="flex flex-wrap justify-between gap-x-2">
-          <dt className="text-muted">Vùng mua</dt>
-          <dd className="font-semibold">
-            {dong(p.buyZone[0])} – {dong(p.buyZone[1])}
-          </dd>
-        </div>
-        <div className="flex flex-wrap justify-between gap-x-2">
-          <dt className="text-muted">Cắt lỗ nếu rơi về</dt>
-          <dd className="text-loss">
-            {dong(p.stop)} (−{p.riskPct.toFixed(1)}%)
-          </dd>
-        </div>
-        <div className="flex flex-wrap justify-between gap-x-2">
-          <dt className="text-muted">Chốt lời ở</dt>
-          <dd className="text-gain">
-            {dong(p.target)} (+{p.upsidePct.toFixed(1)}%)
-          </dd>
-        </div>
-      </dl>
-      <p className={`mt-1 text-xs font-medium ${zone.cls}`}>{zone.text}</p>
-      <p className="mt-2 text-xs leading-relaxed text-muted">{p.plain}</p>
-    </div>
-  );
-}
-
 export default function SectorStrength({ data }: { data: Data }) {
   const { market, sectors, topPicks } = data;
   if (!sectors.length) return <p className="card p-4 text-muted">Chưa đủ dữ liệu để xếp hạng ngành.</p>;
@@ -87,7 +38,7 @@ export default function SectorStrength({ data }: { data: Data }) {
           Thị trường chung · {market.count} mã giao dịch sôi động ·{" "}
           {data.live ? (
             <span className="text-accent">
-              ⚡ giá trong phiên, cập nhật {liveTime(data.live.at)} — tự làm mới 5 phút/lần
+              ⚡ xếp hạng theo giá trong phiên {liveTime(data.live.at)} — tính lại 5 phút/lần
             </span>
           ) : (
             <>dữ liệu cuối ngày {data.date ?? "—"}</>
@@ -113,7 +64,8 @@ export default function SectorStrength({ data }: { data: Data }) {
         <section>
           <h2 className="mb-1 font-semibold">⭐ Mã đáng chú ý nhất — thuộc các ngành đang mạnh</h2>
           <p className="mb-3 text-xs text-muted">
-            Chỉ đặt mua trong <b>vùng mua</b>. Giá đã chạy cao hơn thì bỏ qua, không đuổi theo.
+            Chỉ đặt mua trong <b>vùng mua</b>. Giá đã chạy cao hơn thì bỏ qua, không đuổi theo. Mỗi thẻ ghi rõ vì sao được gợi ý và
+            tình hình kinh doanh của công ty. <LiveBadge />
           </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {topPicks.map((p) => (
@@ -136,11 +88,12 @@ export default function SectorStrength({ data }: { data: Data }) {
               <details key={s.sector} className="card group" open={i < 2 && !s.lowConfidence}>
                 <summary className="grid cursor-pointer list-none grid-cols-[1.5rem_1fr_auto] items-center gap-x-3 gap-y-1 p-3 sm:grid-cols-[1.5rem_minmax(10rem,1fr)_6.5rem_4.5rem_4.5rem_7rem_9rem_auto]">
                   <span className="num text-muted">{s.lowConfidence ? "·" : i + 1}</span>
-                  <span className="font-semibold">
+                  <span className="min-w-0 font-semibold">
                     {s.sector}
                     <span className="ml-1.5 text-xs font-normal text-muted">
                       {s.count} mã{s.lowConfidence ? " · ít mã, kém tin cậy" : ""}
                     </span>
+                    <span className="block text-xs font-normal text-muted">{s.summary}</span>
                   </span>
                   <span className={`justify-self-end rounded-md border px-2 py-0.5 text-xs sm:justify-self-start ${TREND[s.trend].cls}`}>
                     {TREND[s.trend].label}
@@ -168,6 +121,14 @@ export default function SectorStrength({ data }: { data: Data }) {
                   </span>
                 </summary>
                 <div className="border-t border-border p-3">
+                  <div className="mb-3 text-xs">
+                    <div className="mb-1 font-semibold">Vì sao ngành xếp hạng này?</div>
+                    <ul className="list-disc space-y-0.5 pl-4 leading-relaxed text-muted">
+                      {s.why.map((w, j) => (
+                        <li key={j}>{w}</li>
+                      ))}
+                    </ul>
+                  </div>
                   {s.picks.length === 0 ? (
                     <p className="text-xs text-muted">Chưa có mã nào ở điểm mua tốt trong ngành này.</p>
                   ) : (
@@ -184,7 +145,16 @@ export default function SectorStrength({ data }: { data: Data }) {
                       </div>
                       {s.picks.length > 3 && (
                         <p className="mt-2 text-xs text-muted">
-                          Còn: {s.picks.slice(3).map((p) => p.ticker).join(", ")}
+                          Còn:{" "}
+                          {s.picks.slice(3).map((p, j) => (
+                            <span key={p.ticker}>
+                              {j > 0 && ", "}
+                              <Link href={`/stock/${p.ticker}`} className="text-foreground hover:text-accent" title={p.plain}>
+                                {p.ticker}
+                              </Link>{" "}
+                              <span className="text-muted">({p.setup})</span>
+                            </span>
+                          ))}
                         </p>
                       )}
                     </>
@@ -217,7 +187,7 @@ export default function SectorStrength({ data }: { data: Data }) {
           </li>
         </ul>
         <p className="mt-3 text-xs">
-          ⚠️ Đây là gợi ý kỹ thuật tự động dựa trên giá và khối lượng, chưa xét báo cáo tài chính. Các chiến lược
+          ⚠️ Đây là gợi ý kỹ thuật tự động dựa trên giá và khối lượng; phần kinh doanh trên thẻ chỉ để tham khảo. Các chiến lược
           chưa được chứng minh có lãi — hãy tập bằng tiền ảo trước.
         </p>
       </section>

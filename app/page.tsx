@@ -9,14 +9,28 @@ import SignalTable from "./components/SignalTable";
 import PositionsTable from "./components/PositionsTable";
 import { AddTradeButton } from "./components/TradeActions";
 import AutoRefresh from "./components/AutoRefresh";
+import { LivePrice } from "./components/live";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const sigDate = await latestSignalDate();
-  const [symbolCount, latestBar, latestSignals, positions, vn30, scanEnabled, paper, kill, universe] = await Promise.all([
+  const [
+    symbolCount,
+    latestBar,
+    latestSignals,
+    positions,
+    vn30,
+    scanEnabled,
+    paper,
+    kill,
+    universe,
+  ] = await Promise.all([
     prisma.symbol.count({ where: { active: true } }),
-    prisma.dailyBar.findFirst({ orderBy: { date: "desc" }, select: { date: true } }),
+    prisma.dailyBar.findFirst({
+      orderBy: { date: "desc" },
+      select: { date: true },
+    }),
     sigDate
       ? prisma.signal.findMany({
           where: { date: sigDate },
@@ -32,18 +46,36 @@ export default async function Home() {
     getSetting("universe"),
   ]);
   const pf = await loadPortfolio(positions);
-  const pending = latestSignals.filter((s) => s.status === "new" || s.status === "notified");
-  const UNIVERSE: Record<string, string> = { vn30: "VN30", liquid: "mã thanh khoản", all: "toàn thị trường" };
+  const pending = latestSignals.filter(
+    (s) => s.status === "new" || s.status === "notified",
+  );
+  const UNIVERSE: Record<string, string> = {
+    vn30: "VN30",
+    liquid: "mã thanh khoản",
+    all: "toàn thị trường",
+  };
 
   return (
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
       <AutoRefresh />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold tracking-tight">Tổng quan</h1>
-        <Link href="/settings" className="flex flex-wrap gap-2 text-xs" title="Đổi ở trang Cài đặt">
-          <Badge ok={scanEnabled && !kill}>{kill ? "🛑 Kill switch BẬT" : scanEnabled ? "● Đang quét" : "⏸ Tắt quét"}</Badge>
+        <Link
+          href="/settings"
+          className="flex flex-wrap gap-2 text-xs"
+          title="Đổi ở trang Cài đặt"
+        >
+          <Badge ok={scanEnabled && !kill}>
+            {kill
+              ? "🛑 Kill switch BẬT"
+              : scanEnabled
+                ? "● Đang quét"
+                : "⏸ Tắt quét"}
+          </Badge>
           <Badge ok={paper}>{paper ? "Tiền ảo" : "TIỀN THẬT"}</Badge>
-          <span className="rounded-md border border-border px-2 py-1 text-muted">Phạm vi: {UNIVERSE[universe] ?? universe}</span>
+          <span className="rounded-md border border-border px-2 py-1 text-muted">
+            Phạm vi: {UNIVERSE[universe] ?? universe}
+          </span>
         </Link>
       </div>
 
@@ -75,9 +107,12 @@ export default async function Home() {
       </div>
       {pf.cash < 0 && (
         <p className="card mb-2 border-loss/40 p-3 text-xs text-loss">
-          ⚠️ Tiền mặt âm {tr(pf.cash)}: số tiền đã mua cổ phiếu ({tr(pf.invested)}, gồm phí 0,15%) lớn hơn vốn ban đầu
-          ({tr(pf.initial)}) — tức là bạn đã mua nhiều hơn số vốn khai báo. Sửa &quot;Vốn ban đầu&quot; ở phần Cấu hình
-          cho đúng số tiền thật bạn bỏ ra (ít nhất {Math.ceil((pf.invested - pf.realized) / 1e6)}tr) để số liệu chính xác.
+          ⚠️ Tiền mặt âm {tr(pf.cash)}: số tiền đã mua cổ phiếu (
+          {tr(pf.invested)}, gồm phí 0,15%) lớn hơn vốn ban đầu (
+          {tr(pf.initial)}) — tức là bạn đã mua nhiều hơn số vốn khai báo. Sửa
+          &quot;Vốn ban đầu&quot; ở phần Cấu hình cho đúng số tiền thật bạn bỏ
+          ra (ít nhất {Math.ceil((pf.invested - pf.realized) / 1e6)}tr) để số
+          liệu chính xác.
         </p>
       )}
       <div className="card mb-4 flex flex-wrap gap-x-6 gap-y-1 p-3 text-xs text-muted">
@@ -87,27 +122,38 @@ export default async function Home() {
         <span>
           Tỷ lệ thắng{" "}
           <b className="num text-foreground">
-            {pf.winRate === null ? "—" : `${pf.wins}/${pf.closedCount} (${pf.winRate.toFixed(0)}%)`}
+            {pf.winRate === null
+              ? "—"
+              : `${pf.wins}/${pf.closedCount} (${pf.winRate.toFixed(0)}%)`}
           </b>
         </span>
         <span>
-          Lãi TB/lệnh thắng <b className="num text-gain">{pf.avgWin === null ? "—" : trSigned(pf.avgWin)}</b>
+          Lãi TB/lệnh thắng{" "}
+          <b className="num text-gain">
+            {pf.avgWin === null ? "—" : trSigned(pf.avgWin)}
+          </b>
         </span>
         <span>
-          Lỗ TB/lệnh thua <b className="num text-loss">{pf.avgLoss === null ? "—" : trSigned(pf.avgLoss)}</b>
+          Lỗ TB/lệnh thua{" "}
+          <b className="num text-loss">
+            {pf.avgLoss === null ? "—" : trSigned(pf.avgLoss)}
+          </b>
         </span>
         {pf.best && pf.best.pnl > 0 && (
           <span>
-            Tốt nhất <b className="text-foreground">{pf.best.ticker}</b> <b className="num text-gain">{trSigned(pf.best.pnl)}</b>
+            Tốt nhất <b className="text-foreground">{pf.best.ticker}</b>{" "}
+            <b className="num text-gain">{trSigned(pf.best.pnl)}</b>
           </span>
         )}
         {pf.worst && pf.worst.pnl < 0 && (
           <span>
-            Tệ nhất <b className="text-foreground">{pf.worst.ticker}</b> <b className="num text-loss">{trSigned(pf.worst.pnl)}</b>
+            Tệ nhất <b className="text-foreground">{pf.worst.ticker}</b>{" "}
+            <b className="num text-loss">{trSigned(pf.worst.pnl)}</b>
           </span>
         )}
         <span className="ml-auto">
-          Dữ liệu {symbolCount.toLocaleString("en-US")} mã · nến mới nhất <span className="num">{latestBar?.date ?? "—"}</span>
+          Dữ liệu {symbolCount.toLocaleString("en-US")} mã · nến mới nhất{" "}
+          <span className="num">{latestBar?.date ?? "—"}</span>
         </span>
       </div>
 
@@ -118,7 +164,8 @@ export default async function Home() {
             Tín hiệu mới nhất{" "}
             {sigDate && (
               <span className="text-xs font-normal text-muted">
-                nến <span className="num">{sigDate}</span> · {pending.length} chờ xử lý / {latestSignals.length}
+                nến <span className="num">{sigDate}</span> · {pending.length}{" "}
+                chờ xử lý / {latestSignals.length}
               </span>
             )}
           </h2>
@@ -128,8 +175,11 @@ export default async function Home() {
         </div>
         {pending.length === 0 ? (
           <p className="card p-6 text-center text-muted">
-            {latestSignals.length ? "Đã xử lý hết tín hiệu của lượt quét gần nhất." : "Chưa có tín hiệu."} Lượt quét kế tiếp chạy sau khi chốt nến
-            (khoảng 15:10–17:00 T2–T6) và báo qua Telegram.
+            {latestSignals.length
+              ? "Đã xử lý hết tín hiệu của lượt quét gần nhất."
+              : "Chưa có tín hiệu."}{" "}
+            Lượt quét kế tiếp chạy sau khi chốt nến (khoảng 15:10–17:00 T2–T6)
+            và báo qua Telegram.
           </p>
         ) : (
           <SignalTable signals={pending.slice(0, 12)} showDate={false} />
@@ -153,8 +203,9 @@ export default async function Home() {
               <tr className="border-b border-border text-left text-muted">
                 <th className="p-3 font-medium">Mã</th>
                 <th className="p-3 font-medium">Setup</th>
-                <th className="p-3 text-right font-medium">Giá</th>
-                <th className="p-3 text-right font-medium">%</th>
+                <th className="p-3 text-right font-medium" colSpan={2}>
+                  Giá (%)
+                </th>
                 <th className="p-3 text-right font-medium">Vùng mua</th>
                 <th className="p-3 text-right font-medium">Stop</th>
                 <th className="p-3 text-right font-medium">Target</th>
@@ -167,21 +218,37 @@ export default async function Home() {
                   key={r.ticker}
                   className="border-b border-border/50 last:border-0 hover:bg-white/[0.03]"
                 >
-                  <td className="p-3 font-semibold">{r.ticker}</td>
+                  <td className="p-3 font-semibold">
+                    <Link
+                      href={`/stock/${r.ticker}`}
+                      className="hover:text-accent"
+                    >
+                      {r.ticker}
+                    </Link>
+                  </td>
                   <td className="p-3">{r.setup}</td>
-                  <td className="num p-3 text-right">{r.close.toFixed(2)}</td>
-                  <td
-                    className={`num p-3 text-right ${
-                      (r.chgPct ?? 0) >= 0 ? "text-gain" : "text-loss"
-                    }`}
-                  >
-                    {r.chgPct !== null ? `${r.chgPct >= 0 ? "+" : ""}${r.chgPct.toFixed(1)}%` : "—"}
+                  <td className="p-3 text-right" colSpan={2}>
+                    <LivePrice
+                      ticker={r.ticker}
+                      fallback={r.close}
+                      refPrice={
+                        r.chgPct !== null
+                          ? r.close / (1 + r.chgPct / 100)
+                          : null
+                      }
+                    />
                   </td>
                   <td className="num p-3 text-right">
-                    {r.buyZone ? `${r.buyZone[0].toFixed(2)}–${r.buyZone[1].toFixed(2)}` : "—"}
+                    {r.buyZone
+                      ? `${r.buyZone[0].toFixed(2)}–${r.buyZone[1].toFixed(2)}`
+                      : "—"}
                   </td>
-                  <td className="num p-3 text-right text-loss">{r.stop?.toFixed(2) ?? "—"}</td>
-                  <td className="num p-3 text-right text-gain">{r.target?.toFixed(2) ?? "—"}</td>
+                  <td className="num p-3 text-right text-loss">
+                    {r.stop?.toFixed(2) ?? "—"}
+                  </td>
+                  <td className="num p-3 text-right text-gain">
+                    {r.target?.toFixed(2) ?? "—"}
+                  </td>
                   <td className="p-3 text-muted">{r.note}</td>
                 </tr>
               ))}
@@ -189,7 +256,6 @@ export default async function Home() {
           </table>
         </div>
       </section>
-
     </main>
   );
 }
@@ -198,8 +264,23 @@ const tr = (v: number) => `${(v / 1e6).toFixed(2)}tr`;
 const signed = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}`;
 const trSigned = (v: number) => `${v >= 0 ? "+" : ""}${tr(v)}`;
 
-function Stat({ label, value, sub, tone }: { label: string; value: string | number; sub?: string; tone?: number }) {
-  const cls = tone === undefined || tone === 0 ? "" : tone > 0 ? "text-gain" : "text-loss";
+function Stat({
+  label,
+  value,
+  sub,
+  tone,
+}: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  tone?: number;
+}) {
+  const cls =
+    tone === undefined || tone === 0
+      ? ""
+      : tone > 0
+        ? "text-gain"
+        : "text-loss";
   return (
     <div className="card p-3">
       <div className="text-xs text-muted">{label}</div>
@@ -213,7 +294,9 @@ function Badge({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (
     <span
       className={`rounded-md border px-2 py-1 font-medium ${
-        ok ? "border-gain/30 bg-gain/10 text-gain" : "border-loss/30 bg-loss/10 text-loss"
+        ok
+          ? "border-gain/30 bg-gain/10 text-gain"
+          : "border-loss/30 bg-loss/10 text-loss"
       }`}
     >
       {children}

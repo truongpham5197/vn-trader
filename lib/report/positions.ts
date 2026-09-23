@@ -1,9 +1,7 @@
 import { prisma } from "../prisma";
 import { getQuote } from "../price";
 import { px } from "../format";
-
-const BUY_FEE = 0.0015;
-const SELL_FEE_TAX = 0.0015 + 0.001; // phí bán + thuế
+import { BUY_FEE, SELL_FEE_TAX } from "../fees";
 
 export interface PositionLine {
   id: number; // Trade.id

@@ -14,8 +14,11 @@ export function htmlToAlert(html: string): { title: string; body: string } {
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&")
     .trim();
-  const [title, ...rest] = text.split("\n");
-  return { title: title.trim().slice(0, 200), body: rest.join("\n").trim().slice(0, 1500) };
+  const [first, ...rest] = text.split("\n");
+  const title = first.trim();
+  // Tiêu đề dài → rút gọn, giữ đủ câu trong body để xem chi tiết
+  if (title.length > 160) return { title: `${title.slice(0, 150)}…`, body: text.slice(0, 8000) };
+  return { title, body: rest.join("\n").trim().slice(0, 8000) };
 }
 
 /** Ghi thông báo web — lỗi DB không được làm hỏng luồng cron/Telegram. */

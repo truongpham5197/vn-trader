@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ALERT_KINDS, type AlertItem, type AlertKind } from "@/lib/alert-kinds";
 import { vnNow } from "@/lib/vn-time";
+import { Modal } from "./ui";
 
 // ---- Cài đặt riêng trình duyệt này (localStorage) ----
 type Prefs = { kinds: Record<AlertKind, boolean>; desktop: boolean };
@@ -92,6 +93,7 @@ export default function AlertCenter({ username }: { username: string | null }) {
   const [toasts, setToasts] = useState<AlertItem[]>([]);
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [detail, setDetail] = useState<AlertItem | null>(null);
   const maxId = useRef(0);
 
   const pop = useCallback(
@@ -183,15 +185,15 @@ export default function AlertCenter({ username }: { username: string | null }) {
             {items.length === 0 && <li className="p-4 text-center text-xs text-muted">Chưa có thông báo nào trong 7 ngày.</li>}
             {items.map((a) => (
               <li key={a.id} className="border-b border-border/50 last:border-0">
-                <Link href={href(a)} onClick={() => setOpen(false)} className="block px-3 py-2 text-xs hover:bg-accent/10">
+                <button type="button" onClick={() => (setOpen(false), setDetail(a))} className="block w-full px-3 py-2 text-left text-xs hover:bg-accent/10">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className={`min-w-0 font-semibold ${TONE[a.level].split(" ")[1]}`}>{a.title}</span>
+                    <span className={`min-w-0 font-semibold break-words ${TONE[a.level].split(" ")[1]}`}>{a.title}</span>
                     <span className="num shrink-0 text-[10px] text-muted">
                       {day(a.at)} {time(a.at)}
                     </span>
                   </div>
-                  {a.body && <p className="mt-0.5 line-clamp-2 whitespace-pre-line text-muted">{a.body}</p>}
-                </Link>
+                  {a.body && <p className="mt-0.5 line-clamp-2 whitespace-pre-line break-words text-muted">{a.body}</p>}
+                </button>
               </li>
             ))}
           </ul>
@@ -204,13 +206,13 @@ export default function AlertCenter({ username }: { username: string | null }) {
             {toasts.map((a) => (
               <div key={a.id} role="alert" className={`pointer-events-auto rounded-lg border-l-4 border bg-card/95 p-3 text-xs shadow-2xl backdrop-blur ${TONE[a.level].split(" ")[0]}`}>
                 <div className="flex items-start gap-2">
-                  <Link href={href(a)} onClick={() => dismiss(a)} className="min-w-0 flex-1">
-                    <div className={`font-semibold ${TONE[a.level].split(" ")[1]}`}>{a.title}</div>
-                    {a.body && <p className="mt-1 line-clamp-4 whitespace-pre-line text-foreground/80">{a.body}</p>}
+                  <button type="button" onClick={() => (dismiss(a), setDetail(a))} className="min-w-0 flex-1 text-left">
+                    <div className={`font-semibold break-words ${TONE[a.level].split(" ")[1]}`}>{a.title}</div>
+                    {a.body && <p className="mt-1 line-clamp-4 whitespace-pre-line break-words text-foreground/80">{a.body}</p>}
                     <div className="mt-1 text-[10px] text-muted">
-                      {ALERT_KINDS[a.kind]} · {time(a.at)}
+                      {ALERT_KINDS[a.kind]} · {time(a.at)} · <span className="text-accent">Xem đầy đủ</span>
                     </div>
-                  </Link>
+                  </button>
                   <button type="button" onClick={() => dismiss(a)} className="shrink-0 px-1 text-muted hover:text-foreground" aria-label="Đóng">
                     ✕
                   </button>
@@ -220,6 +222,22 @@ export default function AlertCenter({ username }: { username: string | null }) {
           </div>,
           document.body,
         )}
+      <Modal open={!!detail} title={detail ? ALERT_KINDS[detail.kind] : ""} onClose={() => setDetail(null)}>
+        {detail && (
+          <div className="text-sm">
+            <div className={`font-semibold break-words ${TONE[detail.level].split(" ")[1]}`}>{detail.title}</div>
+            <div className="mt-0.5 text-[11px] text-muted">
+              {day(detail.at)} {time(detail.at)}
+            </div>
+            {detail.body && (
+              <p className="mt-3 max-h-[60vh] overflow-y-auto whitespace-pre-line break-words text-foreground/90">{detail.body}</p>
+            )}
+            <Link href={href(detail)} onClick={() => setDetail(null)} className="mt-4 inline-block text-xs text-accent hover:underline">
+              {detail.ticker ? `Mở trang ${detail.ticker} →` : "Mở trang liên quan →"}
+            </Link>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

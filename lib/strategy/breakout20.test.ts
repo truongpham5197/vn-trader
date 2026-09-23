@@ -48,6 +48,28 @@ describe("breakout20", () => {
     const bars = flatBars(20);
     expect(breakout20({ ...CTX, bars, params: BREAKOUT20_DEFAULTS })).toBeNull();
   });
+
+  it("plan nội suy params custom, rr sau làm tròn tick, buyZone tăng dần", () => {
+    const bars = flatBars(40, 50, 1_000_000);
+    bars.push(makeBar("2026-09-18", 51, 2_000_000, 51.2));
+    const sig = breakout20({
+      ...CTX,
+      bars,
+      params: { ...BREAKOUT20_DEFAULTS, atrStopMult: 3, rrTarget: 1.5, donchian: 10 },
+    });
+    expect(sig).not.toBeNull();
+    expect(sig!.plan).toContain("3×ATR");
+    expect(sig!.plan).toContain("1.5×rủi ro");
+    expect(sig!.plan).not.toMatch(/vào − 2×ATR/);
+    expect(sig!.plan).not.toMatch(/vào \+ 2×rủi ro/);
+    expect(sig!.plan).toMatch(/Kỳ vọng/);
+    expect(sig!.reason).not.toMatch(/dòng tiền/);
+    const actualRr = (sig!.target - sig!.entry) / (sig!.entry - sig!.stop);
+    expect(sig!.rr).toBeCloseTo(Math.round(actualRr * 100) / 100);
+    expect(sig!.buyZone).toBeDefined();
+    expect(sig!.buyZone![0]).toBeGreaterThan(0);
+    expect(sig!.buyZone![0]).toBeLessThan(sig!.buyZone![1]);
+  });
 });
 
 describe("roundTick", () => {

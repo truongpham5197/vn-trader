@@ -1,15 +1,25 @@
 import { prisma } from "./prisma";
 import { STRATEGIES, ensureStrategies } from "./strategy";
 import { positionSize } from "./risk/sizing";
-import { getBool, getNum, getSetting } from "./settings";
+import { getBool, getNum, getSetting, setSetting } from "./settings";
 import { loadPortfolio } from "./report/portfolio";
 import { notifySignal } from "./telegram/notify";
-import type { Bar } from "./data/types";
 import { VN30 } from "./data/vn30";
 import { allWatchlists } from "./trades";
 import { fetchFundamentals, formatFundamentalsTg } from "./data/fundamentals";
-
-const BARS_NEEDED = 60;
+import { inVnSession, vnToday } from "./vn-time";
+import {
+  avgValueNewest,
+  barsRequired,
+  batchCompletedDate,
+  canGenerateBuy,
+  dropUnfinishedSession,
+  isFreshVsBatch,
+  maxRequiredBars,
+  requiredHistory,
+  shouldPersistScanDate,
+  toAscendingBars,
+} from "./scan-history";
 
 export interface ScanResult {
   scanned: number;
@@ -40,7 +50,7 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
   const universe = await getSetting("universe"); // vn30 | liquid | all
   const notify = opts?.notify ?? true;
 
-  // Mã đang nắm giữ + danh sách theo dõi (mọi user) luôn được scan — bypass filter thanh khoản
+  // Mã đang nắm giữ + danh sách theo dõi (mọi user) luôn được scan — bypass filter thanh khoản (chỉ để xem)
   const heldTickers = new Set([
     ...(
       await prisma.trade.findMany({
@@ -63,8 +73,18 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
     select: { id: true, ticker: true, exchange: true, bandPct: true, sector: true },
   });
 
-  // Batch-load bars 1 query (serverless-friendly) thay vì query per-symbol
-  const cutoff = new Date(Date.now() - 100 * 86400e3).toISOString().slice(0, 10);
+  const enabled = strategies
+    .map((st) => {
+      const def = STRATEGIES[st.type];
+      if (!def) return null;
+      const params = { ...def.defaults, ...(JSON.parse(st.params) as Record<string, number>) };
+      return { st, def, params };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  const maxBars = maxRequiredBars(enabled.map((e) => ({ def: e.def, params: e.params })));
+  const { cutoff } = requiredHistory(maxBars);
+
   const allRows = await prisma.dailyBar.findMany({
     where: { symbolId: { in: symbols.map((s) => s.id) }, date: { gte: cutoff } },
     orderBy: [{ symbolId: "asc" }, { date: "desc" }],
@@ -76,40 +96,42 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
     rowsBySymbol.set(r.symbolId, arr);
   }
 
+  const today = vnToday();
+  const inSession = inVnSession();
+  const completed = batchCompletedDate(
+    allRows.map((r) => r.date),
+    { today, inSession },
+  );
+
   let filtered = 0;
   let signals = 0;
   let notified = 0;
   const pending: Parameters<typeof notifySignal>[0][] = [];
 
   for (const sym of symbols) {
-    const rows = (rowsBySymbol.get(sym.id) ?? []).slice(0, BARS_NEEDED);
-    if (rows.length < BARS_NEEDED) continue;
-    const bars: Bar[] = rows.reverse().map((r) => ({
-      date: r.date,
-      open: r.open,
-      high: r.high,
-      low: r.low,
-      close: r.close,
-      volume: r.volume,
-    }));
+    const raw = rowsBySymbol.get(sym.id) ?? [];
+    const rows = dropUnfinishedSession(raw, { today, inSession });
+    if (rows.length === 0) continue;
+    if (!isFreshVsBatch(rows[0]?.date, completed)) continue;
 
-    // Universe filter — mã đang nắm giữ luôn được duyệt
-    if (!heldTickers.has(sym.ticker)) {
-      if (universe === "vn30") {
-        if (!VN30.has(sym.ticker)) continue;
-      } else if (universe === "liquid") {
-        const last20 = rows.slice(0, 20);
-        const avgValue = last20.reduce((s, r) => s + r.value, 0) / last20.length;
-        if (avgValue < minValue) continue;
-      }
+    const held = heldTickers.has(sym.ticker);
+    const liquid = avgValueNewest(rows, 20) >= minValue;
+    if (!held) {
+      if (universe === "vn30" && !VN30.has(sym.ticker)) continue;
+      if (universe === "liquid" && !liquid) continue;
     }
+
+    // Held/watchlist illiquid vẫn đếm filtered (xem), không BUY phía dưới
     filtered++;
 
-    for (const st of strategies) {
-      const impl = STRATEGIES[st.type];
-      if (!impl) continue;
-      const params = { ...impl.defaults, ...(JSON.parse(st.params) as Record<string, number>) };
-      const cand = impl.fn({
+    const take = maxBars > 0 ? rows.slice(0, maxBars) : rows;
+    const bars = toAscendingBars(take);
+
+    for (const { st, def, params } of enabled) {
+      const historyOk = bars.length >= barsRequired(def, params);
+      if (!canGenerateBuy({ liquid, historyOk })) continue;
+
+      const cand = def.fn({
         ticker: sym.ticker,
         exchange: sym.exchange,
         bandPct: sym.bandPct,
@@ -169,6 +191,11 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
         });
       }
     }
+  }
+
+  const prevScanDate = await getSetting("latestScanDate");
+  if (completed && shouldPersistScanDate(prevScanDate, completed)) {
+    await setSetting("latestScanDate", completed);
   }
 
   // Kèm tình hình kinh doanh + tin công bố — lấy song song, tối đa 6s, lỗi thì gửi không kèm

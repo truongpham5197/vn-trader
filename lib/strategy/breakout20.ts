@@ -9,6 +9,11 @@ export const BREAKOUT20_DEFAULTS = {
   rrTarget: 2,
 };
 
+export function breakout20RequiredBars(params: Record<string, number> = {}): number {
+  const p = { ...BREAKOUT20_DEFAULTS, ...params };
+  return p.donchian + p.atrPeriod + 2;
+}
+
 /**
  * Donchian breakout: đóng cửa vượt đỉnh N phiên + vol > volMult × avg20,
  * giá chưa chạm trần. Entry = close (đặt LO phiên sau), stop = entry − 2×ATR,
@@ -17,7 +22,7 @@ export const BREAKOUT20_DEFAULTS = {
 export const breakout20: StrategyFn = ({ bars, params, bandPct }) => {
   const p = { ...BREAKOUT20_DEFAULTS, ...params };
   const n = bars.length;
-  if (n < p.donchian + p.atrPeriod + 2) return null;
+  if (n < breakout20RequiredBars(p)) return null;
 
   const last = bars[n - 1];
   const prev = bars[n - 2];
@@ -39,15 +44,18 @@ export const breakout20: StrategyFn = ({ bars, params, bandPct }) => {
   const stop = floorTick(entry - p.atrStopMult * a);
   if (stop <= 0 || stop >= entry) return null;
   const target = floorTick(entry + p.rrTarget * (entry - stop));
+  if (target <= entry) return null;
+  const rr = realizedRr(entry, stop, target);
+  if (rr <= 0) return null;
 
   return {
     entry,
     stop,
     target,
-    rr: p.rrTarget,
-    reason: `Giá đóng cửa ${entry} vượt đỉnh ${p.donchian} phiên (${hh.toFixed(2)}), khối lượng gấp ${(last.volume / avgVol).toFixed(1)}× trung bình 20 phiên → dòng tiền vào mạnh, có thể mở nhịp tăng mới`,
-    plan: `SL = vào − 2×ATR (${a.toFixed(2)}) = ${stop}; TP = vào + 2×rủi ro = ${target.toFixed(2)}. Kỳ vọng 5–15 phiên; thoát sớm nếu đóng cửa < MA10 (trailing).`,
-    buyZone: [floorTick(hh), floorTick(entry * 1.01)], // retest đỉnh cũ → tối đa +1%
+    rr,
+    reason: `Giá đóng cửa ${entry} vượt đỉnh ${p.donchian} phiên (${hh.toFixed(2)}), khối lượng gấp ${(last.volume / avgVol).toFixed(1)}× trung bình ${p.donchian} phiên`,
+    plan: `SL = vào − ${p.atrStopMult}×ATR (${a.toFixed(2)}) = ${stop}; TP = vào + ${p.rrTarget}×rủi ro = ${target.toFixed(2)}. Kỳ vọng 5–15 phiên; thoát sớm nếu đóng cửa < MA10 (trailing).`,
+    buyZone: validBuyZone(floorTick(hh), floorTick(entry * 1.01)),
   };
 };
 
@@ -63,6 +71,20 @@ export function roundTick(price: number): number {
 /** Làm tròn XUỐNG theo tick — dùng cho stop/target để không xô stop lên sát entry. */
 export function floorTick(price: number): number {
   return Math.floor(price / tickSize(price)) * tickSize(price);
+}
+
+/** RR thực sau khi stop/target đã làm tròn tick. */
+export function realizedRr(entry: number, stop: number, target: number): number {
+  const risk = entry - stop;
+  if (risk <= 0) return 0;
+  return Math.round(((target - entry) / risk) * 100) / 100;
+}
+
+export function validBuyZone(a: number, b: number): [number, number] | undefined {
+  const lo = Math.min(a, b);
+  const hi = Math.max(a, b);
+  if (!(lo > 0) || !(hi > lo)) return undefined;
+  return [lo, hi];
 }
 
 /** Trailing theo MA10: đóng cửa thủng MA10 → thoát. */

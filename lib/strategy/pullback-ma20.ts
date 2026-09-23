@@ -1,6 +1,6 @@
 import type { ExitCheckFn, StrategyFn } from "./types";
 import { atr, sma } from "./indicators";
-import { floorTick } from "./breakout20";
+import { floorTick, realizedRr, validBuyZone } from "./breakout20";
 
 export const PULLBACK_DEFAULTS = {
   maFast: 20,
@@ -11,6 +11,11 @@ export const PULLBACK_DEFAULTS = {
   rrTarget: 2,
 };
 
+export function pullbackRequiredBars(params: Record<string, number> = {}): number {
+  const p = { ...PULLBACK_DEFAULTS, ...params };
+  return p.maSlow + p.atrPeriod + 2;
+}
+
 /**
  * Pullback về MA20 trong uptrend: close > MA50, bar cuối chạm MA20
  * (low <= MA20, close >= MA20 hoặc lân cận), volume khô < volDryMult × avg20.
@@ -19,7 +24,7 @@ export const PULLBACK_DEFAULTS = {
 export const pullbackMa20: StrategyFn = ({ bars, params }) => {
   const p = { ...PULLBACK_DEFAULTS, ...params };
   const n = bars.length;
-  if (n < p.maSlow + p.atrPeriod + 2) return null;
+  if (n < pullbackRequiredBars(p)) return null;
 
   const closes = bars.map((b) => b.close);
   const last = bars[n - 1];
@@ -42,15 +47,18 @@ export const pullbackMa20: StrategyFn = ({ bars, params }) => {
   const stop = floorTick(entry - p.atrStopMult * a);
   if (stop <= 0 || stop >= entry) return null;
   const target = floorTick(entry + p.rrTarget * (entry - stop));
+  if (target <= entry) return null;
+  const rr = realizedRr(entry, stop, target);
+  if (rr <= 0) return null;
 
   return {
     entry,
     stop,
     target,
-    rr: p.rrTarget,
-    reason: `Đang xu hướng tăng (giá > MA50 ${maSlow.toFixed(2)}) và vừa điều chỉnh về MA20 ${maFast.toFixed(2)} với khối lượng thấp (${(last.volume / avgVol).toFixed(1)}× trung bình) → lực bán yếu, điểm mua lại trong xu hướng`,
-    plan: `SL = vào − 1.5×ATR (${a.toFixed(2)}) = ${stop}; TP = vào + 2×rủi ro = ${target.toFixed(2)}. Kỳ vọng 3–10 phiên; thoát nếu đóng cửa < MA50 (${maSlow.toFixed(2)}).`,
-    buyZone: [floorTick(maFast * 0.98), floorTick(entry * 1.005)], // quanh MA20
+    rr,
+    reason: `Đang xu hướng tăng (giá > MA${p.maSlow} ${maSlow.toFixed(2)}) và vừa điều chỉnh về MA${p.maFast} ${maFast.toFixed(2)} với khối lượng ${(last.volume / avgVol).toFixed(1)}× trung bình`,
+    plan: `SL = vào − ${p.atrStopMult}×ATR (${a.toFixed(2)}) = ${stop}; TP = vào + ${p.rrTarget}×rủi ro = ${target.toFixed(2)}. Kỳ vọng 3–10 phiên; thoát nếu đóng cửa < MA${p.maSlow} (${maSlow.toFixed(2)}).`,
+    buyZone: validBuyZone(floorTick(maFast * 0.98), floorTick(entry * 1.005)),
   };
 };
 

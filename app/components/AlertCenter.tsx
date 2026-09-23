@@ -91,6 +91,8 @@ export default function AlertCenter({ username }: { username: string | null }) {
   const [toasts, setToasts] = useState<(AlertItem & { until: number })[]>([]);
   const hover = useRef(false);
   const [open, setOpen] = useState(false);
+  const bell = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const [mounted, setMounted] = useState(false);
   const [detail, setDetail] = useState<AlertItem | null>(null);
   const maxId = useRef(0);
@@ -149,6 +151,20 @@ export default function AlertCenter({ username }: { username: string | null }) {
     return () => clearInterval(t);
   }, [toasts.length]);
 
+  // Bảng thông báo nằm ngoài header (portal) — header có backdrop-blur + trên điện thoại chuông không sát mép phải → bị cắt/che
+  useEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const r = bell.current?.getBoundingClientRect();
+      if (r) setPos({ top: r.bottom + 8, right: Math.max(8, window.innerWidth - r.right) });
+    };
+    place();
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("resize", place);
+    window.addEventListener("keydown", esc);
+    return () => (window.removeEventListener("resize", place), window.removeEventListener("keydown", esc));
+  }, [open]);
+
   const unread = items.filter((a) => a.id > seen).length;
   const markRead = () => {
     const top = items[0]?.id ?? 0;
@@ -164,6 +180,7 @@ export default function AlertCenter({ username }: { username: string | null }) {
   return (
     <div className="relative shrink-0">
       <button
+        ref={bell}
         type="button"
         onClick={() => (setOpen((o) => !o), markRead())}
         className="relative rounded-md border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
@@ -177,32 +194,44 @@ export default function AlertCenter({ username }: { username: string | null }) {
           </span>
         )}
       </button>
-      {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-border bg-card shadow-2xl">
-          <div className="flex items-center justify-between border-b border-border px-3 py-2 text-xs">
-            <b>Thông báo</b>
-            <Link href="/settings#thong-bao" onClick={() => setOpen(false)} className="text-muted hover:text-accent">
-              ⚙ Chọn loại
-            </Link>
-          </div>
-          <ul className="max-h-[60vh] overflow-y-auto">
-            {items.length === 0 && <li className="p-4 text-center text-xs text-muted">Chưa có thông báo nào gần đây.</li>}
-            {items.map((a) => (
-              <li key={a.id} className="border-b border-border/50 last:border-0">
-                <button type="button" onClick={() => (setOpen(false), setDetail(a))} className="block w-full px-3 py-2 text-left text-xs hover:bg-accent/10">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className={`min-w-0 font-semibold break-words ${TONE[a.level].split(" ")[1]}`}>{a.title}</span>
-                    <span className="num shrink-0 text-[10px] text-muted">
-                      {day(a.at)} {time(a.at)}
-                    </span>
-                  </div>
-                  {a.body && <p className="mt-0.5 line-clamp-2 whitespace-pre-line break-words text-muted">{a.body}</p>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {mounted &&
+        open &&
+        pos &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-[65] bg-black/40 sm:bg-transparent" onClick={() => setOpen(false)} aria-hidden />
+            <div
+              role="dialog"
+              aria-label="Thông báo"
+              style={{ top: pos.top, ["--r" as string]: `${pos.right}px`, maxHeight: `min(32rem, calc(100dvh - ${pos.top}px - 4.5rem - env(safe-area-inset-bottom)))` }}
+              className="fixed inset-x-2 z-[70] flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl sm:right-[var(--r)] sm:left-auto sm:w-96"
+            >
+              <div className="flex items-center justify-between border-b border-border px-3 py-2 text-xs">
+                <b>Thông báo</b>
+                <Link href="/settings#thong-bao" onClick={() => setOpen(false)} className="text-muted hover:text-accent">
+                  ⚙ Chọn loại
+                </Link>
+              </div>
+              <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                {items.length === 0 && <li className="p-4 text-center text-xs text-muted">Chưa có thông báo nào gần đây.</li>}
+                {items.map((a) => (
+                  <li key={a.id} className="border-b border-border/50 last:border-0">
+                    <button type="button" onClick={() => (setOpen(false), setDetail(a))} className="block w-full px-3 py-2 text-left text-xs hover:bg-accent/10">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className={`min-w-0 font-semibold break-words ${TONE[a.level].split(" ")[1]}`}>{a.title}</span>
+                        <span className="num shrink-0 text-[10px] text-muted">
+                          {day(a.at)} {time(a.at)}
+                        </span>
+                      </div>
+                      {a.body && <p className="mt-0.5 line-clamp-2 whitespace-pre-line break-words text-muted">{a.body}</p>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>,
+          document.body,
+        )}
       {mounted &&
         toasts.length > 0 &&
         createPortal(

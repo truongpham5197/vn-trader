@@ -6,6 +6,7 @@ import SettingsPanel from "../components/SettingsPanel";
 import { StrategyCard, WatchlistEditor } from "../components/SettingsEditors";
 import { AlertPrefs } from "../components/AlertCenter";
 import PushSettings from "../components/PushSettings";
+import { InstallCard } from "../components/InstallApp";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,8 @@ export default async function SettingsPage() {
           Nhận cảnh báo cả khi không mở web: thông báo đẩy về điện thoại/máy tính và/hoặc Telegram riêng của bạn. Lưu theo tên người dùng.
         </p>
         <PushSettings username={u.username} />
+        <h3 className="mt-5 mb-3 font-semibold">Cài app</h3>
+        <InstallCard />
       </section>
     </main>
   );

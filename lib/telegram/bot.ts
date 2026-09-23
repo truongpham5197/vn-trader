@@ -72,6 +72,15 @@ export function createBot(): Bot {
     await ctx.reply(count ? "🔕 Đã ngừng gửi thông báo tới chat này. Kết nối lại ở web Cài đặt → Thông báo." : "Chat này chưa liên kết tài khoản nào.");
   });
 
+  // /resetpin — quên mã PIN web: chat chủ app xóa PIN owner, chat đã liên kết xóa PIN tài khoản đó → vào web đặt PIN mới
+  bot.command("resetpin", async (ctx) => {
+    const where = allowed(ctx) ? { id: await ownerId() } : { tgChatId: String(ctx.chat.id) };
+    const { count } = await prisma.user.updateMany({ where, data: { pinHash: null, pinFails: 0, pinLockUntil: null, sessionVer: { increment: 1 } } });
+    await ctx.reply(
+      count ? "🔑 Đã xóa mã PIN web — mọi thiết bị đã thoát. Mở web, chọn tên và tạo PIN mới." : "Chat này chưa liên kết tài khoản nào.",
+    );
+  });
+
   bot.command("status", async (ctx) => {
     if (!allowed(ctx)) return;
     const [symbols, bars, todaySignals, openTrades] = await Promise.all([

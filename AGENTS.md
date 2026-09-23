@@ -77,7 +77,12 @@ lib/alerts.ts  model Alert, pushAlert/listAlerts/htmlToAlert; pruneAlerts xóa
 app/api/push   GET {publicKey} · POST PushSubscription.toJSON() (upsert theo
                endpoint, gắn user cookie) · DELETE {endpoint}. public/sw.js nhận
                push (bỏ qua nếu web đang focus), app/manifest.ts = PWA (iOS
-               16.4+ phải "Thêm vào MH chính" mới có push)
+               16.4+ phải "Thêm vào MH chính" mới có push). InstallApp.tsx:
+               đăng ký sw.js khi mở web (điều kiện cài PWA), giữ
+               beforeinstallprompt → nút 📲 trên Nav (iOS: modal hướng dẫn
+               Chia sẻ), ẩn khi standalone; InstallCard ở /settings#thong-bao.
+               Bảng chuông 🔔 = portal fixed (header backdrop-blur + chuông không
+               sát mép phải → trước đây bị cắt trên điện thoại)
 app/api/me     GET/PATCH {alertKinds} — loại thông báo đẩy/Telegram riêng
 app/api/telegram/link  POST → mã 1 lần + t.me/<bot>?start=<mã>; DELETE gỡ.
                Bot /start <mã> gắn chat với user, /stop gỡ — 2 lệnh này KHÔNG
@@ -120,8 +125,11 @@ app/api/strategies/[id]  PATCH {enabled, params} — params merge defaults,
                chặn key lạ / ≤0, {} = về mặc định
 app/api/watchlist  POST/DELETE {ticker} → User.watchlist (theo cookie) —
                scan luôn quét các mã này (như held tickers)
-lib/user.ts    Nhiều user KHÔNG login (2026-09-23): model User (username unique,
-               không phân biệt hoa thường), cookie `vt_user`=id (1 năm).
+lib/user.ts    Nhiều user, không login nhưng có PIN 6 số (2026-09-23): model User
+               (username unique, không phân biệt hoa thường). Cookie `vt_user`
+               = `id.sessionVer.hmac` (lib/pin.ts, 1 năm) ký bằng env
+               SESSION_SECRET hoặc Setting "sessionSecret" tự sinh; sai chữ ký /
+               lệch sessionVer / cookie kiểu cũ (chỉ id) → GUEST, hỏi lại PIN.
                Owner `TruongMỡ` (User.owner) = chủ app: Telegram, TCBS
                Position, watcher (auto stop/target, lệnh live), orders,
                weekly, /picks, NAV/risk ở Setting chung. User khác: Trade
@@ -132,8 +140,13 @@ lib/user.ts    Nhiều user KHÔNG login (2026-09-23): model User (username uniq
                Scan quét allWatchlists() + trade mở của mọi user. Server
                path không có user (bot/cron) → ownerId(). Web chưa chọn
                tên → GUEST (id 0, danh sách trống), API mutate trả 401
-app/api/users  GET list · POST {username, create?} chọn/tạo → set cookie ·
-               DELETE thoát. UI: UserSwitcher trên Nav
+app/api/users  GET list {hasPin} · POST {username, pin, create?}: tạo tên
+               kèm PIN / tên chưa có PIN → PIN gửi lên thành PIN (updateMany
+               where pinHash null) / có PIN → scrypt check, sai 5 lần khóa 15ph
+               (pinFails tăng nguyên tử) · PATCH {pin,newPin} đổi PIN, tăng
+               sessionVer (thiết bị khác thoát) · DELETE thoát. UI: UserSwitcher.
+               Quên PIN: bot /resetpin (chat owner → PIN owner, chat đã liên
+               kết → PIN user đó) xóa pinHash + tăng sessionVer
 lib/trades.ts  netPnl/closeTrade/takeSignal/watchlist — dùng chung bot+web
 lib/api.ts     pos()/bad()/body() validate cho route web
 app/components/ui.tsx  Button/Modal/ModalForm/toast/useApi (refresh sau lưu)
@@ -177,6 +190,9 @@ Vercel cron: eod-sync 15:20 + scan 16:50 chỉ là fallback — scan idempotent)
 - Route mutating bắt buộc `cronAuthorized()` / webhook secret check.
   Ngoại lệ: route web `/api/settings|trades|signals|strategies|watchlist`
   (user quyết định UI không password) — bắt buộc validate server-side.
+  Dữ liệu cá nhân (trade/watchlist/vốn/push/Telegram riêng) giờ theo cookie
+  phiên có chữ ký sau khi nhập PIN — KHÔNG tin id thô từ cookie/body.
+  KHÔNG log PIN/pinHash/sessionSecret.
 
 ## 5. Coding conventions (theo code hiện có)
 

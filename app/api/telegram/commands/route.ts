@@ -21,6 +21,7 @@ const COMMANDS: [string, string][] = [
   ["kill", "Dừng khẩn cấp mọi lệnh"],
   ["otp", "Đăng nhập TCBS bằng OTP"],
   ["auth", "Kiểm tra kết nối TCBS"],
+  ["resetpin", "Quên mã PIN web — xóa để đặt lại"],
   ["help", "Giải thích thuật ngữ"],
 ];
 

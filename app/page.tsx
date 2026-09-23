@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getBool, getSetting } from "@/lib/settings";
 import { positionsReport } from "@/lib/report/positions";
+import { GUEST, currentUser } from "@/lib/user";
 import { loadPortfolio } from "@/lib/report/portfolio";
 import { vn30Snapshot } from "@/lib/analysis/vn30";
 import { latestSignalDate } from "@/lib/signals";
@@ -14,7 +15,7 @@ import { LivePrice } from "./components/live";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const sigDate = await latestSignalDate();
+  const [sigDate, u] = await Promise.all([latestSignalDate(), currentUser().then((x) => x ?? GUEST)]);
   const [
     symbolCount,
     latestBar,
@@ -38,14 +39,14 @@ export default async function Home() {
           orderBy: [{ rr: "desc" }, { id: "desc" }],
         })
       : [],
-    positionsReport(),
+    positionsReport(u.id),
     vn30Snapshot(),
     getBool("scanEnabled"),
     getBool("paperTrading"),
     getBool("killSwitch"),
     getSetting("universe"),
   ]);
-  const pf = await loadPortfolio(positions);
+  const pf = await loadPortfolio(positions, u);
   const pending = latestSignals.filter(
     (s) => s.status === "new" || s.status === "notified",
   );
@@ -182,7 +183,7 @@ export default async function Home() {
             và báo qua Telegram.
           </p>
         ) : (
-          <SignalTable signals={pending.slice(0, 12)} showDate={false} />
+          <SignalTable signals={pending.slice(0, 12)} showDate={false} owner={u.owner} />
         )}
       </section>
 

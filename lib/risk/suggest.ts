@@ -1,4 +1,5 @@
 import { prisma } from "../prisma";
+import { ownerId } from "../user";
 import { atr, sma } from "../strategy/indicators";
 import { floorTick } from "../strategy/breakout20";
 import type { Bar } from "../data/types";
@@ -49,8 +50,8 @@ export async function suggestForTrade(
   tradeId: number,
   targetPct = 5,
 ): Promise<(Suggestion & { ticker: string; entry: number }) | null> {
-  const trade = await prisma.trade.findUnique({
-    where: { id: tradeId },
+  const trade = await prisma.trade.findFirst({
+    where: { id: tradeId, userId: await ownerId() },
     include: { symbol: true },
   });
   if (!trade) return null;

@@ -3,11 +3,13 @@ import { currentSectorStrength } from "@/lib/analysis/sector-live";
 import SectorBoard from "../components/SectorBoard";
 import SectorStrength from "../components/SectorStrength";
 import AutoRefresh from "../components/AutoRefresh";
+import { GUEST, currentUser } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
 export default async function SectorsPage() {
-  const [strength, rows] = await Promise.all([currentSectorStrength(), buildSectorBoard()]);
+  const u = (await currentUser()) ?? GUEST;
+  const [strength, rows] = await Promise.all([currentSectorStrength(), buildSectorBoard(u.id)]);
 
   return (
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">

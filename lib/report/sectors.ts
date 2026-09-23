@@ -1,4 +1,5 @@
 import { prisma } from "../prisma";
+import { ownerId } from "../user";
 import { vn30Snapshot } from "../analysis/vn30";
 import { getWatchlist } from "../trades";
 
@@ -32,12 +33,13 @@ export interface SectorRow {
  * new/notified + setup VN30 + danh sách theo dõi) gom theo sector ICB, kèm GDKHQ gần nhất.
  * Giá live điền phía client qua /api/quotes.
  */
-export async function buildSectorBoard(): Promise<SectorRow[]> {
+export async function buildSectorBoard(userId?: number): Promise<SectorRow[]> {
+  userId ??= await ownerId();
   const [trades, lastSig, vn30, watchlist] = await Promise.all([
-    prisma.trade.findMany({ where: { status: "open" }, include: { symbol: true } }),
+    prisma.trade.findMany({ where: { status: "open", userId }, include: { symbol: true } }),
     prisma.signal.findFirst({ orderBy: { date: "desc" }, select: { date: true } }),
     vn30Snapshot(),
-    getWatchlist(),
+    getWatchlist(userId),
   ]);
 
   const signals = lastSig

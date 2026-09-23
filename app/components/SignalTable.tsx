@@ -37,9 +37,12 @@ const f2 = (n: number) => n.toFixed(2);
 export default function SignalTable({
   signals,
   showDate = true,
+  owner = false,
 }: {
   signals: SignalRow[];
   showDate?: boolean;
+  /** Trạng thái tín hiệu dùng chung — chỉ chủ app bỏ qua/khôi phục/xóa. */
+  owner?: boolean;
 }) {
   const [open, setOpen] = useState<number | null>(null);
   return (
@@ -112,7 +115,7 @@ export default function SignalTable({
                   <td className="num p-3 text-right">{s.rr.toFixed(1)}</td>
                   <td className={`p-3 whitespace-nowrap ${cls}`}>{label}</td>
                   <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                    <SignalActions s={s} />
+                    <SignalActions s={s} owner={owner} />
                   </td>
                 </tr>
                 {expanded && (
@@ -138,7 +141,7 @@ export default function SignalTable({
   );
 }
 
-function SignalActions({ s }: { s: SignalRow }) {
+function SignalActions({ s, owner }: { s: SignalRow; owner: boolean }) {
   const [buy, setBuy] = useState(false);
   const { call, busy } = useApi();
   const url = `/api/signals/${s.id}`;
@@ -153,6 +156,7 @@ function SignalActions({ s }: { s: SignalRow }) {
           <Button
             size="sm"
             disabled={busy}
+            hidden={!owner}
             onClick={() =>
               call(
                 "PATCH",
@@ -166,6 +170,7 @@ function SignalActions({ s }: { s: SignalRow }) {
           </Button>
         </>
       ) : (
+        owner &&
         s.status === "skipped" && (
           <Button
             size="sm"
@@ -182,6 +187,7 @@ function SignalActions({ s }: { s: SignalRow }) {
         size="sm"
         tone="danger"
         disabled={busy}
+        hidden={!owner}
         aria-label="Xóa"
         onClick={() =>
           confirm(`Xóa tín hiệu ${s.symbol.ticker} (${s.strategy.name})?`) &&

@@ -1,4 +1,5 @@
 import { prisma } from "../prisma";
+import { ownerId } from "../user";
 import { getQuote } from "../price";
 import { esc } from "../telegram/notify";
 import { vnNow } from "../vn-time";
@@ -57,7 +58,7 @@ export async function collectTopPicks(
   const held = new Set(
     (
       await prisma.trade.findMany({
-        where: { status: "open" },
+        where: { status: "open", userId: await ownerId() },
         include: { symbol: { select: { ticker: true } } },
       })
     ).map((t) => t.symbol.ticker),

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import SignalTable from "../components/SignalTable";
+import { GUEST, currentUser } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function SignalsPage({
 }: {
   searchParams: Promise<{ date?: string; status?: string }>;
 }) {
-  const sp = await searchParams;
+  const [sp, u] = await Promise.all([searchParams, currentUser().then((x) => x ?? GUEST)]);
   const dates = (
     await prisma.signal.groupBy({ by: ["date"], _count: { _all: true }, orderBy: { date: "desc" }, take: 10 })
   ).map((d) => ({ date: d.date, n: d._count._all }));
@@ -66,7 +67,7 @@ export default async function SignalsPage({
       {signals.length === 0 ? (
         <p className="card p-6 text-center text-muted">Không có tín hiệu nào khớp bộ lọc.</p>
       ) : (
-        <SignalTable signals={signals} showDate={!date} />
+        <SignalTable signals={signals} showDate={!date} owner={u.owner} />
       )}
     </main>
   );

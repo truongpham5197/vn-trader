@@ -88,8 +88,21 @@ model Order {
   trade       Trade?    @relation(fields: [tradeId], references: [id])
 }
 
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  owner     Boolean  @default(false) // chủ app: Telegram + TCBS + watcher + NAV/risk ở Setting
+  navVnd    Float? // vốn riêng (user khác owner); null = mặc định
+  riskPct   Float?
+  watchlist String[] @default([])
+  createdAt DateTime @default(now())
+  trades    Trade[]
+}
+
 model Trade {
   id          Int       @id @default(autoincrement())
+  userId      Int?
+  user        User?     @relation(fields: [userId], references: [id])
   symbolId    Int
   symbol      Symbol    @relation(fields: [symbolId], references: [id])
   qty         Int
@@ -107,6 +120,8 @@ model Trade {
   openedAt    DateTime  @default(now())
   closedAt    DateTime?
   orders      Order[]
+
+  @@index([userId, status])
 }
 
 model Position {

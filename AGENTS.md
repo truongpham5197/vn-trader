@@ -86,8 +86,22 @@ app/api/trades, trades/[id]  CRUD vị thế từ web: POST mở, PATCH sửa /
 app/api/signals/[id]  PATCH take|skip|reset, DELETE (gỡ link trade/order)
 app/api/strategies/[id]  PATCH {enabled, params} — params merge defaults,
                chặn key lạ / ≤0, {} = về mặc định
-app/api/watchlist  POST/DELETE {ticker} → Setting `watchlist` (JSON) —
+app/api/watchlist  POST/DELETE {ticker} → User.watchlist (theo cookie) —
                scan luôn quét các mã này (như held tickers)
+lib/user.ts    Nhiều user KHÔNG login (2026-09-23): model User (username unique,
+               không phân biệt hoa thường), cookie `vt_user`=id (1 năm).
+               Owner `TruongMỡ` (User.owner) = chủ app: Telegram, TCBS
+               Position, watcher (auto stop/target, lệnh live), orders,
+               weekly, /picks, NAV/risk ở Setting chung. User khác: Trade
+               (userId), watchlist (User.watchlist), navVnd/riskPct riêng
+               (null → mặc định Setting). Signal + trạng thái skip/reset/
+               xóa + cấu hình hệ thống = dùng chung, CHỈ owner đổi; user
+               khác "Đã mua" tạo trade riêng, không đổi status signal.
+               Scan quét allWatchlists() + trade mở của mọi user. Server
+               path không có user (bot/cron) → ownerId(). Web chưa chọn
+               tên → GUEST (id 0, danh sách trống), API mutate trả 401
+app/api/users  GET list · POST {username, create?} chọn/tạo → set cookie ·
+               DELETE thoát. UI: UserSwitcher trên Nav
 lib/trades.ts  netPnl/closeTrade/takeSignal/watchlist — dùng chung bot+web
 lib/api.ts     pos()/bad()/body() validate cho route web
 app/components/ui.tsx  Button/Modal/ModalForm/toast/useApi (refresh sau lưu)

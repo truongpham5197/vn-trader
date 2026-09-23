@@ -1,4 +1,5 @@
 import { prisma } from "../prisma";
+import { ownerId } from "../user";
 import { getQuote } from "../price";
 import { px } from "../format";
 import { BUY_FEE, SELL_FEE_TAX } from "../fees";
@@ -22,9 +23,10 @@ export interface PositionLine {
   sessionsHeld: number; // phiên đã trôi qua kể từ mua (T+2 check)
 }
 
-export async function positionsReport(): Promise<PositionLine[]> {
+/** Vị thế mở của 1 user (mặc định owner — Telegram/cron). */
+export async function positionsReport(userId?: number): Promise<PositionLine[]> {
   const trades = await prisma.trade.findMany({
-    where: { status: "open" },
+    where: { status: "open", userId: userId ?? (await ownerId()) },
     include: { symbol: true },
     orderBy: { id: "asc" },
   });

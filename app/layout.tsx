@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Nav from "./components/Nav";
+import { currentUser } from "@/lib/user";
 import { Toaster } from "./components/ui";
 import { QuotesProvider } from "./components/live";
 import "./globals.css";
@@ -20,7 +21,8 @@ export const metadata: Metadata = {
   description: "Scanner + backtest + alerts cho cổ phiếu cơ sở VN",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const user = await currentUser().catch(() => null);
   return (
     <html
       lang="vi"
@@ -28,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <QuotesProvider>
-          <Nav />
+          <Nav username={user?.username ?? null} />
           {children}
           <Toaster />
         </QuotesProvider>

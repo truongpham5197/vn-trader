@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getBool, getNum, getSetting } from "@/lib/settings";
+import { GUEST, currentUser, userNum } from "@/lib/user";
 import { STRATEGIES, ensureStrategies } from "@/lib/strategy";
-import { getWatchlist } from "@/lib/trades";
 import SettingsPanel from "../components/SettingsPanel";
 import { StrategyCard, WatchlistEditor } from "../components/SettingsEditors";
 
@@ -9,13 +9,14 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   await ensureStrategies(prisma);
+  const u = (await currentUser()) ?? GUEST;
   const since = new Date(Date.now() - 30 * 86400e3).toISOString().slice(0, 10);
   const [strategies, counts, watchlist, nav, riskPct, universe, minValue, scanEnabled, kill, paper] = await Promise.all([
     prisma.strategy.findMany({ orderBy: { id: "asc" } }),
     prisma.signal.groupBy({ by: ["strategyId"], where: { date: { gte: since } }, _count: { _all: true } }),
-    getWatchlist(),
-    getNum("navVnd"),
-    getNum("riskPct"),
+    u.watchlist,
+    userNum(u, "navVnd"),
+    userNum(u, "riskPct"),
     getSetting("universe"),
     getNum("universeMinValueVnd"),
     getBool("scanEnabled"),
@@ -37,6 +38,8 @@ export default async function SettingsPage() {
           scanEnabled={scanEnabled}
           kill={kill}
           paper={paper}
+          owner={u.owner}
+          username={u.username || "khách"}
         />
       </section>
 
@@ -67,7 +70,7 @@ export default async function SettingsPage() {
       </section>
 
       <section className="mb-8">
-        <h2 className="font-semibold">Danh sách theo dõi</h2>
+        <h2 className="font-semibold">Danh sách theo dõi {u.username && <span className="font-normal text-muted">của {u.username}</span>}</h2>
         <p className="mt-1 mb-3 text-xs text-muted">
           Mã trong danh sách luôn được quét tín hiệu mỗi ngày, kể cả khi không đạt ngưỡng thanh khoản / không thuộc phạm vi quét.
         </p>

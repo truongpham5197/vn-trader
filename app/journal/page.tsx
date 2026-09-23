@@ -39,7 +39,7 @@ export default async function JournalPage() {
   return (
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
       <AutoRefresh />
-      <h1 className="mb-4 text-xl font-bold tracking-tight">Vị thế &amp; nhật ký</h1>
+      <h1 className="mb-4 text-xl font-bold tracking-tight">Đang giữ</h1>
 
       <div className="mb-6 grid grid-cols-2 gap-3 text-xs sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Đang giữ" value={positions.length} />

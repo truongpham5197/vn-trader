@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
-/* Dark terminal theme — cố định, không theo prefers-color-scheme
-   (UI components được thiết kế cho nền tối; render light = mất contrast) */
+/* Nền tối mặc định. html.light = nền sáng (nút trên menu, nhớ localStorage vt_theme). */
 :root {
+  color-scheme: dark;
   --background: #0b0e14;
   --foreground: #e6e9ef;
   --muted: #8b95a7;
@@ -11,6 +11,18 @@
   --accent: #60a5fa;
   --green: #34d399;
   --red: #f87171;
+}
+
+html.light {
+  color-scheme: light;
+  --background: #f4f6f8;
+  --foreground: #12151c;
+  --muted: #5c6570;
+  --card: #ffffff;
+  --border: #d5dbe3;
+  --accent: #1d4ed8;
+  --green: #047857;
+  --red: #b91c1c;
 }
 
 @theme inline {
@@ -47,4 +59,12 @@ body {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
+}
+
+/* Vàng nhạt và hover trắng chỉ đọc được trên nền tối. */
+html.light .text-amber-300 {
+  color: #b45309;
+}
+html.light [class*="hover:bg-white"]:hover {
+  background-color: rgba(18, 21, 28, 0.04);
 }

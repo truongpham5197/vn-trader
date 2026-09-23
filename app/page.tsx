@@ -62,7 +62,7 @@ export default async function Home() {
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
       <AutoRefresh />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold tracking-tight">Tổng quan</h1>
+        <h1 className="text-xl font-bold tracking-tight">Trang chủ</h1>
         <Link
           href="/settings"
           className="flex flex-wrap gap-2 text-xs"

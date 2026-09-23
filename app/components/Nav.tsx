@@ -6,16 +6,17 @@ import StockSearch from "./StockSearch";
 import UserSwitcher from "./UserSwitcher";
 import AlertCenter from "./AlertCenter";
 import { InstallButton } from "./InstallApp";
+import { ThemeToggle } from "./ThemeToggle";
 import { navActive } from "@/lib/nav";
 
 // [href, nhãn desktop, icon mobile, nhãn ngắn mobile]
 const LINKS = [
-  ["/", "Tổng quan", "🏠", "Tổng quan"],
-  ["/signals", "Tín hiệu", "📡", "Tín hiệu"],
-  ["/signals/evidence", "Sau tín hiệu", "📊", "Sau báo"],
-  ["/journal", "Vị thế", "💼", "Vị thế"],
+  ["/", "Trang chủ", "🏠", "Trang chủ"],
+  ["/signals", "Gợi ý mua", "📡", "Gợi ý"],
+  ["/signals/evidence", "Giá sau báo", "📊", "Giá sau"],
+  ["/journal", "Đang giữ", "💼", "Đang giữ"],
   ["/sectors", "Nhóm ngành", "🏭", "Ngành"],
-  ["/backtest", "Thử quá khứ", "🧪", "Thử cũ"],
+  ["/backtest", "Giả lập mua bán", "🧪", "Giả lập"],
   ["/settings", "Cài đặt", "⚙️", "Cài đặt"],
 ] as const;
 
@@ -33,6 +34,7 @@ export default function Nav({ username }: { username: string | null }) {
           <div className="ml-auto flex min-w-0 items-center gap-2">
             <StockSearch />
             <InstallButton />
+            <ThemeToggle />
             <AlertCenter username={username} />
             <UserSwitcher username={username} />
           </div>
@@ -43,7 +45,7 @@ export default function Nav({ username }: { username: string | null }) {
               key={href}
               href={href}
               className={`rounded-md px-2.5 py-1 text-sm whitespace-nowrap ${
-                on(href) ? "bg-accent/15 text-foreground" : "text-muted hover:bg-white/5 hover:text-foreground"
+                on(href) ? "bg-accent/15 text-foreground" : "text-muted hover:bg-foreground/5 hover:text-foreground"
               }`}
             >
               {label}

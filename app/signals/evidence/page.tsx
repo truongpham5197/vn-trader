@@ -77,7 +77,7 @@ export default async function SignalEvidencePage() {
       </div>
       <p className="mb-4 text-xs text-muted">
         Muốn biết giả lập mua–bán theo luật có lãi không? Đó là{" "}
-        <Link href="/backtest" className="text-accent hover:underline">Thử quá khứ</Link>
+        <Link href="/backtest" className="text-accent hover:underline">Giả lập mua bán</Link>
         {" "}— trang này không làm việc đó, và không tự sửa luật.
       </p>
       <div className="card mb-4 overflow-x-auto p-3">

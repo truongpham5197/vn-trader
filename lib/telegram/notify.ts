@@ -20,6 +20,7 @@ export async function sendTelegram(
       chat_id: CHAT_ID(),
       text,
       parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
       ...(buttons ? { reply_markup: { inline_keyboard: buttons } } : {}),
     }),
   });
@@ -51,6 +52,7 @@ export async function notifySignal(s: {
   buyZone?: [number, number];
   dayBar?: { open: number; high: number; low: number; close: number };
   ref?: number; // giá tham chiếu = close phiên trước
+  fundamentals?: string; // HTML đã escape — formatFundamentalsTg
 }): Promise<boolean> {
   const stopPct = ((s.entry - s.stop) / s.entry) * 100;
   const targetPct = ((s.target - s.entry) / s.entry) * 100;
@@ -64,7 +66,7 @@ export async function notifySignal(s: {
     : null;
   const text = [
     `🟢 <b>TÍN HIỆU MUA — ${s.ticker}</b>${s.sector ? ` · ${s.sector}` : ""}`,
-    `<i>${esc(s.reason)}</i>`,
+    `📌 <b>Vì sao mua:</b> ${esc(s.reason)}`,
     ...(ohlc ? [ohlc] : []),
     ``,
     `💰 Giá vào (LO): <b>${fmt(s.entry)}</b>`,
@@ -78,6 +80,9 @@ export async function notifySignal(s: {
     `📦 Khối lượng: <b>${s.qty}cp</b> ≈ ${fmtVnd(s.valueVnd)}`,
     `⚠️ Nếu chạm stop: lỗ ~${fmtVnd(riskVnd)} (~1% NAV)`,
     ...(s.plan ? [``, `🗓 <i>${esc(s.plan)}</i>`] : []),
+    ...(s.fundamentals ? [``, s.fundamentals] : []),
+    ``,
+    `<i>Tín hiệu dựa trên giá + khối lượng; thông tin kinh doanh để tham khảo, không phải khuyến nghị.</i>`,
   ].join("\n");
   return sendTelegram(text, [
     [

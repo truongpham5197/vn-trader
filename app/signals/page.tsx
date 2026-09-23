@@ -41,8 +41,8 @@ export default async function SignalsPage({
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
       <h1 className="text-xl font-bold tracking-tight">Tín hiệu</h1>
       <p className="mt-1 mb-4 text-xs text-muted">
-        Quét tự động sau khi chốt nến mỗi chiều T2–T6. Tín hiệu từ nến ngày <b>D</b> dùng để đặt lệnh phiên kế tiếp. Bấm vào dòng để
-        xem lý do + kế hoạch. Đây là gợi ý kỹ thuật, chưa chứng minh có lãi — tập bằng tiền ảo trước.
+        Quét tự động sau khi chốt nến mỗi chiều T2–T6. Tín hiệu từ nến ngày <b>D</b> dùng để đặt lệnh phiên kế tiếp. Bấm vào mã để
+        xem vì sao mua: lý do kỹ thuật, tình hình kinh doanh (lợi nhuận, doanh thu theo quý) và tin công bố gần đây. Đây là gợi ý kỹ thuật, chưa chứng minh có lãi — tập bằng tiền ảo trước.
       </p>
 
       <div className="mb-3 flex flex-wrap gap-2">

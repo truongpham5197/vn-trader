@@ -48,7 +48,7 @@ export const pullbackMa20: StrategyFn = ({ bars, params }) => {
     stop,
     target,
     rr: p.rrTarget,
-    reason: `pullback MA20=${maFast.toFixed(2)} trong uptrend (>MA50=${maSlow.toFixed(2)}), vol ${(last.volume / avgVol).toFixed(1)}x`,
+    reason: `Đang xu hướng tăng (giá > MA50 ${maSlow.toFixed(2)}) và vừa điều chỉnh về MA20 ${maFast.toFixed(2)} với khối lượng thấp (${(last.volume / avgVol).toFixed(1)}× trung bình) → lực bán yếu, điểm mua lại trong xu hướng`,
     plan: `SL = vào − 1.5×ATR (${a.toFixed(2)}) = ${stop}; TP = vào + 2×rủi ro = ${target.toFixed(2)}. Kỳ vọng 3–10 phiên; thoát nếu đóng cửa < MA50 (${maSlow.toFixed(2)}).`,
     buyZone: [floorTick(maFast * 0.98), floorTick(entry * 1.005)], // quanh MA20
   };

@@ -25,6 +25,11 @@ Build local cần `DATABASE_URL` hợp lệ — `.env` đang trỏ Neon. Dùng U
 ```
 lib/data/      vndirect.ts (list mã + ngành ICB), dnse.ts (OHLCV), sync.ts,
                http.ts (fetch retry 3×, timeout 15s)
+               fundamentals.ts — VNDirect finfo: P/E P/B ROE cổ tức vốn hóa,
+               DT/LN 8 quý, tin 45 ngày → summarizeFundamentals (câu dễ hiểu
+               + tone) + formatFundamentalsTg. Dùng ở alert tín hiệu (scan
+               gom notify cuối vòng, ≤20 mã, timeout 6s/mã), /cb MÃ, và
+               GET /api/fundamentals (cache 3h) → SignalDetail ("vì sao?")
 lib/strategy/  pure fns → SignalCandidate {entry,stop,target,rr,reason,plan,buyZone}
                + shouldExit per strategy. Đăng ký trong lib/strategy/index.ts
 lib/backtest/  engine portfolio T+2/lot100/band ±7-10-15%/phí+thuế
@@ -174,3 +179,9 @@ Vercel cron: eod-sync 15:20 + scan 16:50 chỉ là fallback — scan idempotent)
   → user thấy "tín hiệu cũ".
 - universe `vn30` cho 0 tín hiệu nhiều ngày → default giờ `liquid`.
 - Neon free: connection drop thoáng qua → retry query hoặc chấp nhận DataGap.
+- TCBS public API (apipubaws) bị Cloudflare challenge → không lấy được
+  fundamentals từ TCBS. Dùng VNDirect `api-finfo` v4: ratios itemCode 51003
+  vốn hóa/51006 PE/51012 PB/51033 cổ tức/52002 ROE; financial_statements
+  21001 DT thuần, 421701 tổng thu nhập (NH), 23000 LNST cty mẹ (VND).
+- Tín hiệu vẫn chỉ do giá + khối lượng; khối kinh doanh/tin chỉ tham khảo
+  — giữ disclaimer, đừng biến thành "khuyến nghị".

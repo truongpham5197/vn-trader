@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from "react";
 import { Button, Field, Modal, ModalForm, inputCls, useApi } from "./ui";
+import SignalDetail from "./SignalDetail";
 
 export const STATUS: Record<string, [string, string]> = {
   new: ["Mới", "text-accent"],
@@ -65,7 +66,9 @@ export default function SignalTable({ signals, showDate = true }: { signals: Sig
                 >
                   {showDate && <td className="num p-3 text-muted">{s.date}</td>}
                   <td className="p-3">
-                    <div className="font-semibold">{s.symbol.ticker}</div>
+                    <div className="font-semibold">
+                      {s.symbol.ticker} <span className="text-[10px] font-normal text-accent">{expanded ? "▾ ẩn" : "▸ vì sao?"}</span>
+                    </div>
                     <div className="max-w-32 truncate text-[11px] text-muted">{s.symbol.sector ?? ""}</div>
                   </td>
                   <td className="p-3 text-muted">{s.strategy.name}</td>
@@ -85,11 +88,13 @@ export default function SignalTable({ signals, showDate = true }: { signals: Sig
                     <SignalActions s={s} />
                   </td>
                 </tr>
-                {expanded && (s.reason || s.plan) && (
+                {expanded && (
                   <tr className="border-b border-border/50 bg-white/[0.02]">
-                    <td colSpan={showDate ? 10 : 9} className="px-3 py-2.5 text-muted">
-                      {s.reason && <div>📌 {s.reason}</div>}
-                      {s.plan && <div className="mt-1">🎯 {s.plan}</div>}
+                    <td colSpan={showDate ? 10 : 9} className="px-3 py-3">
+                      {/* sticky + giới hạn rộng để trên mobile không phải cuộn ngang theo bảng */}
+                      <div className="sticky left-3 max-w-[calc(100vw-4rem)] lg:max-w-none">
+                        <SignalDetail ticker={s.symbol.ticker} reason={s.reason} plan={s.plan} />
+                      </div>
                     </td>
                   </tr>
                 )}

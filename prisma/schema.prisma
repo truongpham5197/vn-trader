@@ -64,6 +64,13 @@ model Signal {
   buyHigh    Float?
   status     String   @default("new") // new | notified | taken | skipped | expired | filled
   createdAt  DateTime @default(now())
+  // Trả bài gợi ý (lib/report/signal-outcome.ts): mô phỏng kế hoạch trên nến ngày sau tín hiệu
+  outcome     String? // win | loss | time | missed — null = chưa đủ phiên
+  outcomePct  Float? // % net sau phí+thuế
+  outcomeR    Float?
+  outcomeDate String? // phiên chốt kết quả
+  fillPrice   Float?
+  exitPrice   Float?
   orders     Order[]
   trades     Trade[]
 
@@ -108,6 +115,7 @@ model User {
   pinFails     Int       @default(0)
   pinLockUntil DateTime?
   sessionVer   Int       @default(0) // tăng khi đổi/xóa PIN → cookie thiết bị cũ hết hiệu lực
+  persona      String? // giọng thông báo (lib/persona.ts) — null = tự gán phong cách chưa ai dùng
 }
 
 /// Web Push subscription — mỗi trình duyệt/thiết bị 1 dòng

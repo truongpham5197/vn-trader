@@ -42,6 +42,7 @@ export async function notifySignal(s: {
   dayBar?: { open: number; high: number; low: number; close: number };
   ref?: number; // giá tham chiếu = close phiên trước
   fundamentals?: string; // HTML đã escape — formatFundamentalsTg
+  record?: string; // thành tích gợi ý thật của chiến lược — text thường (recordLine)
 }): Promise<boolean> {
   const stopPct = ((s.entry - s.stop) / s.entry) * 100;
   const targetPct = ((s.target - s.entry) / s.entry) * 100;
@@ -70,14 +71,16 @@ export async function notifySignal(s: {
     `⚠️ Nếu chạm stop: lỗ ~${fmtVnd(riskVnd)} (~1% NAV)`,
     ...(s.plan ? [``, `🗓 <i>${esc(s.plan)}</i>`] : []),
     ...(s.fundamentals ? [``, s.fundamentals] : []),
+    ...(s.record ? [``, `📊 ${esc(s.record)}`] : []),
     ``,
-    `<i>Tín hiệu dựa trên giá + khối lượng; thông tin kinh doanh để tham khảo, không phải khuyến nghị.</i>`,
+    `<i>Tín hiệu dựa trên giá + khối lượng; thông tin kinh doanh để tham khảo, không phải khuyến nghị. App sẽ chấm điểm gợi ý này sau khi đủ phiên và báo lại, đúng hay sai.</i>`,
   ].join("\n");
+  // Tin chi tiết từng mã chỉ tới owner (Telegram có nút đặt lệnh). User khác nhận tin tổng hợp riêng (lib/report/accountability.ts)
   return sendTelegram(text, [
     [
       { text: "📈 Đặt lệnh", callback_data: `order:${s.signalId}` },
       { text: "✅ Đã vào tay", callback_data: `taken:${s.signalId}` },
       { text: "⏭ Bỏ qua", callback_data: `skip:${s.signalId}` },
     ],
-  ], { kind: "signal", ticker: s.ticker, userId: null });
+  ], { kind: "signal", ticker: s.ticker });
 }

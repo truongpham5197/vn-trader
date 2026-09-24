@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { NEED_USER, ONLY_OWNER, currentUser } from "@/lib/user";
+import { NEED_USER, currentUser } from "@/lib/user";
 import { bad, body, pos } from "@/lib/api";
 import { takeSignal } from "@/lib/trades";
 
@@ -26,8 +26,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
     const trade = await takeSignal(id, { qty, entry, userId: u.id });
     return NextResponse.json({ ok: true, tradeId: trade.id });
   }
-  // Trạng thái tín hiệu dùng chung (Telegram owner) → chỉ owner đổi/xóa
-  if (!u.owner) return bad(ONLY_OWNER, 403);
+  // Trạng thái tín hiệu dùng chung → mọi user đều đổi/xóa
   if (b.action === "skip" || b.action === "reset") {
     await prisma.signal.update({
       where: { id },
@@ -40,7 +39,6 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
 export async function DELETE(_req: Request, { params }: Ctx) {
   const id = Number((await params).id);
-  if (!(await currentUser())?.owner) return bad(ONLY_OWNER, 403);
   if (!(await prisma.signal.findUnique({ where: { id } })))
     return bad("Không tìm thấy tín hiệu", 404);
   // Trade/Order giữ lại, chỉ bỏ liên kết

@@ -20,10 +20,9 @@ const LINKS = [
   ["/settings", "Cài đặt", "⚙️", "Cài đặt"],
 ] as const;
 
-export default function Nav({ username, owner }: { username: string | null; owner: boolean }) {
+export default function Nav({ username }: { username: string | null }) {
   const path = usePathname();
-  const links = owner ? LINKS : LINKS.filter(([href]) => href !== "/gia-sau");
-  const hrefs = links.map(([href]) => href);
+  const hrefs = LINKS.map(([href]) => href);
   const on = (href: string) => navActive(path, href, hrefs);
   return (
     <>
@@ -41,7 +40,7 @@ export default function Nav({ username, owner }: { username: string | null; owne
           </div>
         </div>
         <nav className="mx-auto hidden max-w-6xl flex-wrap gap-1 px-4 pb-2 sm:flex sm:px-6">
-          {links.map(([href, label]) => (
+          {LINKS.map(([href, label]) => (
             <Link
               key={href}
               href={href}
@@ -55,8 +54,8 @@ export default function Nav({ username, owner }: { username: string | null; owne
           ))}
         </nav>
       </header>
-      <nav className={`fixed inset-x-0 bottom-0 z-40 grid border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden ${links.length > 6 ? "grid-cols-7" : "grid-cols-6"}`}>
-        {links.map(([href, , icon, short]) => (
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-7 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden">
+        {LINKS.map(([href, , icon, short]) => (
           <Link
             key={href}
             href={href}

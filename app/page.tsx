@@ -155,7 +155,7 @@ export default async function Home() {
             {latestSignals.length ? "Đã xử lý hết tín hiệu mới." : "Chưa có tín hiệu mới."}
           </p>
         ) : (
-          <SignalTable signals={pending.slice(0, 12)} showDate={false} owner={u.owner} latestSession={sigDate} />
+          <SignalTable signals={pending.slice(0, 12)} showDate={false} latestSession={sigDate} />
         )}
       </section>
 

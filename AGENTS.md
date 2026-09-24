@@ -46,7 +46,7 @@ lib/quote-quality.ts  giá phút trong phiên ≤3 phút; ngoài giờ cần phi
 lib/report/signal-health.ts  sau scan: thủng SL + giá phút mới → status expired,
                báo 1 lần, không tự bán. Cron scan gọi sau runScan.
 lib/report/signal-evidence.ts  hồi cố close vs entry 5/10/20 phiên cho MỌI
-               tín hiệu đã lưu — không phải PnL khớp lệnh. /gia-sau chỉ owner
+               tín hiệu đã lưu — không phải PnL khớp lệnh. /gia-sau mở cho mọi user.
                (đường cũ /signals/evidence chuyển về đây; không redirect sang /signals).
 lib/risk/plan.ts + personal.ts  GET /api/signals/:id/plan — KL theo vốn user cookie,
                không dùng Signal.qty dùng chung. Chỉ xem, không đặt lệnh.

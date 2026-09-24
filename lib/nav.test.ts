@@ -11,10 +11,10 @@ describe("navActive", () => {
     expect(navActive("/signals", "/signals", hrefs)).toBe(true);
   });
 
-  it("đường con không sáng tab cha", () => {
-    const nested = ["/", "/signals", "/signals/evidence"];
-    expect(navActive("/signals/evidence", "/signals", nested)).toBe(false);
-    expect(navActive("/signals/evidence", "/signals/evidence", nested)).toBe(true);
+  it("tab /gia-sau không sáng tab cha /signals", () => {
+    const siblings = ["/", "/signals", "/gia-sau"];
+    expect(navActive("/gia-sau", "/signals", siblings)).toBe(false);
+    expect(navActive("/gia-sau", "/gia-sau", siblings)).toBe(true);
   });
 
   it("trang tín hiệu chỉ sáng tab tín hiệu", () => {

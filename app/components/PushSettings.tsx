@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { ALERT_KINDS, type AlertKind } from "@/lib/alert-kinds";
 import { Button, toast } from "./ui";
 
-type Me = { owner: boolean; alertKinds: string[]; telegramLinked: boolean };
+type Persona = { id: string; name: string; emoji: string; sample: string; shared: number };
+type Me = { owner: boolean; alertKinds: string[]; telegramLinked: boolean; persona: string | null; personas: Persona[] };
 
 const json = (method: string, body?: unknown) => ({
   method,
@@ -136,6 +137,14 @@ export default function PushSettings({ username }: { username: string }) {
     else toast("Lưu thất bại", false);
   };
 
+  const setPersona = async (id: string) => {
+    const r = await fetch("/api/me", json("PATCH", { persona: id }));
+    const j = await r.json();
+    if (!r.ok) return toast(j.error ?? "Lưu thất bại", false);
+    setMe(j as Me);
+    toast("Đã đổi giọng thông báo");
+  };
+
   const connect = async () => {
     const r = await fetch("/api/telegram/link", json("POST"));
     const j = await r.json();
@@ -157,6 +166,31 @@ export default function PushSettings({ username }: { username: string }) {
             {ALERT_KINDS[k]}
           </label>
         ))}
+      </div>
+
+      <div className="mt-3 border-t border-border pt-3">
+        <div className="font-medium">🎭 Giọng thông báo của bạn</div>
+        <p className="mt-1 text-muted">Chọn thoải mái, trùng người khác cũng được — mỗi người trong cùng phong cách có câu chữ riêng, không ai nhận tin giống ai. Chỉ đổi cách nói, số liệu vẫn y như nhau.</p>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          {me?.personas.map((p) => {
+            const mine = me.persona === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                disabled={mine}
+                onClick={() => void setPersona(p.id)}
+                className={`rounded border p-2 text-left ${mine ? "border-[var(--color-accent)]" : "border-border"}`}
+              >
+                <div className="font-medium">
+                  {p.emoji} {p.name} {mine ? "· đang dùng" : ""}
+                  {p.shared > 0 && <span className="font-normal text-muted"> · {p.shared} người khác cũng dùng</span>}
+                </div>
+                <div className="mt-1 text-muted">“{p.sample}”</div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">

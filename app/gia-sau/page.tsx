@@ -8,6 +8,9 @@ import {
   type BarClose,
   type SignalSnapshot,
 } from "@/lib/report/signal-evidence";
+import { RECORD_DAYS, strategyRecords } from "@/lib/report/accountability";
+import { FILL_SESSIONS, MIN_RECORD, losingRecord } from "@/lib/report/signal-outcome";
+import { strategyLabel } from "@/lib/strategy/labels";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +61,7 @@ export default async function SignalEvidencePage() {
   const closes: BarClose[] = bars.map((b) => ({ ticker: b.symbol.ticker, date: b.date, close: b.close }));
   const r = computeSignalEvidence({ signals: snaps, bars: closes, calendar, now });
   const verdict = plainEvidenceVerdict(r);
+  const records = await strategyRecords(win.today);
   const saved = Object.entries(r.statusCounts).map(([k, n]) => `${STATUS[k] ?? k} ${n}`).join(" · ");
   return (
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
@@ -70,6 +74,48 @@ export default async function SignalEvidencePage() {
         <p className="font-semibold">{verdict.title}</p>
         <p className="mt-1 text-sm">{verdict.line}</p>
         <p className="mt-2 text-xs text-muted">Giá cao hơn lúc báo không có nghĩa bạn đã lãi. Chưa trừ phí, và không phải lệnh đã khớp.</p>
+      </div>
+      <div className="card mb-4 p-4">
+        <p className="font-semibold">Bảng điểm gợi ý mua ({RECORD_DAYS} ngày) — app tự chấm, đúng sai đều hiện</p>
+        <p className="mt-1 text-xs text-muted">
+          Mỗi gợi ý được chơi thử đúng kế hoạch đã gửi: khớp nếu giá về vùng mua trong {FILL_SESSIONS} phiên, bán sớm nhất T+2, chạm cắt lỗ/chốt lời hoặc hết số phiên giữ. Có trừ phí và thuế.
+          Mô phỏng trên nến ngày, không phải lệnh khớp thật, không hứa kết quả kỳ sau. Chiến lược đang thua (đủ {MIN_RECORD} gợi ý, trung bình âm) bị gỡ khỏi gợi ý riêng từng người.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="num mt-2 w-full text-xs">
+            <thead className="text-left text-muted">
+              <tr>
+                <th className="py-1 pr-3">Chiến lược</th>
+                <th className="pr-3">Đã chấm</th>
+                <th className="pr-3">Chạm chốt</th>
+                <th className="pr-3">Thủng cắt lỗ</th>
+                <th className="pr-3">Hết giờ</th>
+                <th className="pr-3">Không khớp</th>
+                <th className="pr-3">TB/lệnh</th>
+                <th>Nhận xét</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(records).map(([t, s]) => (
+                <tr key={t} className="border-t border-border/60">
+                  <td className="py-1 pr-3">{strategyLabel(t)}</td>
+                  <td className="pr-3">{s.resolved}</td>
+                  <td className="pr-3 text-gain">{s.wins}</td>
+                  <td className="pr-3 text-loss">{s.losses}</td>
+                  <td className="pr-3">{s.timeouts}</td>
+                  <td className="pr-3">{s.missed}</td>
+                  <td className={`pr-3 ${(s.avgPct ?? 0) >= 0 ? "text-gain" : "text-loss"}`}>{s.avgPct === null ? "—" : `${s.avgPct >= 0 ? "+" : ""}${s.avgPct.toFixed(1)}%`}</td>
+                  <td>{s.resolved < MIN_RECORD ? `mẫu ${s.resolved} < ${MIN_RECORD}, chưa kết luận` : losingRecord(s) ? "đang thua — chỉ để xem" : "chưa thua"}</td>
+                </tr>
+              ))}
+              {!Object.keys(records).length && (
+                <tr>
+                  <td colSpan={8} className="py-2 text-muted">Chưa có gợi ý nào đủ phiên để chấm.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
       <p className="mb-4 text-xs text-muted">
         Muốn biết giả lập mua–bán theo luật có lãi không? Đó là{" "}

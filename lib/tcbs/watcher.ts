@@ -8,6 +8,7 @@ import { pushAlert } from "../alerts";
 import { vnToday } from "../vn-time";
 import { px } from "../format";
 import { levelState } from "../risk/levels";
+import { voiceLine, voiceOf } from "../report/voice";
 
 const HEARTBEAT_DELTA_PCT = 1;
 
@@ -59,7 +60,7 @@ export async function runWatcher(): Promise<void> {
         data: { note: `${t.note ?? ""} target-hit`.trim() },
       });
       await sendTelegram(
-        `🎯 <b>${t.symbol.ticker}</b> chạm target ${px(t.targetPrice)} (giá ${px(price)})\n${qLine}`,
+        `🎯 <b>${t.symbol.ticker}</b> chạm target ${px(t.targetPrice)} (giá ${px(price)})\n${voiceLine(await voiceOf(t.userId), "target", t.symbol.ticker)}\n${qLine}`,
         undefined,
         { kind: "target", level: "success", ticker: t.symbol.ticker },
       );
@@ -91,7 +92,7 @@ async function watchOthers(): Promise<void> {
     await prisma.trade.update({ where: { id: t.id }, data: { note: `${t.note ?? ""} ${kind}-hit`.trim() } });
     const lv = levelState(price, kind === "stop" ? t.stopPrice : null, kind === "target" ? t.targetPrice : null)!;
     await pushAlert(
-      `${kind === "stop" ? "🛑" : "🎯"} <b>${t.symbol.ticker}</b> ${lv.label}\n${lv.detail}\nApp chỉ cảnh báo, không bán hộ.\n${formatQuoteLine(quote)}`,
+      `${kind === "stop" ? "🛑" : "🎯"} <b>${t.symbol.ticker}</b> ${lv.label}\n${voiceLine(await voiceOf(t.userId), kind === "stop" ? "stop" : "target", t.symbol.ticker)}\n${lv.detail}\nApp chỉ cảnh báo, không bán hộ.\n${formatQuoteLine(quote)}`,
       { kind, level: kind === "stop" ? "danger" : "success", ticker: t.symbol.ticker, userId: t.userId },
     );
   }
@@ -131,7 +132,7 @@ async function warnStop(
   const lv = levelState(price, trade.stopPrice, null);
   const t2 = held < 2 ? ` Chưa đủ T+2 (đã giữ ${held} phiên).` : "";
   await sendTelegram(
-    `🛑 <b>${esc(t.symbol.ticker)}</b> ${esc(lv?.label ?? "đã thủng cắt lỗ")}\n${esc(lv?.detail ?? "Giá đã xuống dưới cắt lỗ.")}${t2}\nApp chỉ cảnh báo, không bán hộ.\n${qLine}`,
+    `🛑 <b>${esc(t.symbol.ticker)}</b> ${esc(lv?.label ?? "đã thủng cắt lỗ")}\n${voiceLine(await voiceOf(trade.userId), "stop", t.symbol.ticker)}\n${esc(lv?.detail ?? "Giá đã xuống dưới cắt lỗ.")}${t2}\nApp chỉ cảnh báo, không bán hộ.\n${qLine}`,
     undefined,
     { kind: "stop", level: "danger", ticker: t.symbol.ticker },
   );

@@ -8,6 +8,8 @@ import { VN30 } from "./data/vn30";
 import { allWatchlists } from "./trades";
 import { fetchFundamentals, formatFundamentalsTg } from "./data/fundamentals";
 import { inVnSession, vnToday } from "./vn-time";
+import { gradeSignals, sendPersonalDigests, strategyRecords } from "./report/accountability";
+import { recordLine, type OutcomeStats } from "./report/signal-outcome";
 import {
   avgValueNewest,
   barsRequired,
@@ -198,6 +200,10 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
     await setSetting("latestScanDate", completed);
   }
 
+  // Trả bài gợi ý cũ trước — thành tích thật đi kèm mỗi tin gợi ý mới
+  const graded = notify ? await gradeSignals(today).catch((e) => (console.error("[scan] grade", e), [] as number[])) : [];
+  const records = notify ? await strategyRecords(today).catch(() => ({}) as Record<string, OutcomeStats>) : {};
+
   // Kèm tình hình kinh doanh + tin công bố — lấy song song, tối đa 6s, lỗi thì gửi không kèm
   const fund = new Map(
     await Promise.all(
@@ -208,10 +214,16 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
     ),
   );
   for (const p of pending) {
-    if (await notifySignal({ ...p, fundamentals: fund.get(p.ticker) })) {
+    const rec = records[enabled.find((e) => e.st.name === p.strategy)?.st.type ?? p.strategy];
+    if (await notifySignal({ ...p, fundamentals: fund.get(p.ticker), record: rec ? recordLine(rec, "Thành tích chiến lược này") : undefined })) {
       await prisma.signal.update({ where: { id: p.signalId }, data: { status: "notified" } });
       notified++;
     }
+  }
+
+  // Mỗi user 1 tin riêng: giọng riêng, xếp theo rổ đang giữ, trả bài gợi ý cũ
+  if (notify && completed) {
+    await sendPersonalDigests(completed, today, graded, records).catch((e) => console.error("[scan] digest", e));
   }
 
   return { scanned: symbols.length, filtered, signals, notified };

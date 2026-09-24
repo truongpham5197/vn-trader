@@ -48,6 +48,24 @@ lib/report/signal-health.ts  sau scan: thủng SL + giá phút mới → status 
 lib/report/signal-evidence.ts  hồi cố close vs entry 5/10/20 phiên cho MỌI
                tín hiệu đã lưu — không phải PnL khớp lệnh. /gia-sau mở cho mọi user.
                (đường cũ /signals/evidence chuyển về đây; không redirect sang /signals).
+lib/report/signal-outcome.ts + accountability.ts  "trả bài" gợi ý: sau scan
+               gradeSignals() mô phỏng đúng kế hoạch trên nến ngày (khớp nếu về
+               vùng mua ≤3 phiên, bán từ T+2, cùng nến chạm SL+TP → tính SL, hết
+               HOLD_SESSIONS theo chiến lược) → Signal.outcome/outcomePct/outcomeR.
+               strategyRecords() 120 ngày → dòng thành tích trong tin gợi ý, bảng
+               điểm trên /gia-sau. Chiến lược ≥20 gợi ý đã chấm + TB âm = "đang
+               thua" → gỡ khỏi gợi ý riêng (không tự đổi tham số).
+               sendPersonalDigests(): mỗi user 1 tin/phiên nến (Setting digestDate)
+               — bỏ mã đang giữ, trừ điểm trùng ngành, cộng mã theo dõi, KL theo
+               vốn+tiền mặt user, luật thoát chiến lược của mã đang giữ, trả bài
+               gợi ý cũ (xin lỗi nếu user đã mua mà thủng SL). Tin từng mã chi
+               tiết (notifySignal) giờ chỉ gửi owner.
+lib/persona.ts + lib/report/voice.ts  giọng thông báo: 10 phong cách (User.persona,
+               mặc định trải đều, user tự chọn ở /settings#thong-bao, ĐƯỢC trùng
+               cả với owner). Cùng phong cách → variantOf (thứ tự id) đổi câu +
+               đuôi câu nên không ai nhận tin giống ai. Chỉ là lời dẫn: không
+               ra lệnh bán, không hứa lãi, chuỗi không chứa < > & (test chặn).
+               Dùng ở digest, báo cáo vị thế (mã tăng/giảm mạnh nhất rổ), watcher SL/TP.
 lib/risk/plan.ts + personal.ts  GET /api/signals/:id/plan — KL theo vốn user cookie,
                không dùng Signal.qty dùng chung. Chỉ xem, không đặt lệnh.
 lib/corp-action.ts  GDKHQ: detectAdjustment (fresh/stored factor) +

@@ -98,5 +98,7 @@ export function formatPortfolio(p: Portfolio): string {
 /** Tin vị thế + tóm tắt tài sản — dùng chung bot/cron/watcher. */
 export async function positionsMessage(lines?: PositionLine[], user?: AppUser): Promise<string> {
   const ls = lines ?? (await positionsReport(user?.id));
-  return `${formatPositionsReport(ls)}\n\n${formatPortfolio(await loadPortfolio(ls, user))}`;
+  const { voiceOf, moversLine } = await import("./voice");
+  const head = ls.length ? moversLine(await voiceOf(user?.id), ls) : "";
+  return `${head ? `${head}\n\n` : ""}${formatPositionsReport(ls)}\n\n${formatPortfolio(await loadPortfolio(ls, user))}`;
 }

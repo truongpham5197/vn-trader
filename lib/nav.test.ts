@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { navActive } from "./nav";
+import { navActive, navigationAfterSessionChange } from "./nav";
 
 const hrefs = ["/", "/signals", "/signals/evidence", "/journal", "/backtest"];
 
@@ -18,5 +18,11 @@ describe("navActive", () => {
   it("trang chủ không sáng mọi tab", () => {
     expect(navActive("/", "/", hrefs)).toBe(true);
     expect(navActive("/", "/signals", hrefs)).toBe(false);
+  });
+});
+
+describe("đổi phiên", () => {
+  it("không soft-refresh — bấm tab sau đó sẽ chồng trang", () => {
+    expect(navigationAfterSessionChange()).toBe("reload");
   });
 });

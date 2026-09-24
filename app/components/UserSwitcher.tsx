@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button, Field, Modal, inputCls, useApi } from "./ui";
+import { navigationAfterSessionChange } from "@/lib/nav";
 
 type U = { username: string; owner: boolean; hasPin: boolean; open: number };
 /** Bước nhập PIN: set = tạo mới (nhập 2 lần), enter = nhập PIN đã có. */
@@ -66,13 +67,14 @@ export default function UserSwitcher({ username }: { username: string | null }) 
       "/api/users",
       { username: step.username, create: step.create, pin },
       step.mode === "set" ? `Đã tạo mã PIN — đang dùng tên ${step.username}` : `Đang dùng tên ${step.username}`,
+      { reload: navigationAfterSessionChange() === "reload" },
     );
     if (ok) close();
     else setPin("");
   };
   const changePin = async () => {
     if (pin2.length !== 6 || pin.length !== 6) return;
-    if (await call("PATCH", "/api/users", { pin, newPin: pin2 }, "Đã đổi mã PIN — thiết bị khác phải nhập lại")) close();
+    if (await call("PATCH", "/api/users", { pin, newPin: pin2 }, "Đã đổi mã PIN — thiết bị khác phải nhập lại", { reload: navigationAfterSessionChange() === "reload" })) close();
     else setPin("");
   };
 
@@ -177,7 +179,7 @@ export default function UserSwitcher({ username }: { username: string | null }) 
               <div className="flex flex-wrap justify-between gap-2">
                 {username ? (
                   <div className="flex gap-2">
-                    <Button disabled={busy} onClick={async () => (await call("DELETE", "/api/users", {}, "Đã thoát")) && close()}>
+                    <Button disabled={busy} onClick={async () => (await call("DELETE", "/api/users", {}, "Đã thoát", { reload: navigationAfterSessionChange() === "reload" })) && close()}>
                       Thoát
                     </Button>
                     <Button disabled={busy} onClick={() => setChange(true)}>

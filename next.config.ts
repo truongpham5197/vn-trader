@@ -5,6 +5,19 @@ const nextConfig: NextConfig = {
   experimental: {
     staleTimes: { dynamic: 0 },
   },
+  // Prisma binary engine chỉ cần libquery_engine-*.so.node; WASM base64 (~57MB/deployment)
+  // dành cho engineType=wasm/driverAdapters — app không dùng, bỏ khỏi function bundle.
+  outputFileTracingExcludes: {
+    "*": [
+      "**/node_modules/@prisma/client/runtime/query_engine_bg.*.wasm-base64.*",
+      "**/node_modules/@prisma/client/runtime/query_compiler_bg.*.wasm-base64.*",
+      "**/node_modules/@prisma/client/runtime/wasm-engine-edge.*",
+      "**/node_modules/@prisma/client/runtime/wasm-compiler-edge.*",
+      "**/node_modules/.prisma/client/query_engine_bg.wasm",
+      "**/node_modules/.prisma/client/wasm*.mjs",
+      "**/node_modules/.prisma/client/wasm.js",
+    ],
+  },
   async redirects() {
     // Đường cũ nằm trong /signals — bấm tab bị Next vẽ cả hai trang và sáng nhầm tab.
     return [{ source: "/signals/evidence", destination: "/gia-sau", permanent: false }];

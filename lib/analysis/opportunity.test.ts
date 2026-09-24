@@ -24,6 +24,7 @@ describe("assessOpportunity", () => {
     [{ target: 20.1 }, "blocked"],
     [{ stop: Number.NaN }, "invalid"],
     [{ buyZone: [21, 19] }, "invalid"],
+    [{ buyZone: [19.5, 20.2], stop: 19.6, price: 20 }, "invalid"],
   ] as [Partial<OpportunityInput>, string][])("chặn khi %j", (over, state) => {
     const r = assessOpportunity({ ...input, ...over });
     expect(r.state).toBe(state);

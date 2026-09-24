@@ -1,9 +1,10 @@
 "use client";
 
 import { assessOpportunity, type OpportunityAssessment } from "../../lib/analysis/opportunity";
-import { quoteFresh, signalExpired } from "../../lib/quote-quality";
+import { quoteFresh, quoteHalt, quoteNote, signalExpired } from "../../lib/quote-quality";
 import { useQuote } from "./live";
 import { More } from "./More";
+import type { ReactNode } from "react";
 
 export function OpportunityText({ assessment: a, trigger, date }: {
   assessment: OpportunityAssessment; trigger?: string; date?: string;
@@ -24,24 +25,26 @@ const toneOf = (a: OpportunityAssessment) =>
   a.actionable ? "text-gain" : ["invalid", "expired"].includes(a.state) ? "text-loss" : "text-amber-300";
 
 /** Nhãn quyết định hiện luôn; giải thích, R:R, nguồn giá nằm sau "Xem thêm". */
-export default function OpportunityStatus({ ticker, date, latestSession, confirmed = false, buyZone, stop, target, trigger, marketWeak }: {
+export default function OpportunityStatus({ ticker, date, latestSession, confirmed = false, buyZone, stop, target, trigger, marketWeak, extra }: {
   ticker: string; date?: string; latestSession?: string | null; confirmed?: boolean;
   buyZone: [number, number] | null; stop: number; target: number; trigger?: string; marketWeak?: boolean;
+  extra?: ReactNode;
 }) {
   const { ref, quote } = useQuote<HTMLDivElement>(ticker);
   const now = new Date();
+  const fresh = quoteFresh(quote, now, latestSession ?? date);
+  const halt = quoteHalt(now);
   const assessment = assessOpportunity({ confirmed, price: quote?.last ?? null, stop, target, buyZone, marketWeak,
-    fresh: quoteFresh(quote, now, latestSession ?? date), expired: !!date && signalExpired(date, latestSession, now) });
-  const quoteLine = quote?.source === "minute" && quote.asOf
-    ? `Giá nến 1 phút: ${new Date(quote.asOf).toLocaleTimeString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" })} (${quote.date})`
-    : quote?.source === "daily" ? `Giá dự phòng nến ngày ${quote.date} — không phải realtime` : "Chưa có nguồn giá mới";
+    fresh, expired: !!date && signalExpired(date, latestSession, now) });
+  const prefix = halt && fresh ? (halt === "lunch" ? "Nghỉ trưa · " : "Sắp đóng cửa · ") : "";
   return (
     <div ref={ref} className="mt-1">
-      <p className={`text-xs font-medium ${toneOf(assessment)}`}>{assessment.label}</p>
+      <p className={`text-xs font-medium ${toneOf(assessment)}`}>{prefix}{assessment.label}</p>
       <More label="Vì sao">
+        {extra}
         {confirmed && <p className="text-xs text-muted">Đã xác nhận điều kiện kỹ thuật khi đóng nến; chưa phải quyết định mua.</p>}
         <OpportunityText assessment={assessment} trigger={trigger} date={date} />
-        <p className="text-[11px] text-muted">{quoteLine}</p>
+        <p className="text-[11px] text-muted">{quoteNote(quote, now)}</p>
       </More>
     </div>
   );

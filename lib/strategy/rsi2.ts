@@ -1,6 +1,6 @@
 import type { ExitCheckFn, StrategyFn } from "./types";
 import { rsi, sma } from "./indicators";
-import { floorTick, realizedRr, validBuyZone } from "./breakout20";
+import { buyZoneAboveStop, floorTick, realizedRr } from "./breakout20";
 
 export const RSI2_DEFAULTS = {
   rsiPeriod: 2,
@@ -55,7 +55,7 @@ export const rsi2Revert: StrategyFn = ({ bars, params, bandPct }) => {
     rr,
     reason: `Xu hướng dài vẫn tăng (giá > MA${p.trendMa}) nhưng vừa giảm mạnh ngắn hạn (RSI2 = ${r.toFixed(1)} < ${p.rsiBuyBelow}, quá bán) — có thể hồi kỹ thuật, không phải khuyến nghị chắc chắn`,
     plan: `SL = vào − ${p.stopPct}% = ${stop}; TP = vào + ${p.rrTarget}×rủi ro = ${target.toFixed(2)}. Kỳ vọng 1–${p.timeStopDays} phiên; thoát khi RSI>${p.rsiSellAbove} hoặc quá ${p.timeStopDays} phiên.`,
-    buyZone: validBuyZone(floorTick(entry * (1 - p.stopPct / 200)), entry),
+    buyZone: buyZoneAboveStop(floorTick(entry * (1 - p.stopPct / 200)), entry, stop),
   };
 };
 

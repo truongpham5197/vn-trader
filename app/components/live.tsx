@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { inVnSession } from "@/lib/vn-time";
+import { quoteHalt, type QuoteHalt } from "@/lib/quote-quality";
 import type { Quote } from "@/lib/price";
 
 type Listener = () => void;
@@ -176,17 +177,24 @@ export function LivePrice({
 /** "⚡ Giá tự cập nhật 20s · lần cuối 10:31:05" */
 export function LiveBadge({ className = "" }: { className?: string }) {
   const at = useQuotesAt();
-  const [session, setSession] = useState<boolean | null>(null);
-  const tick = useCallback(() => setSession(inVnSession()), []);
+  const [clock, setClock] = useState<{ session: boolean; halt: QuoteHalt | null } | null>(null);
+  const tick = useCallback(() => setClock({ session: inVnSession(), halt: quoteHalt() }), []);
   useEffect(() => {
     tick();
     const id = setInterval(tick, 60_000);
     return () => clearInterval(id);
   }, [tick]);
-  if (session === null) return null;
+  if (!clock) return null;
+  const label = !clock.session
+    ? "Ngoài giờ giao dịch — giá cập nhật 5 phút/lần"
+    : clock.halt === "lunch"
+      ? "Nghỉ trưa — giá khớp cuối buổi sáng"
+      : clock.halt === "atc"
+        ? "Sắp đóng cửa — giá khớp cuối, không còn khớp liên tục"
+        : "⚡ Giá tự cập nhật mỗi 20 giây";
   return (
     <span className={`text-xs text-muted ${className}`}>
-      <span className={session ? "text-accent" : ""}>{session ? "⚡ Giá tự cập nhật mỗi 20 giây" : "Ngoài giờ giao dịch — giá cập nhật 5 phút/lần"}</span>
+      <span className={clock.session && !clock.halt ? "text-accent" : ""}>{label}</span>
       {at && ` · lần cuối ${at.toLocaleTimeString("vi-VN")}`}
     </span>
   );

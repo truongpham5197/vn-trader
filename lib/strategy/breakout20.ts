@@ -55,7 +55,7 @@ export const breakout20: StrategyFn = ({ bars, params, bandPct }) => {
     rr,
     reason: `Giá đóng cửa ${entry} vượt đỉnh ${p.donchian} phiên (${hh.toFixed(2)}), khối lượng gấp ${(last.volume / avgVol).toFixed(1)}× trung bình ${p.donchian} phiên`,
     plan: `SL = vào − ${p.atrStopMult}×ATR (${a.toFixed(2)}) = ${stop}; TP = vào + ${p.rrTarget}×rủi ro = ${target.toFixed(2)}. Kỳ vọng 5–15 phiên; thoát sớm nếu đóng cửa < MA10 (trailing).`,
-    buyZone: validBuyZone(floorTick(hh), floorTick(entry * 1.01)),
+    buyZone: buyZoneAboveStop(floorTick(hh), floorTick(entry * 1.01), stop),
   };
 };
 
@@ -85,6 +85,11 @@ export function validBuyZone(a: number, b: number): [number, number] | undefined
   const hi = Math.max(a, b);
   if (!(lo > 0) || !(hi > lo)) return undefined;
   return [lo, hi];
+}
+
+/** Đáy vùng mua phải trên cắt lỗ. Mua ở đáy vùng mà đã chạm cắt lỗ thì vùng không dùng được. */
+export function buyZoneAboveStop(lo: number, hi: number, stop: number): [number, number] | undefined {
+  return validBuyZone(Math.max(lo, floorTick(stop + tickSize(stop))), hi);
 }
 
 /** Trailing theo MA10: đóng cửa thủng MA10 → thoát. */

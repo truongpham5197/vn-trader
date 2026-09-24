@@ -69,6 +69,7 @@ describe("breakout20", () => {
     expect(sig!.buyZone).toBeDefined();
     expect(sig!.buyZone![0]).toBeGreaterThan(0);
     expect(sig!.buyZone![0]).toBeLessThan(sig!.buyZone![1]);
+    expect(sig!.buyZone![0]).toBeGreaterThan(sig!.stop);
   });
 });
 

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import SignalTable from "../components/SignalTable";
-import { GUEST, currentUser } from "@/lib/user";
 import { latestSignalDate } from "@/lib/signals";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +17,7 @@ export default async function SignalsPage({
 }: {
   searchParams: Promise<{ date?: string; status?: string }>;
 }) {
-  const [sp, u, latestSession] = await Promise.all([searchParams, currentUser().then((x) => x ?? GUEST), latestSignalDate()]);
+  const [sp, latestSession] = await Promise.all([searchParams, latestSignalDate()]);
   const dates = (
     await prisma.signal.groupBy({ by: ["date"], _count: { _all: true }, orderBy: { date: "desc" }, take: 10 })
   ).map((d) => ({ date: d.date, n: d._count._all }));
@@ -44,13 +43,8 @@ export default async function SignalsPage({
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
       <h1 className="text-xl font-bold tracking-tight">Gợi ý mua</h1>
       <p className="mt-1 mb-4 text-xs text-muted">
-        Tín hiệu từ nến ngày đã đóng, dùng cho phiên kế. Bấm mã để xem lý do.
-        {u.owner && (
-          <>
-            {" "}
-            <Link href="/gia-sau" prefetch={false} className="text-accent hover:underline">Sau khi báo, giá đi đâu? →</Link>
-          </>
-        )}
+        Tín hiệu từ nến ngày đã đóng, dùng cho phiên kế. Bấm mã để xem lý do.{" "}
+        <Link href="/gia-sau" prefetch={false} className="text-accent hover:underline">Sau khi báo, giá đi đâu? →</Link>
       </p>
 
       <div className="mb-3 flex flex-wrap gap-2">
@@ -74,7 +68,7 @@ export default async function SignalsPage({
       {signals.length === 0 ? (
         <p className="card p-6 text-center text-muted">Không có tín hiệu nào khớp bộ lọc.</p>
       ) : (
-        <SignalTable signals={signals} showDate={!date} owner={u.owner} latestSession={latestSession} />
+        <SignalTable signals={signals} showDate={!date} latestSession={latestSession} />
       )}
     </main>
   );

@@ -44,7 +44,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </Script>
       <body className="min-h-full flex flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0">
         <QuotesProvider>
-          <Nav username={user?.username ?? null} owner={!!user?.owner} />
+          <Nav username={user?.username ?? null} />
           {children}
           <Toaster />
         </QuotesProvider>

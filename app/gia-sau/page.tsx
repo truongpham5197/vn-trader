@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { currentUser } from "@/lib/user";
 import {
   LIMITATIONS,
   computeSignalEvidence,
@@ -25,15 +24,6 @@ const STATUS: Record<string, string> = {
 
 /** Hồi cố toàn bộ tín hiệu đã lưu — không phải PnL khớp lệnh, không phải xác suất thắng. */
 export default async function SignalEvidencePage() {
-  const u = await currentUser();
-  if (!u?.owner) {
-    return (
-      <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
-        <h1 className="text-xl font-bold tracking-tight">Sau khi báo mua, giá đi đâu?</h1>
-        <p className="mt-2 text-xs text-muted">Chỉ chủ app xem trang này. Không chuyển sang tab khác.</p>
-      </main>
-    );
-  }
   const now = new Date();
   const win = evidenceQueryWindow(now);
   const signals = await prisma.signal.findMany({

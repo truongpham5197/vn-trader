@@ -41,14 +41,11 @@ const f2 = (n: number) => n.toFixed(2);
 export default function SignalTable({
   signals,
   showDate = true,
-  owner = false,
   latestSession,
   marketWeak,
 }: {
   signals: SignalRow[];
   showDate?: boolean;
-  /** Trạng thái tín hiệu dùng chung — chỉ chủ app bỏ qua/khôi phục/xóa. */
-  owner?: boolean;
   latestSession?: string | null;
   marketWeak?: boolean;
 }) {
@@ -61,7 +58,6 @@ export default function SignalTable({
             key={s.id}
             s={s}
             showDate={showDate}
-            owner={owner}
             latestSession={latestSession}
             marketWeak={marketWeak}
             expanded={open === s.id}
@@ -69,7 +65,7 @@ export default function SignalTable({
           />
         ))}
       </div>
-    <div className="card hidden overflow-x-auto sm:block">
+      <div className="card hidden overflow-x-auto sm:block">
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr className="border-b border-border text-left text-muted">
@@ -139,7 +135,7 @@ export default function SignalTable({
                       stop={s.stop} target={s.target} marketWeak={marketWeak} />
                   </td>
                   <td className="sticky right-0 z-10 bg-card p-3 shadow-[-6px_0_8px_-6px_rgba(0,0,0,.45)]" onClick={(e) => e.stopPropagation()}>
-                    <SignalActions s={s} owner={owner} />
+                    <SignalActions s={s} />
                   </td>
                 </tr>
                 {expanded && (
@@ -167,7 +163,6 @@ export default function SignalTable({
 function SignalCard({
   s,
   showDate,
-  owner,
   expanded,
   toggle,
   latestSession,
@@ -175,7 +170,6 @@ function SignalCard({
 }: {
   s: SignalRow;
   showDate: boolean;
-  owner: boolean;
   expanded: boolean;
   toggle: () => void;
   latestSession?: string | null;
@@ -225,7 +219,7 @@ function SignalCard({
         <button type="button" onClick={toggle} className="py-1 text-accent">
           {expanded ? "▾ Ẩn" : "▸ Chi tiết"}
         </button>
-        <SignalActions s={s} owner={owner} />
+        <SignalActions s={s} />
       </div>
       {expanded && (
         <div className="mt-2 border-t border-border pt-2">
@@ -240,7 +234,7 @@ function SignalCard({
   );
 }
 
-function SignalActions({ s, owner }: { s: SignalRow; owner: boolean }) {
+function SignalActions({ s }: { s: SignalRow }) {
   const [buy, setBuy] = useState(false);
   const { call, busy } = useApi();
   const url = `/api/signals/${s.id}`;
@@ -252,11 +246,7 @@ function SignalActions({ s, owner }: { s: SignalRow; owner: boolean }) {
           <Button size="sm" tone="gain" onClick={() => setBuy(true)}>
             Đã mua
           </Button>
-          <Button
-            size="sm"
-            disabled={busy}
-            hidden={!owner}
-            onClick={() =>
+          <Button size="sm" disabled={busy} onClick={() =>
               call(
                 "PATCH",
                 url,
@@ -269,7 +259,6 @@ function SignalActions({ s, owner }: { s: SignalRow; owner: boolean }) {
           </Button>
         </>
       ) : (
-        owner &&
         s.status === "skipped" && (
           <Button
             size="sm"
@@ -286,7 +275,6 @@ function SignalActions({ s, owner }: { s: SignalRow; owner: boolean }) {
         size="sm"
         tone="danger"
         disabled={busy}
-        hidden={!owner}
         aria-label="Xóa"
         onClick={() =>
           confirm(`Xóa tín hiệu ${s.symbol.ticker} (${s.strategy.name})?`) &&

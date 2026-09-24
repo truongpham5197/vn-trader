@@ -1,4 +1,4 @@
-/** Link dài hơn thắng — /signals/evidence không được sáng cùng /signals. */
+/** Link dài hơn thắng — tab con không được sáng cùng tab cha. */
 export function navActive(path: string, href: string, hrefs: readonly string[]): boolean {
   if (href === "/") return path === "/";
   if (path !== href && !path.startsWith(`${href}/`)) return false;

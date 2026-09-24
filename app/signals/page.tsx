@@ -44,8 +44,13 @@ export default async function SignalsPage({
     <main className="mx-auto w-full min-w-0 max-w-6xl p-4 text-sm sm:p-6">
       <h1 className="text-xl font-bold tracking-tight">Gợi ý mua</h1>
       <p className="mt-1 mb-4 text-xs text-muted">
-        Tín hiệu từ nến ngày đã đóng, dùng cho phiên kế. Bấm mã để xem lý do.{" "}
-        <Link href="/signals/evidence" className="text-accent hover:underline">Sau khi báo, giá đi đâu? →</Link>
+        Tín hiệu từ nến ngày đã đóng, dùng cho phiên kế. Bấm mã để xem lý do.
+        {u.owner && (
+          <>
+            {" "}
+            <Link href="/gia-sau" prefetch={false} className="text-accent hover:underline">Sau khi báo, giá đi đâu? →</Link>
+          </>
+        )}
       </p>
 
       <div className="mb-3 flex flex-wrap gap-2">

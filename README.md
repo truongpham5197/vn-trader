@@ -36,7 +36,7 @@ npm run dev            # http://localhost:3000 — cron + bot polling tự chạ
 
 - `/` — dashboard + tín hiệu hôm nay
 - `/signals` — tín hiệu; mở dòng để xem kế hoạch vốn riêng (`GET /api/signals/:id/plan`)
-- `/signals/evidence` — hồi cố giá đóng cửa sau tín hiệu (chỉ chủ app; không phải lãi khớp lệnh)
+- `/gia-sau` — hồi cố giá đóng cửa sau tín hiệu (chỉ chủ app; không phải lãi khớp lệnh). Đường cũ `/signals/evidence` chuyển về đây.
 - `/backtest` — chạy + xem backtest (`?run=N` chi tiết). Run trước bản engine mới được đánh dấu cũ.
 - `/journal` — trades, win rate, adherence
 

@@ -5,6 +5,10 @@ const nextConfig: NextConfig = {
   experimental: {
     staleTimes: { dynamic: 0 },
   },
+  async redirects() {
+    // Đường cũ nằm trong /signals — bấm tab bị Next vẽ cả hai trang và sáng nhầm tab.
+    return [{ source: "/signals/evidence", destination: "/gia-sau", permanent: false }];
+  },
   async headers() {
     return [
       {

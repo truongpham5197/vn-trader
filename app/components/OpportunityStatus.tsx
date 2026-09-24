@@ -4,6 +4,7 @@ import { assessOpportunity, type OpportunityAssessment } from "../../lib/analysi
 import { quoteFresh, quoteHalt, quoteNote, signalExpired } from "../../lib/quote-quality";
 import { useQuote } from "./live";
 import { More } from "./More";
+import { useVoice } from "./VoiceProvider";
 import type { ReactNode } from "react";
 
 export function OpportunityText({ assessment: a, trigger, date }: {
@@ -31,6 +32,7 @@ export default function OpportunityStatus({ ticker, date, latestSession, confirm
   extra?: ReactNode;
 }) {
   const { ref, quote } = useQuote<HTMLDivElement>(ticker);
+  const { style } = useVoice();
   const now = new Date();
   const fresh = quoteFresh(quote, now, latestSession ?? date);
   const halt = quoteHalt(now);
@@ -39,8 +41,8 @@ export default function OpportunityStatus({ ticker, date, latestSession, confirm
   const prefix = halt && fresh ? (halt === "lunch" ? "Nghỉ trưa · " : "Sắp đóng cửa · ") : "";
   return (
     <div ref={ref} className="mt-1">
-      <p className={`text-xs font-medium ${toneOf(assessment)}`}>{prefix}{assessment.label}</p>
-      <More label="Vì sao">
+      <p className={`text-xs font-medium ${toneOf(assessment)}`}>{prefix}{style.opp(assessment.state, assessment.label)}</p>
+      <More label={style.heads.more}>
         {extra}
         {confirmed && <p className="text-xs text-muted">Đã xác nhận điều kiện kỹ thuật khi đóng nến; chưa phải quyết định mua.</p>}
         <OpportunityText assessment={assessment} trigger={trigger} date={date} />

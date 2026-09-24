@@ -4,7 +4,8 @@ import Link from "next/link";
 import type { PositionLine } from "@/lib/report/positions";
 import { px } from "@/lib/format";
 import { netPnl, netPnlPct } from "@/lib/fees";
-import { bookAdvice, positionAdvice } from "@/lib/risk/advice";
+import { voicedBookAdvice, voicedPositionAdvice } from "@/lib/risk/advice";
+import { useVoice } from "./VoiceProvider";
 import { TradeActions } from "./TradeActions";
 import { LiveBadge, useQuotes } from "./live";
 import { More } from "./More";
@@ -46,20 +47,22 @@ const tradeOf = (p: PositionLine) => ({
 const sticky = "sticky right-0 z-10 bg-card shadow-[-6px_0_8px_-6px_rgba(0,0,0,.45)]";
 
 function BookGuide({ rows }: { rows: PositionLine[] }) {
-  const a = bookAdvice(rows);
+  const { style } = useVoice();
+  const a = voicedBookAdvice(rows, style);
   if (!a) return null;
+  const h = style.heads;
   const cls = a.tone === "gain" ? "border-gain/40" : a.tone === "loss" ? "border-loss/40" : "";
   return (
     <section className={`card mb-3 p-3 text-xs ${cls}`}>
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted">Lời khuyên · cho đỡ căng</p>
+      <p className="text-[10px] font-medium uppercase tracking-wide text-muted">{h.card}</p>
       <p className="mt-1 text-sm font-semibold">{a.headline}</p>
       <div className="mt-3 space-y-2">
         <div>
-          <p className="text-muted">Vì sao mà</p>
+          <p className="text-muted">{h.why}</p>
           <p className="mt-0.5 leading-relaxed">{a.why}</p>
         </div>
         <div>
-          <p className="text-muted">Nhắc nhẹ</p>
+          <p className="text-muted">{h.steps}</p>
           <ol className="mt-0.5 list-decimal space-y-1 pl-4 leading-relaxed">
             {a.steps.map((s) => (
               <li key={s}>{s}</li>
@@ -67,14 +70,14 @@ function BookGuide({ rows }: { rows: PositionLine[] }) {
           </ol>
         </div>
         <div>
-          <p className="text-muted">Giữ ví</p>
+          <p className="text-muted">{h.protect}</p>
           <p className="mt-0.5 leading-relaxed">{a.protect}</p>
         </div>
         {a.notes.map((n) => (
           <div key={n.title}>
             <p className="text-muted">{n.title}</p>
             <p className="mt-0.5 font-medium leading-relaxed">{n.verdict}</p>
-            <More label="Vì sao">
+            <More label={h.more}>
               <p className="text-[11px] leading-relaxed text-muted">{n.why}</p>
             </More>
           </div>
@@ -88,12 +91,13 @@ function BookGuide({ rows }: { rows: PositionLine[] }) {
 }
 
 function AdviceLine({ p }: { p: PositionLine }) {
-  const a = positionAdvice(p);
+  const { style } = useVoice();
+  const a = voicedPositionAdvice(p, style);
   const cls = a.tone === "gain" ? "text-gain" : a.tone === "loss" ? "text-loss" : "text-amber-300";
   return (
     <div className="mt-1 max-w-56">
       <p className={`text-[11px] font-medium ${cls}`}>{a.line}</p>
-      <More label="Vì sao">
+      <More label={style.heads.more}>
         <p className="text-[11px] text-muted">{a.detail}</p>
       </More>
     </div>

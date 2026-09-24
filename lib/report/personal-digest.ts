@@ -1,5 +1,6 @@
 import { esc } from "../telegram/notify";
 import { say, type Persona } from "../persona";
+import { adviceStyle } from "../persona-style";
 import { positionSize } from "../risk/sizing";
 import { BUY_FEE } from "../fees";
 import { px } from "../format";
@@ -123,16 +124,17 @@ export function buildDigest(i: DigestInput): string | null {
   const p = i.persona;
   const n = esc(i.name || "bạn");
   const line = (slot: Parameters<typeof say>[1], t = "", k = "") => esc(say(p, slot, { t, n: i.name || "bạn" }, `${i.seed}|${k || t}`, i.variant ?? 0));
+  const st = adviceStyle(p.id, i.variant ?? 0);
   const out: string[] = [`${p.emoji} <b>${line("greet")}</b>`];
 
   const broken = i.holdings.filter((h) => h.price !== null && h.stop !== null && h.price <= h.stop).map((h) => h.ticker);
   if (broken.length) {
-    out.push(``, `🛑 Trước khi mua mới: ${esc(broken.join(", "))} của ${n} đang dưới cắt lỗ. Lời khuyên: xử lý mấy mã đó trước, app không bán hộ.`);
+    out.push(``, `🛑 Trước khi mua mới: ${esc(broken.join(", "))} của ${n} đang dưới cắt lỗ. ${esc(st.text("Lời khuyên: xử lý mấy mã đó trước, app không bán hộ."))}`);
   }
 
   if (i.exits.length) {
     out.push(``, `🚪 <b>Mã đang giữ phạm luật thoát của chiến lược</b>`);
-    for (const e of i.exits) out.push(`• ${line("exit", e.ticker)} (${esc(e.reason)}). Lời khuyên: cân nhắc bán, app không bán hộ.`);
+    for (const e of i.exits) out.push(`• ${line("exit", e.ticker)} (${esc(e.reason)}). ${esc(st.text("Lời khuyên: cân nhắc bán, app không bán hộ."))}`);
   }
 
   if (picks.length) {

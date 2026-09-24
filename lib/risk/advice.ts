@@ -1,6 +1,7 @@
 import { px } from "../format";
 import { netPnl } from "../fees";
 import { levelState } from "./levels";
+import type { AdviceStyle, LineKey } from "../persona-style";
 
 export type AdviceTone = "loss" | "gain" | "neutral";
 
@@ -452,4 +453,27 @@ export function bookAdvice(rows: BookPosition[]): BookAdvice | null {
   ].join(" ");
 
   return { headline, why: why.join(" "), steps, protect, notes: [averageNote(tagged), lossNote(tagged), profitNote(tagged)], tone };
+}
+
+/** Khóa nhãn vị thế — để đổi sang văn phong riêng (lib/persona-style.ts). */
+export const adviceKey = (line: string): LineKey | undefined => (Object.keys(LINE) as LineKey[]).find((k) => LINE[k] === line);
+
+/** Lời khuyên 1 mã theo giọng user — cùng nội dung, khác văn phong. */
+export function voicedPositionAdvice(p: Parameters<typeof positionAdvice>[0], st: AdviceStyle): PositionAdvice {
+  const a = positionAdvice(p);
+  return { ...a, line: st.pos(adviceKey(a.line), a.line), detail: st.text(a.detail) };
+}
+
+/** Thẻ cả rổ theo giọng user — mọi câu khuyên + giải thích đổi văn phong, số liệu giữ nguyên. */
+export function voicedBookAdvice(rows: BookPosition[], st: AdviceStyle): BookAdvice | null {
+  const a = bookAdvice(rows);
+  if (!a) return null;
+  return {
+    ...a,
+    headline: st.headline(a.headline, a.tone),
+    why: st.text(a.why),
+    steps: a.steps.map(st.text),
+    protect: st.text(a.protect),
+    notes: a.notes.map((n) => ({ ...n, verdict: st.text(n.verdict), why: st.text(n.why) })),
+  };
 }

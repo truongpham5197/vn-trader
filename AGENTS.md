@@ -66,6 +66,13 @@ lib/persona.ts + lib/report/voice.ts  giọng thông báo: 10 phong cách (User.
                đuôi câu nên không ai nhận tin giống ai. Chỉ là lời dẫn: không
                ra lệnh bán, không hứa lãi, chuỗi không chứa < > & (test chặn).
                Dùng ở digest, báo cáo vị thế (mã tăng/giảm mạnh nhất rổ), watcher SL/TP.
+lib/persona-style.ts  văn phong lời khuyên/giải thích theo giọng: adviceStyle(persona,
+               variant) → text() đổi "Lời khuyên"/"app không bán hộ", nhãn vị thế,
+               tiêu đề thẻ rổ (thán từ theo biến thể), đuôi nhãn trạng thái gợi ý.
+               voicedBookAdvice/voicedPositionAdvice (lib/risk/advice.ts). Web: layout
+               bọc VoiceProvider (useVoice) — PositionsTable, OpportunityStatus; đổi
+               giọng ở Cài đặt đổi ngay. Server: báo cáo vị thế + watcher qua styleOf().
+               Số liệu, "không phải lệnh bán", "không bán hộ" phải giữ (test chặn).
 lib/risk/plan.ts + personal.ts  GET /api/signals/:id/plan — KL theo vốn user cookie,
                không dùng Signal.qty dùng chung. Chỉ xem, không đặt lệnh.
 lib/corp-action.ts  GDKHQ: detectAdjustment (fresh/stored factor) +

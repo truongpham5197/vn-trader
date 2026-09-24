@@ -4,6 +4,7 @@ import { esc } from "../telegram/notify";
 import { personaById, say, variantOf, type Persona, type Slot } from "../persona";
 import { ensurePersonas } from "./accountability";
 import { vnToday } from "../vn-time";
+import { adviceStyle } from "../persona-style";
 
 export interface Voice {
   p: Persona;
@@ -39,3 +40,6 @@ export function moversLine(v: Voice, lines: { ticker: string; dayPct: number | n
   if (bot.dayPct! < 0 && bot !== top) out.push(`${voiceLine(v, "down", bot.ticker)} (${bot.dayPct!.toFixed(1)}%)`);
   return out.join("\n");
 }
+
+/** Văn phong lời khuyên/giải thích của user (lib/persona-style.ts). */
+export const styleOf = (v: Voice) => adviceStyle(v.p.id, v.variant);

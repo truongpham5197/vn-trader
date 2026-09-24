@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { ALERT_KINDS, type AlertKind } from "@/lib/alert-kinds";
 import { Button, toast } from "./ui";
+import { useVoice } from "./VoiceProvider";
 
 type Persona = { id: string; name: string; emoji: string; sample: string; shared: number };
-type Me = { owner: boolean; alertKinds: string[]; telegramLinked: boolean; persona: string | null; personas: Persona[] };
+type Me = { owner: boolean; alertKinds: string[]; telegramLinked: boolean; persona: string | null; variant: number; personas: Persona[] };
 
 const json = (method: string, body?: unknown) => ({
   method,
@@ -45,6 +46,7 @@ export default function PushSettings({ username }: { username: string }) {
   const [on, setOn] = useState(false);
   const [perm, setPerm] = useState("default");
   const [busy, setBusy] = useState(false);
+  const { setVoice } = useVoice();
   const [link, setLink] = useState<{ code: string; bot: string | null; url: string | null } | null>(null);
 
   useEffect(() => {
@@ -142,7 +144,8 @@ export default function PushSettings({ username }: { username: string }) {
     const j = await r.json();
     if (!r.ok) return toast(j.error ?? "Lưu thất bại", false);
     setMe(j as Me);
-    toast("Đã đổi giọng thông báo");
+    setVoice({ persona: j.persona, variant: j.variant });
+    toast("Đã đổi giọng — lời khuyên trên web và thông báo đổi theo");
   };
 
   const connect = async () => {
@@ -170,7 +173,7 @@ export default function PushSettings({ username }: { username: string }) {
 
       <div className="mt-3 border-t border-border pt-3">
         <div className="font-medium">🎭 Giọng thông báo của bạn</div>
-        <p className="mt-1 text-muted">Chọn thoải mái, trùng người khác cũng được — mỗi người trong cùng phong cách có câu chữ riêng, không ai nhận tin giống ai. Chỉ đổi cách nói, số liệu vẫn y như nhau.</p>
+        <p className="mt-1 text-muted">Chọn thoải mái, trùng người khác cũng được — mỗi người trong cùng phong cách có câu chữ riêng, không ai nhận tin giống ai. Lời khuyên, giải thích trên web và thông báo đều đổi theo giọng này — chỉ đổi cách nói, số liệu vẫn y như nhau.</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {me?.personas.map((p) => {
             const mine = me.persona === p.id;

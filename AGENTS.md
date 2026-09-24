@@ -285,3 +285,8 @@ Vercel cron: eod-sync 15:20 + scan 16:50 chỉ là fallback — scan idempotent)
   21001 DT thuần, 421701 tổng thu nhập (NH), 23000 LNST cty mẹ (VND).
 - Tín hiệu vẫn chỉ do giá + khối lượng; khối kinh doanh/tin chỉ tham khảo
   — giữ disclaimer, đừng biến thành "khuyến nghị".
+- `quoteFresh` không được coi 9:00–15:00 là khớp liên tục. Nghỉ trưa
+  11:30–13:00 và sau ATC 14:45–15:00 không có nến 1 phút mới — dùng giá khớp
+  cuối của phiên liên tục vừa xong và nói rõ, đừng hiện "Chờ dữ liệu mới".
+- Vùng mua có đáy ≤ cắt lỗ là kế hoạch hỏng (mua ở đáy vùng đã chạm cắt lỗ).
+  `buyZoneAboveStop` khi sinh vùng mới; UI đánh "không dùng được" với vùng cũ.

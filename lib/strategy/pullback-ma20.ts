@@ -1,6 +1,6 @@
 import type { ExitCheckFn, StrategyFn } from "./types";
 import { atr, sma } from "./indicators";
-import { floorTick, realizedRr, validBuyZone } from "./breakout20";
+import { buyZoneAboveStop, floorTick, realizedRr } from "./breakout20";
 
 export const PULLBACK_DEFAULTS = {
   maFast: 20,
@@ -58,7 +58,7 @@ export const pullbackMa20: StrategyFn = ({ bars, params }) => {
     rr,
     reason: `Đang xu hướng tăng (giá > MA${p.maSlow} ${maSlow.toFixed(2)}) và vừa điều chỉnh về MA${p.maFast} ${maFast.toFixed(2)} với khối lượng ${(last.volume / avgVol).toFixed(1)}× trung bình`,
     plan: `SL = vào − ${p.atrStopMult}×ATR (${a.toFixed(2)}) = ${stop}; TP = vào + ${p.rrTarget}×rủi ro = ${target.toFixed(2)}. Kỳ vọng 3–10 phiên; thoát nếu đóng cửa < MA${p.maSlow} (${maSlow.toFixed(2)}).`,
-    buyZone: validBuyZone(floorTick(maFast * 0.98), floorTick(entry * 1.005)),
+    buyZone: buyZoneAboveStop(floorTick(maFast * 0.98), floorTick(entry * 1.005), stop),
   };
 };
 

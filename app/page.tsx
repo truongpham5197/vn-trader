@@ -191,13 +191,29 @@ export default async function Home() {
                   <span className="text-gain">{r.target?.toFixed(2) ?? "—"}</span>
                 </div>
               </div>
-              {(r.plain || r.note) && (
+              {(r.plain || r.note) && !(r.buyZone && r.stop && r.target) && (
                 <More label="Vì sao theo dõi">
                   {r.plain && <p className="text-[11px]">{r.plain}</p>}
                   {r.note && <p className="text-[11px] text-muted">{r.note}</p>}
                 </More>
               )}
-              {r.buyZone && r.stop && r.target && <OpportunityStatus ticker={r.ticker} date={r.dataDate} latestSession={sigDate} buyZone={r.buyZone} stop={r.stop} target={r.target} trigger={r.trigger} />}
+              {r.buyZone && r.stop && r.target && (
+                <OpportunityStatus
+                  ticker={r.ticker}
+                  date={r.dataDate}
+                  latestSession={sigDate}
+                  buyZone={r.buyZone}
+                  stop={r.stop}
+                  target={r.target}
+                  trigger={r.trigger}
+                  extra={(r.plain || r.note) && (
+                    <>
+                      {r.plain && <p className="text-[11px]">{r.plain}</p>}
+                      {r.note && <p className="text-[11px] text-muted">{r.note}</p>}
+                    </>
+                  )}
+                />
+              )}
             </div>
           ))}
         </div>
@@ -254,8 +270,23 @@ export default async function Home() {
                     {r.target?.toFixed(2) ?? "—"}
                   </td>
                   <td className="p-3">
-                    {r.buyZone && r.stop && r.target && <OpportunityStatus ticker={r.ticker} date={r.dataDate} latestSession={sigDate} buyZone={r.buyZone} stop={r.stop} target={r.target} trigger={r.trigger} />}
-                    {(r.plain || r.note) && (
+                    {r.buyZone && r.stop && r.target ? (
+                      <OpportunityStatus
+                        ticker={r.ticker}
+                        date={r.dataDate}
+                        latestSession={sigDate}
+                        buyZone={r.buyZone}
+                        stop={r.stop}
+                        target={r.target}
+                        trigger={r.trigger}
+                        extra={(r.plain || r.note) && (
+                          <>
+                            {r.plain && <p className="text-[11px]">{r.plain}</p>}
+                            {r.note && <p className="text-[11px] text-muted">{r.note}</p>}
+                          </>
+                        )}
+                      />
+                    ) : (r.plain || r.note) && (
                       <More label="Vì sao theo dõi">
                         {r.plain && <p className="text-[11px]">{r.plain}</p>}
                         {r.note && <p className="text-[11px] text-muted">{r.note}</p>}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { quoteFresh, signalExpired } from "./quote-quality";
+import { quoteFresh, quoteNote, signalExpired } from "./quote-quality";
 
 const now = new Date("2026-09-23T03:00:00Z");
 describe("quote freshness", () => {
@@ -15,6 +15,23 @@ describe("quote freshness", () => {
     expect(quoteFresh({ last: 20, source: "daily", date: "2026-09-23" }, after, "2026-09-23")).toBe(true);
     expect(quoteFresh({ last: 20, source: "daily", date: "2026-09-22" }, after, "2026-09-23")).toBe(false);
     expect(quoteFresh({ last: 20, source: "daily", date: "2026-08-01" }, after, "2026-08-01")).toBe(false);
+  });
+  it("nghỉ trưa dùng giá khớp cuối buổi sáng, không lấy nến giữa buổi", () => {
+    const lunch = new Date("2026-09-24T05:54:00Z"); // 12:54 ICT
+    const morningClose = { last: 20, source: "minute" as const, asOf: "2026-09-24T04:29:00Z", date: "2026-09-24" };
+    const midMorning = { last: 20, source: "minute" as const, asOf: "2026-09-24T03:00:00Z", date: "2026-09-24" };
+    expect(quoteFresh(morningClose, lunch)).toBe(true);
+    expect(quoteFresh(midMorning, lunch)).toBe(false);
+    expect(quoteFresh({ last: 20, source: "daily", date: "2026-09-24" }, lunch)).toBe(false);
+    expect(quoteNote(morningClose, lunch)).toContain("Nghỉ trưa");
+    expect(quoteNote(morningClose, lunch)).toContain("Không phải giá đang chạy");
+  });
+  it("sau ATC dùng giá khớp cuối, không coi là giá đang chạy", () => {
+    const atc = new Date("2026-09-24T07:50:00Z"); // 14:50 ICT
+    const last = { last: 20, source: "minute" as const, asOf: "2026-09-24T07:44:00Z", date: "2026-09-24" };
+    expect(quoteFresh(last, atc)).toBe(true);
+    expect(quoteFresh({ last: 20, source: "minute", asOf: "2026-09-24T06:00:00Z", date: "2026-09-24" }, atc)).toBe(false);
+    expect(quoteNote(last, atc)).toContain("Sắp đóng cửa");
   });
 });
 

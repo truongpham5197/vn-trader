@@ -7,6 +7,7 @@ import SignalDetail from "./SignalDetail";
 import SignalPlan from "./SignalPlan";
 import { LivePrice } from "./live";
 import OpportunityStatus from "./OpportunityStatus";
+import { strategyLabel } from "@/lib/strategy/labels";
 
 export const STATUS: Record<string, [string, string]> = {
   new: ["Mới", "text-accent"],
@@ -112,7 +113,7 @@ export default function SignalTable({
                       {s.symbol.sector ?? ""}
                     </div>
                   </td>
-                  <td className="p-3 text-muted">{s.strategy.name}</td>
+                  <td className="p-3 text-muted">{strategyLabel(s.strategy.name)}</td>
                   <td className="num p-3 text-right">
                     {s.buyLow && s.buyHigh
                       ? `${f2(s.buyLow)}–${f2(s.buyHigh)}`
@@ -194,7 +195,7 @@ function SignalCard({
             <span className={cls}>{label}</span>
           </div>
           <div className="truncate text-[11px] text-muted">
-            {[showDate && `nến ${s.date}`, s.strategy.name, s.symbol.sector].filter(Boolean).join(" · ")}
+            {[showDate && `nến ${s.date}`, strategyLabel(s.strategy.name), s.symbol.sector].filter(Boolean).join(" · ")}
           </div>
         </div>
         <div className="shrink-0 text-right">

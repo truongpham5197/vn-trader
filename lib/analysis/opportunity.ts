@@ -33,6 +33,13 @@ export function assessOpportunity(p: OpportunityInput): OpportunityAssessment {
     || p.stop >= p.target || (p.buyZone && p.buyZone[0] > p.buyZone[1])) {
     return result("invalid", "Kế hoạch không hợp lệ", "Cần tính lại vùng giá, cắt lỗ và mục tiêu.");
   }
+  if (p.buyZone && p.stop >= p.buyZone[0]) {
+    return result(
+      "invalid",
+      "Kế hoạch không dùng được",
+      "Cắt lỗ nằm trong vùng mua. Mua ở đáy vùng là đã chạm cắt lỗ — không dùng kế hoạch này.",
+    );
+  }
   if (!p.fresh || p.price === null || !Number.isFinite(p.price) || p.price <= 0) {
     return result("stale", "Chờ dữ liệu mới", "Chưa có giá đủ mới để đánh giá; giá dự phòng không phải giá realtime.");
   }

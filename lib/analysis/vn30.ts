@@ -1,7 +1,7 @@
 import { prisma } from "../prisma";
 import { VN30 } from "../data/vn30";
 import { atr, highestHighBefore, rsi, sma } from "../strategy/indicators";
-import { floorTick } from "../strategy/breakout20";
+import { floorTick, buyZoneAboveStop } from "../strategy/breakout20";
 import type { Bar } from "../data/types";
 
 export interface Vn30Row {
@@ -99,9 +99,9 @@ export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): 
     const stop = floorTick(entry - 2 * a14);
     return {
       ...base,
-      setup: "🔥 breakout gần",
+      setup: "🔥 Sắp vượt đỉnh",
       score: 80 + Math.min(volX * 5, 15) - distHighPct * 3,
-      buyZone: [floorTick(hh * 0.99), floorTick(hh * 1.01)],
+      buyZone: buyZoneAboveStop(floorTick(hh * 0.99), floorTick(hh * 1.01), stop),
       stop,
       target: floorTick(entry + 2 * (entry - stop)),
       note: `cách đỉnh ${hh.toFixed(2)} chỉ ${distHighPct.toFixed(1)}% · vol ${volX.toFixed(1)}x · vượt đỉnh kèm vol = trigger`,
@@ -122,9 +122,9 @@ export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): 
     const stop = floorTick(entry - 1.5 * a14);
     return {
       ...base,
-      setup: "↩️ pullback MA20",
+      setup: "↩️ Về đường trung bình",
       score: 70 - distMa20 * 500,
-      buyZone: [floorTick(ma20 * 0.98), floorTick(Math.min(last.close * 1.005, ma20 * 1.02))],
+      buyZone: buyZoneAboveStop(floorTick(ma20 * 0.98), floorTick(Math.min(last.close * 1.005, ma20 * 1.02)), stop),
       stop,
       target: floorTick(entry + 2 * (entry - stop)),
       note: `uptrend (close > MA50 ${ma50.toFixed(1)}) · đang về MA20 ${ma20.toFixed(2)} · RSI ${r14.toFixed(0)}`,
@@ -145,9 +145,9 @@ export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): 
     const stop = floorTick(entry * 0.96);
     return {
       ...base,
-      setup: "💧 quá bán RSI2",
+      setup: "💧 Giảm nhanh ngắn hạn",
       score: 60 - r2,
-      buyZone: [floorTick(entry * 0.98), floorTick(entry)],
+      buyZone: buyZoneAboveStop(floorTick(entry * 0.98), floorTick(entry), stop),
       stop,
       target: floorTick(entry + 1.5 * (entry - stop)),
       note: `RSI(2)=${r2.toFixed(1)} <10, giá trên MA50 — quan sát quá bán, chưa xác nhận`,
@@ -165,7 +165,7 @@ export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): 
   if (last.close > ma20 && ma20 > ma50) {
     return {
       ...base,
-      setup: "📈 uptrend",
+      setup: "📈 Đang tăng, đừng đuổi",
       score: 40 + Math.min((last.close / ma50 - 1) * 40, 10),
       note: `trên MA20/MA50 — không đuổi, chờ pullback về ~${ma20.toFixed(1)}`,
       plain: "Đang tăng tốt nhưng đã lên xa — đừng mua đuổi, chờ giá chỉnh về",
@@ -175,7 +175,7 @@ export function scoreSetup(ticker: string, sector: string | null, bars: Bar[]): 
 
   return {
     ...base,
-    setup: "⏸ theo dõi",
+    setup: "⏸ Chưa rõ hướng",
     score: 10,
     note: `dưới MA50 ${ma50.toFixed(1)} · RSI ${r14.toFixed(0)} — chưa có setup`,
     plain: "Xu hướng chưa tăng — chưa nên mua",

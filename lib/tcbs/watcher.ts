@@ -2,14 +2,14 @@ import { prisma } from "../prisma";
 import { ownerId } from "../user";
 import { getBool, getSetting, setSetting } from "../settings";
 import { getQuote, formatQuoteLine } from "../price";
-import { getOrder, getPositions, placeOrder, tcbsConfigured } from "./client";
+import { getOrder, getPositions, tcbsConfigured } from "./client";
 import { esc, sendTelegram } from "../telegram/notify";
 import { pushAlert } from "../alerts";
 import { vnToday } from "../vn-time";
 import { px } from "../format";
 import { levelState } from "../risk/levels";
 
-const FEE_SELL = 0.0015 + 0.001; // phí + thuế bán
+const HEARTBEAT_DELTA_PCT = 1;
 
 /** T+2: số phiên đã trôi qua kể từ ngày mua (đếm bars sau ngày openedAt). */
 async function sessionsHeld(symbolId: number, openedAt: Date): Promise<number> {
@@ -48,18 +48,10 @@ export async function runWatcher(): Promise<void> {
     const qLine = formatQuoteLine(quote);
 
     const held = await sessionsHeld(t.symbolId, t.openedAt);
-    const eligible = held >= 2; // T+2 — CP mới về tài khoản
 
     if (price <= (t.stopPrice ?? 0)) {
-      if (!eligible) {
-        await sendTelegram(
-          `⚠️ <b>${t.symbol.ticker}</b> chạm stop ${px(t.stopPrice)} nhưng chưa đủ T+2 (held ${held} phiên) — theo dõi tay!\n${qLine}`,
-          undefined,
-          { kind: "stop", level: "warn", ticker: t.symbol.ticker },
-        );
-        continue;
-      }
-      await executeStop(t, price, qLine);
+      if (!t.note?.includes("stop-hit")) await warnStop(t, price, qLine, held);
+      continue;
     } else if (t.targetPrice && price >= t.targetPrice && !t.note?.includes("target-hit")) {
       // Mark TRƯỚC khi gửi — tránh spam mỗi phút khi giá nằm trên target
       await prisma.trade.update({
@@ -99,13 +91,11 @@ async function watchOthers(): Promise<void> {
     await prisma.trade.update({ where: { id: t.id }, data: { note: `${t.note ?? ""} ${kind}-hit`.trim() } });
     const lv = levelState(price, kind === "stop" ? t.stopPrice : null, kind === "target" ? t.targetPrice : null)!;
     await pushAlert(
-      `${kind === "stop" ? "🛑" : "🎯"} <b>${t.symbol.ticker}</b> ${lv.label}\n${lv.detail}\nBán xong bấm "Bán" ở trang Vị thế để ghi nhật ký.\n${formatQuoteLine(quote)}`,
+      `${kind === "stop" ? "🛑" : "🎯"} <b>${t.symbol.ticker}</b> ${lv.label}\n${lv.detail}\nApp chỉ cảnh báo, không bán hộ.\n${formatQuoteLine(quote)}`,
       { kind, level: kind === "stop" ? "danger" : "success", ticker: t.symbol.ticker, userId: t.userId },
     );
   }
 }
-
-const HEARTBEAT_DELTA_PCT = 1;
 
 async function heartbeat(): Promise<void> {
   const { positionsReport } = await import("../report/positions");
@@ -125,58 +115,26 @@ async function heartbeat(): Promise<void> {
   await setSetting("heartbeatPnl", JSON.stringify(cur));
 }
 
-async function executeStop(
-  t: { id: number; qty: number; symbolId: number; symbol: { ticker: string } },
+/** Thủng cắt lỗ: báo 1 lần, không đóng vị thế, không đặt lệnh bán. */
+async function warnStop(
+  t: { id: number; symbol: { ticker: string }; stopPrice: number | null; note: string | null },
   price: number,
-  qLine = "",
+  qLine: string,
+  held: number,
 ): Promise<void> {
-  const paper = await getBool("paperTrading");
-
-  if (paper || !tcbsConfigured()) {
-    // Paper: đóng trade ngay tại giá chạm stop
-    const trade = await prisma.trade.findUnique({ where: { id: t.id } });
-    if (!trade) return;
-    const proceeds = price * t.qty * 1000 * (1 - FEE_SELL);
-    const cost = trade.entryPrice * t.qty * 1000 * 1.0015;
-    await prisma.trade.update({
-      where: { id: t.id },
-      data: {
-        status: "closed",
-        exitPrice: price,
-        pnl: proceeds - cost,
-        exitReason: "stop",
-        closedAt: new Date(),
-      },
-    });
-    await sendTelegram(
-      `🛑 STOP <b>${t.symbol.ticker}</b> bán ${t.qty}cp @ ${price} — P&L ${((proceeds - cost) / 1e6).toFixed(2)}tr (paper)\n${qLine}`,
-      undefined,
-      { kind: "stop", level: "danger", ticker: t.symbol.ticker },
-    );
-    return;
-  }
-
-  // Live: đặt NS/MP
-  try {
-    const r = await placeOrder({
-      side: "NS",
-      symbol: t.symbol.ticker,
-      priceType: "MP",
-      price: 0,
-      quantity: t.qty,
-    });
-    await sendTelegram(
-      `🛑 STOP <b>${t.symbol.ticker}</b> — đã bắn lệnh bán MP ${t.qty}cp (order ${r.orderId ?? "?"})`,
-      undefined,
-      { kind: "stop", level: "danger", ticker: t.symbol.ticker },
-    );
-  } catch (e) {
-    await sendTelegram(
-      `❌ STOP <b>${t.symbol.ticker}</b> đặt lệnh thất bại: ${esc(e instanceof Error ? e.message : "?")}`,
-      undefined,
-      { kind: "stop", level: "danger", ticker: t.symbol.ticker },
-    );
-  }
+  const trade = await prisma.trade.findUnique({ where: { id: t.id } });
+  if (!trade || trade.status !== "open" || trade.note?.includes("stop-hit")) return;
+  await prisma.trade.update({
+    where: { id: t.id },
+    data: { note: `${trade.note ?? ""} stop-hit`.trim() },
+  });
+  const lv = levelState(price, trade.stopPrice, null);
+  const t2 = held < 2 ? ` Chưa đủ T+2 (đã giữ ${held} phiên).` : "";
+  await sendTelegram(
+    `🛑 <b>${esc(t.symbol.ticker)}</b> ${esc(lv?.label ?? "đã thủng cắt lỗ")}\n${esc(lv?.detail ?? "Giá đã xuống dưới cắt lỗ.")}${t2}\nApp chỉ cảnh báo, không bán hộ.\n${qLine}`,
+    undefined,
+    { kind: "stop", level: "danger", ticker: t.symbol.ticker },
+  );
 }
 
 async function syncPendingOrders(): Promise<void> {

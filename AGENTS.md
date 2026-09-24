@@ -56,6 +56,10 @@ lib/risk/      sizing.ts (1% NAV, lot 100), suggest.ts (/plan gợi ý SL/TP),
                levels.ts — levelState(giá, SL, TP): "đã thủng cắt lỗ −X%" (giá ≤ SL)
                tách khỏi "sát cắt lỗ" (còn trên SL ≤3%), tương tự chốt lời —
                dùng chung badge web, báo cáo vị thế Telegram, cảnh báo watcher.
+               advice.ts — thẻ gợi ý cả rổ chỉ cảnh báo theo SL/TP đã đặt
+               (trung bình giá / lỗ / chốt lời). Không bảo bán, không bảo mua
+               thêm mã đang lỗ. % cần để hòa vốn là hệ thức f/(1−f).
+               Watcher thủng cắt lỗ: báo 1 lần, không đóng vị thế, không đặt lệnh.
                Sửa SL/TP qua PATCH trade → gỡ dấu stop-hit/target-hit để báo lại
 lib/report/    positions.ts — báo cáo vị thế % live (dùng chung bot+cron);
                top-picks.ts — collectTopPicks + formatTopPicks cho /picks

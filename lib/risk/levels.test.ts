@@ -6,7 +6,7 @@ describe("levelState", () => {
     const s = levelState(85.3, 92.5, 108.5)!;
     expect(s.kind).toBe("stop-broken");
     expect(s.label).toBe("đã thủng cắt lỗ −7.8%");
-    expect(s.detail).toContain("nên bán");
+    expect(s.detail).toContain("không phải lệnh bán");
   });
 
   it("chạm đúng cắt lỗ / chốt lời", () => {

@@ -50,17 +50,17 @@ export default async function SignalsPage({
 
       <div className="mb-3 flex flex-wrap gap-2">
         {dates.map((d) => (
-          <Link key={d.date} href={q({ date: d.date })} className={`num ${chip(d.date === date)}`}>
+          <Link key={d.date} href={q({ date: d.date })} prefetch={false} className={`num ${chip(d.date === date)}`}>
             {d.date.slice(5)} <span className="text-muted">· {d.n}</span>
           </Link>
         ))}
-        <Link href={q({ date: "all" })} className={chip(!date)}>
+        <Link href={q({ date: "all" })} prefetch={false} className={chip(!date)}>
           Mọi ngày
         </Link>
       </div>
       <div className="mb-4 flex flex-wrap gap-2">
         {TABS.map(([k, label]) => (
-          <Link key={k} href={q({ status: k })} className={chip(k === tab[0])}>
+          <Link key={k} href={q({ status: k })} prefetch={false} className={chip(k === tab[0])}>
             {label}
           </Link>
         ))}

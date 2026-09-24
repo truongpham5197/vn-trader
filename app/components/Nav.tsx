@@ -44,6 +44,7 @@ export default function Nav({ username }: { username: string | null }) {
             <Link
               key={href}
               href={href}
+              prefetch={false}
               className={`rounded-md px-2.5 py-1 text-sm whitespace-nowrap ${
                 on(href) ? "bg-accent/15 text-foreground" : "text-muted hover:bg-foreground/5 hover:text-foreground"
               }`}
@@ -58,6 +59,7 @@ export default function Nav({ username }: { username: string | null }) {
           <Link
             key={href}
             href={href}
+            prefetch={false}
             className={`flex min-w-0 flex-col items-center gap-0.5 px-0.5 py-1.5 text-center text-[10px] leading-tight ${on(href) ? "text-accent" : "text-muted"}`}
           >
             <span className="text-base leading-none">{icon}</span>

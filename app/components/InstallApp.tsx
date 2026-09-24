@@ -58,10 +58,27 @@ function IosHelp({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
-/** Đăng ký service worker ngay khi mở web — trình duyệt cần có mới cho cài app (PWA). */
+/** Đăng ký service worker. SW vừa nhận quyền điều khiển, hoặc trang được khôi phục từ cache nút Back, thì tải lại 1 lần — kẻo tab cũ và tab mới chồng lên nhau. */
 export function useServiceWorker() {
   useEffect(() => {
-    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener("pageshow", onShow);
+    if (!("serviceWorker" in navigator)) return () => window.removeEventListener("pageshow", onShow);
+    const just = sessionStorage.getItem("vt_sw_reload") === "1";
+    if (just) sessionStorage.removeItem("vt_sw_reload");
+    const onCtrl = () => {
+      if (sessionStorage.getItem("vt_sw_reload") === "1") return;
+      sessionStorage.setItem("vt_sw_reload", "1");
+      window.location.reload();
+    };
+    if (!just) navigator.serviceWorker.addEventListener("controllerchange", onCtrl);
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+    return () => {
+      window.removeEventListener("pageshow", onShow);
+      navigator.serviceWorker.removeEventListener("controllerchange", onCtrl);
+    };
   }, []);
 }
 

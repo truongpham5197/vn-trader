@@ -51,15 +51,15 @@ function BookGuide({ rows }: { rows: PositionLine[] }) {
   const cls = a.tone === "gain" ? "border-gain/40" : a.tone === "loss" ? "border-loss/40" : "";
   return (
     <section className={`card mb-3 p-3 text-xs ${cls}`}>
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted">Gợi ý chung · đang tập</p>
+      <p className="text-[10px] font-medium uppercase tracking-wide text-muted">Lời khuyên · cho đỡ căng</p>
       <p className="mt-1 text-sm font-semibold">{a.headline}</p>
       <div className="mt-3 space-y-2">
         <div>
-          <p className="text-muted">Vì sao</p>
+          <p className="text-muted">Vì sao mà</p>
           <p className="mt-0.5 leading-relaxed">{a.why}</p>
         </div>
         <div>
-          <p className="text-muted">Làm thế nào</p>
+          <p className="text-muted">Nhắc nhẹ</p>
           <ol className="mt-0.5 list-decimal space-y-1 pl-4 leading-relaxed">
             {a.steps.map((s) => (
               <li key={s}>{s}</li>
@@ -67,7 +67,7 @@ function BookGuide({ rows }: { rows: PositionLine[] }) {
           </ol>
         </div>
         <div>
-          <p className="text-muted">Giữ vốn</p>
+          <p className="text-muted">Giữ ví</p>
           <p className="mt-0.5 leading-relaxed">{a.protect}</p>
         </div>
         {a.notes.map((n) => (
@@ -81,7 +81,7 @@ function BookGuide({ rows }: { rows: PositionLine[] }) {
         ))}
       </div>
       <p className="mt-2 text-[11px] text-muted">
-        Theo cắt lỗ và chốt lời bạn đã đặt. Chỉ cảnh báo — không bán hộ, không bảo mua thêm, không phải dự báo sẽ lãi.
+        Lời khuyên theo cắt lỗ và chốt lời bạn đặt. Không phải lệnh, không bán hộ, không hứa sẽ lãi.
       </p>
     </section>
   );

@@ -8,7 +8,7 @@ import { pushAlert } from "../alerts";
 import { vnToday } from "../vn-time";
 import { px } from "../format";
 import { levelState } from "../risk/levels";
-import { voiceLine, voiceOf } from "../report/voice";
+import { styleOf, voiceLine, voiceOf } from "../report/voice";
 
 const HEARTBEAT_DELTA_PCT = 1;
 
@@ -91,8 +91,9 @@ async function watchOthers(): Promise<void> {
     if (!kind) continue;
     await prisma.trade.update({ where: { id: t.id }, data: { note: `${t.note ?? ""} ${kind}-hit`.trim() } });
     const lv = levelState(price, kind === "stop" ? t.stopPrice : null, kind === "target" ? t.targetPrice : null)!;
+    const v = await voiceOf(t.userId);
     await pushAlert(
-      `${kind === "stop" ? "🛑" : "🎯"} <b>${t.symbol.ticker}</b> ${lv.label}\n${voiceLine(await voiceOf(t.userId), kind === "stop" ? "stop" : "target", t.symbol.ticker)}\n${lv.detail}\nApp chỉ cảnh báo, không bán hộ.\n${formatQuoteLine(quote)}`,
+      `${kind === "stop" ? "🛑" : "🎯"} <b>${t.symbol.ticker}</b> ${lv.label}\n${voiceLine(v, kind === "stop" ? "stop" : "target", t.symbol.ticker)}\n${esc(styleOf(v).text(`${lv.detail}\nApp chỉ cảnh báo, không bán hộ.`))}\n${formatQuoteLine(quote)}`,
       { kind, level: kind === "stop" ? "danger" : "success", ticker: t.symbol.ticker, userId: t.userId },
     );
   }
@@ -131,8 +132,9 @@ async function warnStop(
   });
   const lv = levelState(price, trade.stopPrice, null);
   const t2 = held < 2 ? ` Chưa đủ T+2 (đã giữ ${held} phiên).` : "";
+  const v = await voiceOf(trade.userId);
   await sendTelegram(
-    `🛑 <b>${esc(t.symbol.ticker)}</b> ${esc(lv?.label ?? "đã thủng cắt lỗ")}\n${voiceLine(await voiceOf(trade.userId), "stop", t.symbol.ticker)}\n${esc(lv?.detail ?? "Giá đã xuống dưới cắt lỗ.")}${t2}\nApp chỉ cảnh báo, không bán hộ.\n${qLine}`,
+    `🛑 <b>${esc(t.symbol.ticker)}</b> ${esc(lv?.label ?? "đã thủng cắt lỗ")}\n${voiceLine(v, "stop", t.symbol.ticker)}\n${esc(styleOf(v).text(`${lv?.detail ?? "Giá đã xuống dưới cắt lỗ."}${t2}\nApp chỉ cảnh báo, không bán hộ.`))}\n${qLine}`,
     undefined,
     { kind: "stop", level: "danger", ticker: t.symbol.ticker },
   );

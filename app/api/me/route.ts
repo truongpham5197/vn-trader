@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { ALERT_KINDS } from "@/lib/alert-kinds";
 import { NEED_USER, currentUser } from "@/lib/user";
 import { bad, body } from "@/lib/api";
-import { PERSONAS } from "@/lib/persona";
+import { PERSONAS, variantOf } from "@/lib/persona";
 import { ensurePersonas } from "@/lib/report/accountability";
 
 export const dynamic = "force-dynamic";
@@ -20,11 +20,13 @@ async function others(id: number) {
 
 async function me(u: Row) {
   const used = await others(u.id);
+  const all = await prisma.user.findMany({ select: { id: true, persona: true } });
   return {
     owner: u.owner,
     alertKinds: u.alertKinds,
     telegramLinked: u.owner ? Boolean(process.env.TELEGRAM_CHAT_ID) : Boolean(u.tgChatId),
     persona: u.persona,
+    variant: u.persona ? variantOf(all, u.id, u.persona) : 0,
     personas: PERSONAS.map((p) => ({ id: p.id, name: p.name, emoji: p.emoji, sample: p.lines.stop[0].replace(/\{t\}/g, "FPT").replace(/\{n\}/g, "bạn"), shared: used.get(p.id) ?? 0 })),
   };
 }

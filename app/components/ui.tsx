@@ -68,7 +68,7 @@ export function Toaster() {
 export function useApi() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  async function call(method: string, url: string, body: unknown, okText: string) {
+  async function call(method: string, url: string, body: unknown, okText: string, opts?: { reload?: boolean }) {
     setBusy(true);
     try {
       const res = await fetch(url, {
@@ -81,6 +81,10 @@ export function useApi() {
         return false;
       }
       toast(okText);
+      if (opts?.reload) {
+        window.location.reload();
+        return true;
+      }
       router.refresh();
       return true;
     } catch {

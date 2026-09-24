@@ -26,7 +26,7 @@ export function levelState(price: number | null, stop: number | null, target: nu
     return {
       kind: "stop-broken",
       label: under >= 0.05 ? `đã thủng cắt lỗ −${p1(under)}%` : "chạm cắt lỗ",
-      detail: `Giá ${f(price)} ${under >= 0.05 ? `đã xuống dưới mức cắt lỗ ${f(stop)} (thấp hơn ${p1(under)}%)` : `chạm đúng mức cắt lỗ ${f(stop)}`} — theo kế hoạch nên bán để giữ vốn, hoặc sửa lại mức cắt lỗ nếu nhập nhầm.`,
+      detail: `Giá ${f(price)} ${under >= 0.05 ? `đã xuống dưới mức cắt lỗ ${f(stop)} (thấp hơn ${p1(under)}%)` : `chạm đúng mức cắt lỗ ${f(stop)}`} — cảnh báo, không phải lệnh bán.`,
       tone: "loss",
     };
   }
@@ -35,7 +35,7 @@ export function levelState(price: number | null, stop: number | null, target: nu
     return {
       kind: "target-hit",
       label: over >= 0.05 ? `đã vượt chốt lời +${p1(over)}%` : "chạm chốt lời",
-      detail: `Giá ${f(price)} ${over >= 0.05 ? `đã vượt mức chốt lời ${f(target)} (cao hơn ${p1(over)}%)` : `chạm đúng mức chốt lời ${f(target)}`} — cân nhắc chốt lời toàn bộ/một phần hoặc nâng cắt lỗ lên để giữ lãi.`,
+      detail: `Giá ${f(price)} ${over >= 0.05 ? `đã vượt mức chốt lời ${f(target)} (cao hơn ${p1(over)}%)` : `chạm đúng mức chốt lời ${f(target)}`} — cảnh báo đã tới mức chốt, không phải lệnh bán.`,
       tone: "gain",
     };
   }
@@ -44,7 +44,7 @@ export function levelState(price: number | null, stop: number | null, target: nu
     return {
       kind: "near-stop",
       label: `sát cắt lỗ (còn ${p1(gap)}%)`,
-      detail: `Giá ${f(price)} cao hơn mức cắt lỗ ${f(stop)} chỉ ${p1(gap)}% — giảm thêm là chạm, chuẩn bị bán theo kế hoạch.`,
+      detail: `Giá ${f(price)} cao hơn mức cắt lỗ ${f(stop)} chỉ ${p1(gap)}% — giảm thêm là chạm. Cảnh báo, không phải lệnh bán.`,
       tone: "loss",
     };
   }

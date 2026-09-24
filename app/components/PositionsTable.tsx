@@ -70,8 +70,19 @@ function BookGuide({ rows }: { rows: PositionLine[] }) {
           <p className="text-muted">Giữ vốn</p>
           <p className="mt-0.5 leading-relaxed">{a.protect}</p>
         </div>
+        {a.notes.map((n) => (
+          <div key={n.title}>
+            <p className="text-muted">{n.title}</p>
+            <p className="mt-0.5 font-medium leading-relaxed">{n.verdict}</p>
+            <More label="Vì sao">
+              <p className="text-[11px] leading-relaxed text-muted">{n.why}</p>
+            </More>
+          </div>
+        ))}
       </div>
-      <p className="mt-2 text-[11px] text-muted">Theo cắt lỗ và chốt lời bạn đã đặt. Không phải dự báo sẽ lãi.</p>
+      <p className="mt-2 text-[11px] text-muted">
+        Theo cắt lỗ và chốt lời bạn đã đặt. Chỉ cảnh báo — không bán hộ, không bảo mua thêm, không phải dự báo sẽ lãi.
+      </p>
     </section>
   );
 }

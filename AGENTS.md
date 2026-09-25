@@ -61,12 +61,26 @@ lib/report/signal-outcome.ts + accountability.ts  "trả bài" gợi ý: sau sca
                HOLD_SESSIONS theo chiến lược) → Signal.outcome/outcomePct/outcomeR.
                strategyRecords() 120 ngày → dòng thành tích trong tin gợi ý, bảng
                điểm trên /gia-sau. Chiến lược ≥20 gợi ý đã chấm + TB âm = "đang
-               thua" → gỡ khỏi gợi ý riêng (không tự đổi tham số).
+               thua" → gỡ khỏi gợi ý riêng.
                sendPersonalDigests(): mỗi user 1 tin/phiên nến (Setting digestDate)
                — bỏ mã đang giữ, trừ điểm trùng ngành, cộng mã theo dõi, KL theo
                vốn+tiền mặt user, luật thoát chiến lược của mã đang giữ, trả bài
                gợi ý cũ (xin lỗi nếu user đã mua mà thủng SL). Tin từng mã chi
                tiết (notifySignal) giờ chỉ gửi owner.
+lib/learn.ts   TỰ HỌC chiến lược (sau gradeSignals trong scan, 1 lần/phiên —
+               Setting learnDate): shadowScore mô phỏng lại các gợi ý đã chấm
+               120 ngày (≤160 gần nhất) với từng bộ tham số lân cận ±1 bậc trên
+               PARAM_LADDER — cùng tập cơ hội, khác tham số. decideMove chỉ đổi
+               khi ≥20 gợi ý mẫu + lân cận TB net/lệnh tốt hơn ≥1 điểm % + sau
+               lần chỉnh trước có ≥8 gợi ý chấm mới. Hill-climb chậm, giới hạn
+               trong thang — không tự nghĩ giá trị. Signal.params snapshot bộ
+               tham số lúc sinh tín hiệu. learnWeekly (Chủ nhật, route weekly +
+               backup trong scan): xếp lân cận theo shadowScore rồi backtest
+               365 ngày VN30 persist=false, OOS expectancy 30% cuối tốt hơn ≥20%
+               (hoặc hiện tại âm/không đủ lệnh mà mới dương) → áp dụng; mặc định
+               thắng → revert. MỌI thay đổi → model StrategyTune (kind nudge|
+               weekly|revert|manual) + Telegram owner kind system. PATCH
+               /api/strategies/[id] chỉnh tay cũng ghi StrategyTune manual.
 lib/persona.ts + lib/report/voice.ts  giọng thông báo: 10 phong cách (User.persona,
                mặc định trải đều, user tự chọn ở /settings#thong-bao, ĐƯỢC trùng
                cả với owner). Cùng phong cách → variantOf (thứ tự id) đổi câu +
@@ -166,7 +180,8 @@ lib/tcbs/      OpenAPI client (spec: docs/tcbs-openapi.json)
 lib/jobs.ts    node-cron local — SKIP khi process.env.VERCEL
 app/api/cron/  eod-sync (cursor resume qua Setting eodSyncCursor + chain
                after() + deadlineMs 40s + retry 3×),
-               scan, watcher, positions-report, weekly
+               scan (CN gọi thêm learnWeekly), watcher, positions-report,
+               weekly (báo cáo tuần + learnWeekly)
                — TẤT CẢ qua cron-auth
 app/api/quotes    GET ?tickers=A,B → giá nến 1m DNSE (cache 30s trong
                getQuote) — client KHÔNG tự poll: dùng app/components/live.tsx
@@ -192,7 +207,8 @@ app/api/trades, trades/[id]  CRUD vị thế từ web: POST mở (thiếu SL/TP 
                {close,exit} bán (closeTrade), DELETE — báo Telegram
 app/api/signals/[id]  PATCH take|skip|reset, DELETE (gỡ link trade/order)
 app/api/strategies/[id]  PATCH {enabled, params} — params merge defaults,
-               chặn key lạ / ≤0, {} = về mặc định
+               chặn key lạ / ≤0, {} = về mặc định; đổi params ghi
+               StrategyTune kind manual (lib/learn.ts dùng cho cooldown)
 app/api/watchlist  POST/DELETE {ticker} → User.watchlist (theo cookie) —
                scan luôn quét các mã này (như held tickers)
 lib/user.ts    Nhiều user, không login nhưng có PIN 6 số (2026-09-23): model User

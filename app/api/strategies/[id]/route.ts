@@ -30,5 +30,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ...(next && { params: JSON.stringify(next) }),
     },
   });
+  // Nhật ký tự học: chỉnh tay cũng ghi lại để cooldown học tính từ bộ tham số mới
+  if (next) {
+    await prisma.strategyTune
+      .create({
+        data: {
+          strategyType: st.type,
+          kind: "manual",
+          fromParams: st.params,
+          toParams: JSON.stringify(next),
+          reason: "owner chỉnh tay qua /settings",
+        },
+      })
+      .catch((e) => console.error("[strategies] tune log", e));
+  }
   return NextResponse.json({ ok: true });
 }

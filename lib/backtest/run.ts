@@ -30,7 +30,9 @@ export async function runBacktestFromDb(opts: {
   fromDate: string;
   toDate: string;
   overrides?: Partial<BacktestConfig>;
-}): Promise<{ runId: number; result: BtResult }> {
+  /** false = chỉ chạy lấy metrics, không lưu BacktestRun (learnWeekly chấm nhiều bộ tham số). */
+  persist?: boolean;
+}): Promise<{ runId: number | null; result: BtResult }> {
   const strategy = STRATEGIES[opts.strategyType];
   if (!strategy) throw new Error(`Unknown strategy: ${opts.strategyType}`);
 
@@ -88,6 +90,7 @@ export async function runBacktestFromDb(opts: {
   }
   const result = runBacktest(barsByTicker as Map<string, Bar[]>, bandPct, strategy, cfg);
 
+  if (opts.persist === false) return { runId: null, result };
   const run = await prisma.backtestRun.create({
     data: {
       strategyType: opts.strategyType,

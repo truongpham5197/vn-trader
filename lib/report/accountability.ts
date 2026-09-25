@@ -98,7 +98,7 @@ export async function sendPersonalDigests(date: string, today: string, newly: nu
   await setSetting("digestDate", date);
   await ensurePersonas();
   const [users, signals, graded] = await Promise.all([
-    prisma.user.findMany({ select: { id: true, username: true, owner: true, navVnd: true, riskPct: true, watchlist: true, persona: true } }),
+    prisma.user.findMany({ select: { id: true, username: true, owner: true, navVnd: true, riskPct: true, watchlist: true, persona: true, pushEnabled: true } }),
     prisma.signal.findMany({
       where: { date, status: { in: ["new", "notified", "taken", "filled"] } },
       include: { symbol: { select: { ticker: true, sector: true } }, strategy: { select: { type: true } } },

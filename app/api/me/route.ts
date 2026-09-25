@@ -8,7 +8,7 @@ import { ensurePersonas } from "@/lib/report/accountability";
 
 export const dynamic = "force-dynamic";
 
-type Row = { id: number; owner: boolean; alertKinds: string[]; tgChatId: string | null; persona: string | null };
+type Row = { id: number; owner: boolean; alertKinds: string[]; tgChatId: string | null; persona: string | null; pushEnabled: boolean };
 
 /** Số người khác đang dùng từng phong cách — được trùng, chỉ để user biết. Cùng phong cách vẫn khác câu (variantOf). */
 async function others(id: number) {
@@ -24,6 +24,7 @@ async function me(u: Row) {
   return {
     owner: u.owner,
     alertKinds: u.alertKinds,
+    pushEnabled: u.pushEnabled,
     telegramLinked: u.owner ? Boolean(process.env.TELEGRAM_CHAT_ID) : Boolean(u.tgChatId),
     persona: u.persona,
     variant: u.persona ? variantOf(all, u.id, u.persona) : 0,

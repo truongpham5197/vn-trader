@@ -8,7 +8,7 @@ import { readSession, signSession } from "./pin";
 export const OWNER = "TruongMỡ";
 export const USER_COOKIE = "vt_user";
 
-export type AppUser = { id: number; username: string; owner: boolean; navVnd: number | null; riskPct: number | null; watchlist: string[] };
+export type AppUser = { id: number; username: string; owner: boolean; navVnd: number | null; riskPct: number | null; watchlist: string[]; pushEnabled: boolean };
 
 let ownerCache: number | undefined;
 
@@ -39,7 +39,7 @@ export async function currentUser(): Promise<AppUser | null> {
   if (!s) return null;
   const u = await prisma.user.findUnique({
     where: { id: s.id },
-    select: { id: true, username: true, owner: true, navVnd: true, riskPct: true, watchlist: true, sessionVer: true },
+    select: { id: true, username: true, owner: true, navVnd: true, riskPct: true, watchlist: true, pushEnabled: true, sessionVer: true },
   });
   if (!u || u.sessionVer !== s.ver) return null;
   const { sessionVer: _, ...user } = u;
@@ -61,7 +61,7 @@ export const findByName = (username: string) =>
   prisma.user.findFirst({ where: { username: { equals: username, mode: "insensitive" } } });
 
 /** Chưa chọn tên → id 0: danh sách trống, vốn/rủi ro mặc định. */
-export const GUEST: AppUser = { id: 0, username: "", owner: false, navVnd: null, riskPct: null, watchlist: [] };
+export const GUEST: AppUser = { id: 0, username: "", owner: false, navVnd: null, riskPct: null, watchlist: [], pushEnabled: false };
 
 export const NEED_USER = "Chọn tên người dùng ở góc trên và nhập mã PIN trước";
 export const ONLY_OWNER = `Chỉ ${OWNER} (chủ app) được đổi mục này`;

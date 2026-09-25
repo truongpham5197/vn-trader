@@ -126,13 +126,21 @@ lib/alerts.ts  model Alert, pushAlert/listAlerts/htmlToAlert; pruneAlerts xóa
                pushAlert → fanOut: Telegram riêng (user khác owner có
                User.tgChatId; 403 → gỡ liên kết) + Web Push (PushSub, lib/push.ts,
                VAPID tự sinh lưu Setting "vapidKeys" — không cần env; 404/410 →
-               xóa sub), lọc theo User.alertKinds.
+               xóa sub), lọc theo User.alertKinds. Push: tag gom vt-kind-ticker
+               (tin mới thay tin cũ cùng loại — báo cáo 30ph không chất chồng),
+               TTL theo loại (positions 15ph, sector 1h, stop/target 6h,
+               signal/system 12h), danger → urgency high + renotify +
+               requireInteraction trên sw.js.
                lib/alert-kinds.ts = ALERT_KINDS + alertHref + type dùng chung client.
                watcher.watchOthers(): vị thế user khác owner chạm SL/TP → chỉ
                báo web (không Telegram, không tự đóng), note stop-hit/target-hit
                để báo 1 lần; positions-report cũng push báo cáo cho từng user
-app/api/push   GET {publicKey} · POST PushSubscription.toJSON() (upsert theo
-               endpoint, gắn user cookie) · DELETE {endpoint}. POST /api/push/test
+app/api/push   GET {publicKey} · POST PushSubscription.toJSON() + {sync?} (upsert
+               theo endpoint, gắn user cookie; sync=true chỉ gắn lại khi
+               pushEnabled còn bật, còn thì trả skipped → client tự unsubscribe —
+               POST thường/nút Bật mở lại pushEnabled) · DELETE {endpoint} = 1
+               thiết bị, {all:true} = tắt đẩy CẢ TÀI KHOẢN (User.pushEnabled=false
+               + xóa mọi PushSub → PWA điện thoại ngừng nhận). POST /api/push/test
                gửi thử tới thiết bị của user (payload force → sw.js hiện cả khi
                web đang focus; bình thường bỏ qua vì đã có toast) — nút 🔔 Gửi thử. public/sw.js nhận
                push (bỏ qua nếu web đang focus), app/manifest.ts = PWA (iOS

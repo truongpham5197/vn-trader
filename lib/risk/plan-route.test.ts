@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { getPersonalSignalPlan, type PersonalPlanDeps, type SignalForPlan } from "./personal";
 import { NEED_USER, type AppUser } from "../user";
 
-const alice: AppUser = { id: 2, username: "Alice", owner: false, navVnd: 500e6, riskPct: 0.01, watchlist: [] };
+const alice: AppUser = { id: 2, username: "Alice", owner: false, navVnd: 500e6, riskPct: 0.01, watchlist: [], pushEnabled: true };
 const signal: SignalForPlan = {
   id: 11,
   ticker: "FPT",

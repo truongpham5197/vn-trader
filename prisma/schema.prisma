@@ -110,6 +110,8 @@ model User {
   tgLinkCode String?   @unique
   // Loại thông báo nhận qua Telegram riêng + thông báo đẩy (web push)
   alertKinds String[]  @default(["signal", "sector", "stop", "target", "system"])
+  // Tắt đẩy là của tài khoản (mọi thiết bị): false → xóa hết PushSub, resync không hồi sinh
+  pushEnabled Boolean   @default(true)
   pushSubs   PushSub[]
   // Mã PIN 6 số (scrypt salt:hash) — vào trang cá nhân; sai 5 lần khóa 15 phút
   pinHash      String?

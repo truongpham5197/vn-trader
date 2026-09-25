@@ -6,7 +6,7 @@ import { Button, toast } from "./ui";
 import { useVoice } from "./VoiceProvider";
 
 type Persona = { id: string; name: string; emoji: string; sample: string; shared: number };
-type Me = { owner: boolean; alertKinds: string[]; telegramLinked: boolean; persona: string | null; variant: number; personas: Persona[] };
+type Me = { owner: boolean; alertKinds: string[]; telegramLinked: boolean; persona: string | null; variant: number; personas: Persona[]; pushEnabled: boolean };
 
 const json = (method: string, body?: unknown) => ({
   method,
@@ -29,14 +29,18 @@ async function currentSub() {
   return reg ? reg.pushManager.getSubscription() : null;
 }
 
-/** Gọi khi mở web: thiết bị đã bật thông báo đẩy → gắn lại với user đang chọn (đổi tên người dùng). */
+/** Gọi khi mở web: thiết bị đã bật thông báo đẩy → gắn lại với user đang chọn (đổi tên người dùng). User đã tắt đẩy (tài khoản) → server skipped → gỡ luôn sub thừa trên máy này. */
 export async function resyncPush(username: string) {
   if (!username || !pushSupported() || Notification.permission !== "granted") return;
   try {
     const key = `vt_push_sync:${username}`;
     if (sessionStorage.getItem(key)) return;
     const sub = await currentSub();
-    if (sub && (await fetch("/api/push", json("POST", sub.toJSON()))).ok) sessionStorage.setItem(key, "1");
+    if (!sub) return;
+    const r = await fetch("/api/push", json("POST", { ...sub.toJSON(), sync: true }));
+    if (!r.ok) return;
+    if ((await r.json().catch(() => null))?.skipped) await sub.unsubscribe();
+    else sessionStorage.setItem(key, "1");
   } catch {}
 }
 
@@ -51,11 +55,16 @@ export default function PushSettings({ username }: { username: string }) {
 
   useEffect(() => {
     if (!username) return;
-    void fetch("/api/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setMe);
-    if (!pushSupported()) return void Promise.resolve().then(() => setPerm("unsupported"));
-    void currentSub().then((s) => (setPerm(Notification.permission), setOn(!!s)));
+    void (async () => {
+      const m = (await fetch("/api/me").then((r) => (r.ok ? r.json() : null))) as Me | null;
+      setMe(m);
+      if (!pushSupported()) return setPerm("unsupported");
+      const s = await currentSub();
+      setPerm(Notification.permission);
+      // Tài khoản đã tắt đẩy từ thiết bị khác mà máy này còn sub → gỡ luôn cho khớp trạng thái
+      if (s && m && !m.pushEnabled) return await s.unsubscribe(), setOn(false);
+      setOn(!!s);
+    })();
   }, [username]);
 
   // Đang chờ user bấm Start trong Telegram → hỏi lại mỗi 3s, tối đa 2 phút
@@ -81,12 +90,11 @@ export default function PushSettings({ username }: { username: string }) {
     try {
       if (on) {
         const sub = await currentSub();
-        if (sub) {
-          await fetch("/api/push", json("DELETE", { endpoint: sub.endpoint }));
-          await sub.unsubscribe();
-        }
+        await fetch("/api/push", json("DELETE", { all: true })); // tắt của tài khoản — gỡ sub mọi thiết bị, PWA điện thoại cũng ngừng nhận
+        if (sub) await sub.unsubscribe();
         setOn(false);
-        toast("Đã tắt thông báo đẩy trên thiết bị này");
+        if (me) setMe({ ...me, pushEnabled: false });
+        toast("Đã tắt thông báo đẩy trên mọi thiết bị");
         return;
       }
       const p = await Notification.requestPermission();
@@ -99,6 +107,7 @@ export default function PushSettings({ username }: { username: string }) {
       const r = await fetch("/api/push", json("POST", sub.toJSON()));
       if (!r.ok) return toast((await r.json().catch(() => null))?.error ?? `Lỗi ${r.status}`, false);
       setOn(true);
+      if (me) setMe({ ...me, pushEnabled: true });
       toast("Đã bật thông báo đẩy trên thiết bị này");
     } catch (e) {
       toast(`Không bật được: ${(e as Error).message}`, false);
@@ -113,7 +122,7 @@ export default function PushSettings({ username }: { username: string }) {
       // Gắn lại subscription của thiết bị này với user hiện tại trước (đổi tên / sub cũ bị xóa)
       const sub = await currentSub();
       if (!sub) return (setOn(false), toast("Thiết bị này chưa đăng ký — bấm Bật lại", false));
-      await fetch("/api/push", json("POST", sub.toJSON()));
+      await fetch("/api/push", json("POST", { ...sub.toJSON(), sync: true }));
       const r = await fetch("/api/push/test", json("POST"));
       const j = await r.json();
       if (!r.ok) return toast(j.error ?? `Lỗi ${r.status}`, false);
@@ -197,7 +206,7 @@ export default function PushSettings({ username }: { username: string }) {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-        <span className="font-medium">📲 Thông báo đẩy trên thiết bị này:</span>
+        <span className="font-medium">📲 Thông báo đẩy:</span>
         {perm === "unsupported" ? (
           <span className="text-muted">
             {isIos() && !standalone() ? "iPhone/iPad: bấm Chia sẻ → “Thêm vào MH chính”, mở VN Trader từ màn hình chính rồi bật ở đây (iOS 16.4+)." : "Trình duyệt này không hỗ trợ."}
@@ -257,7 +266,8 @@ export default function PushSettings({ username }: { username: string }) {
         )}
       </div>
       <p className="mt-3 text-muted">
-        Thông báo đẩy hiện khi web đang đóng hoặc chạy nền (đang mở web thì hiện nổi trong trang); Android/máy tính dùng được ngay, iPhone cần thêm vào màn hình
+        Thông báo đẩy hiện khi web đang đóng hoặc chạy nền (đang mở web thì hiện nổi trong trang); Tắt ở đây ngắt trên mọi thiết bị của tài khoản (web lẫn PWA điện
+        thoại) — bật lại thì bấm trên từng máy. Android/máy tính dùng được ngay, iPhone cần thêm vào màn hình
         chính. Chỉ gửi khi có sự kiện thuộc loại đã tick ở trên — tín hiệu mua ra sau khi chốt dữ liệu phiên (khoảng 15h30–17h), cơ hội trong phiên 9h–15h; muốn nhận báo cáo vị thế mỗi
         30 phút thì tick “Báo cáo vị thế định kỳ”. Tín hiệu mua gửi cho mọi người; cắt lỗ/chốt lời chỉ gửi cho chủ vị thế. Tín hiệu dựa trên giá + khối lượng, chỉ để tham khảo — không phải khuyến nghị.
       </p>

@@ -52,13 +52,14 @@ export async function pushAlert(html: string, a: WebAlert): Promise<void> {
  * Đẩy thông báo ra ngoài web: Telegram riêng (user khác owner đã liên kết — owner đã nhận
  * qua TELEGRAM_CHAT_ID) + web push mọi thiết bị đã bật. Lọc theo User.alertKinds.
  */
-async function fanOut(row: { id: number; kind: string; title: string; body: string; ticker: string | null; userId: number | null }, html: string) {
+async function fanOut(row: { id: number; kind: string; level: string; title: string; body: string; ticker: string | null; userId: number | null }, html: string) {
   const users = await prisma.user.findMany({
     where: { ...(row.userId === null ? {} : { id: row.userId }), alertKinds: { has: row.kind }, OR: [{ tgChatId: { not: null } }, { pushSubs: { some: {} } }] },
     select: { id: true, owner: true, tgChatId: true, pushSubs: true },
   });
   if (!users.length) return;
-  const payload = { title: row.title, body: row.body.slice(0, 1000), url: alertHref(row), tag: `vt-${row.id}` };
+  // Tag gom theo loại+mã: tin mới thay tin cũ cùng loại trên máy (báo cáo vị thế 30ph/lần không chất chồng).
+  const payload = { title: row.title, body: row.body.slice(0, 1000), url: alertHref(row), tag: `vt-${row.kind}${row.ticker ? `-${row.ticker}` : ""}`, kind: row.kind, level: row.level };
   const jobs: Promise<unknown>[] = [];
   for (const u of users) {
     if (u.tgChatId && !u.owner && process.env.TELEGRAM_BOT_TOKEN)

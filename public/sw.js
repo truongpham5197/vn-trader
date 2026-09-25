@@ -37,6 +37,8 @@ self.addEventListener("push", (e) => {
       return self.registration.showNotification(d.title || "VN Trader", {
         body: d.body || "",
         tag: d.tag,
+        renotify: d.level === "danger" || d.level === "warn", // thay tin cũ vẫn rung lại (thẻ cùng tag)
+        requireInteraction: d.level === "danger", // cắt lỗ/kill switch giữ trên màn hình tới khi bấm
         data: { url: d.url || "/" },
         icon: "/icon-192.png",
         badge: "/icon-192.png",

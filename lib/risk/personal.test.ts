@@ -3,8 +3,8 @@ import { getPersonalSignalPlan, type PersonalPlanDeps, type SignalForPlan } from
 import { NEED_USER, type AppUser } from "../user";
 import type { PlanResult } from "./plan";
 
-const alice: AppUser = { id: 2, username: "Alice", owner: false, navVnd: 500e6, riskPct: 0.01, watchlist: [] };
-const bob: AppUser = { id: 3, username: "Bob", owner: false, navVnd: 100e6, riskPct: 0.01, watchlist: [] };
+const alice: AppUser = { id: 2, username: "Alice", owner: false, navVnd: 500e6, riskPct: 0.01, watchlist: [], pushEnabled: true };
+const bob: AppUser = { id: 3, username: "Bob", owner: false, navVnd: 100e6, riskPct: 0.01, watchlist: [], pushEnabled: true };
 
 const signal: SignalForPlan = {
   id: 11,

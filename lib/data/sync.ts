@@ -23,6 +23,7 @@ export async function syncSymbols(): Promise<number> {
         companyName: s.companyName,
         sector: sectors.get(s.ticker) ?? null,
         bandPct: BAND_PCT[s.exchange],
+        kind: s.kind,
         active: true,
       },
       create: {
@@ -31,6 +32,7 @@ export async function syncSymbols(): Promise<number> {
         companyName: s.companyName,
         sector: sectors.get(s.ticker) ?? null,
         bandPct: BAND_PCT[s.exchange],
+        kind: s.kind,
       },
     });
     count++;

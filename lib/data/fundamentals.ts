@@ -20,6 +20,7 @@ export interface NewsItem {
   title: string;
   url: string | null;
   type: string;
+  ticker?: string; // chỉ có khi lấy feed nhiều mã (/api/news không lọc mã)
 }
 
 export interface Fundamentals {
@@ -39,7 +40,7 @@ export interface FundNote {
   text: string;
 }
 
-const NEWS_TYPE: Record<string, string> = {
+export const NEWS_TYPE: Record<string, string> = {
   investor_transaction: "GD cổ đông lớn/nội bộ",
   dividend: "Cổ tức",
   financialstatement: "BCTC",
@@ -48,6 +49,23 @@ const NEWS_TYPE: Record<string, string> = {
   personnel: "Nhân sự",
   issue: "Phát hành",
 };
+
+/** Map 1 record news VNDirect → NewsItem (dùng chung fetchFundamentals + /api/news). */
+export const toNewsItem = (n: {
+  newsDate: string;
+  newsTitle: string;
+  newsUrl?: string;
+  dstockUrl?: string;
+  newsType: string;
+  newsGroup?: string;
+  tagCodes?: string;
+}): NewsItem => ({
+  date: n.newsDate,
+  title: n.newsTitle,
+  url: n.newsUrl || n.dstockUrl || null,
+  type: NEWS_TYPE[n.newsType] ?? (n.newsGroup?.includes("disclosure") ? "Công bố" : "Báo chí"),
+  ticker: n.tagCodes?.split(",")[0],
+});
 
 const quarterLabel = (d: string) => `Q${Math.ceil(Number(d.slice(5, 7)) / 3)}/${d.slice(0, 4)}`;
 
@@ -94,7 +112,7 @@ export async function fetchFundamentals(ticker: string, today = new Date()): Pro
     news: (news?.data ?? [])
       .filter((n) => n.newsDate >= since)
       .slice(0, 6)
-      .map((n) => ({ date: n.newsDate, title: n.newsTitle, url: n.newsUrl || n.dstockUrl || null, type: NEWS_TYPE[n.newsType] ?? (n.newsGroup?.includes("disclosure") ? "Công bố" : "Báo chí") })),
+      .map(toNewsItem),
   };
 }
 

@@ -14,6 +14,7 @@ model Symbol {
   companyName String?
   sector      String?
   bandPct     Float // 0.07 | 0.10 | 0.15
+  kind        String     @default("stock") // stock | fund (chứng chỉ quỹ ETF/IFC)
   active      Boolean    @default(true)
   bars        DailyBar[]
   signals     Signal[]

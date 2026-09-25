@@ -113,7 +113,7 @@ export default async function StockPage({
             </h1>
             <div className="text-sm text-muted">{sym.companyName ?? "—"}</div>
             <div className="mt-0.5 text-xs text-muted">
-              {sym.sector ?? "Chưa rõ ngành"} · biên độ ±
+              {sym.kind === "fund" ? "Chứng chỉ quỹ" : (sym.sector ?? "Chưa rõ ngành")} · biên độ ±
               {(sym.bandPct * 100).toFixed(0)}%
               {!sym.active && " · không còn giao dịch"}
             </div>
@@ -241,8 +241,17 @@ export default async function StockPage({
         </section>
 
         <section className="card p-4 text-sm">
-          <h2 className="mb-2 font-semibold">🏭 Ngành {sym.sector ?? "—"}</h2>
-          {sector ? (
+          <h2 className="mb-2 font-semibold">🏭 {sym.kind === "fund" ? "Chứng chỉ quỹ" : `Ngành ${sym.sector ?? "—"}`}</h2>
+          {sym.kind === "fund" ? (
+            <p className="text-muted">
+              Chứng chỉ quỹ — giá giao dịch như cổ phiếu nhưng không có ngành/BCTC
+              doanh nghiệp. Xem các quỹ khác ở{" "}
+              <Link href="/su-kien" className="text-accent hover:underline">
+                Sự kiện &amp; chứng chỉ quỹ
+              </Link>
+              .
+            </p>
+          ) : sector ? (
             <>
               <p className="leading-relaxed">{sector.summary}</p>
               <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs leading-relaxed text-muted">

@@ -11,4 +11,5 @@ export interface ListedSymbol {
   ticker: string;
   exchange: string; // HOSE | HNX | UPCOM
   companyName: string | null;
+  kind: "stock" | "fund"; // fund = chứng chỉ quỹ (ETF/IFC)
 }

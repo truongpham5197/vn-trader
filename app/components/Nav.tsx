@@ -16,6 +16,7 @@ const LINKS = [
   ["/gia-sau", "Giá sau báo", "📊", "Giá sau"],
   ["/journal", "Vị thế", "💼", "Vị thế"],
   ["/sectors", "Nhóm ngành", "🏭", "Ngành"],
+  ["/su-kien", "Sự kiện & quỹ", "📅", "Sự kiện"],
   ["/backtest", "Giả lập mua bán", "🧪", "Giả lập"],
   ["/settings", "Cài đặt", "⚙️", "Cài đặt"],
 ] as const;
@@ -54,7 +55,7 @@ export default function Nav({ username }: { username: string | null }) {
           ))}
         </nav>
       </header>
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-7 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-8 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden">
         {LINKS.map(([href, , icon, short]) => (
           <Link
             key={href}

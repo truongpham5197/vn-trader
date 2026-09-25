@@ -9,6 +9,7 @@ const DEFAULTS: Record<string, string> = {
   universeMinValueVnd: "5000000000", // GTGD TB 20 phiên > 5 tỷ (universe=liquid)
   universe: "liquid", // vn30 | liquid | all — vn30 đa số ngày 0 tín hiệu (2026-09-23)
   scanEnabled: "true",
+  learnEnabled: "true", // tự học chiến lược (lib/learn.ts) — tắt = scan vẫn chạy nhưng không tự đổi tham số
   paperTrading: process.env.PAPER_TRADING ?? "true",
   killSwitch: process.env.KILL_SWITCH ?? "false",
 };

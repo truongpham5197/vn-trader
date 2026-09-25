@@ -23,8 +23,15 @@ Build local cần `DATABASE_URL` hợp lệ — `.env` đang trỏ Neon. Dùng U
 ## 2. Kiến trúc nhanh
 
 ```
-lib/data/      vndirect.ts (list mã + ngành ICB), dnse.ts (OHLCV), sync.ts,
-               http.ts (fetch retry 3×, timeout 15s)
+lib/data/      vndirect.ts (list mã + ngành ICB + chứng chỉ quỹ ETF/IFC →
+               Symbol.kind "fund"), dnse.ts (OHLCV — có cả nến phút cho ETF),
+               sync.ts, http.ts (fetch retry 3×, timeout 15s)
+               events.ts — VNDirect /v4/events: GDKHQ/cổ tức/ĐHCĐ/phát hành/
+               chế tài GD → CorpEvent {group,exDate,payDate,dividend,ratio}.
+               Chú ý type LISTED có ngày đăng ký xa (2036) → fetch "sắp tới"
+               tách riêng (UPCOMING_TYPES) sort effectiveDate desc.
+               NEWS_TYPE + toNewsItem dùng chung cho fetchFundamentals +
+               /api/news (lọc theo mã ?ticker= + loại ?type=dividend…).
                fundamentals.ts — VNDirect finfo: P/E P/B ROE cổ tức vốn hóa,
                DT/LN 8 quý, tin 45 ngày → summarizeFundamentals (câu dễ hiểu
                + tone) + formatFundamentalsTg. Dùng ở alert tín hiệu (scan
@@ -160,6 +167,9 @@ app/api/quotes    GET ?tickers=A,B → giá nến 1m DNSE (cache 30s trong
                useQuotes/LivePrice/LiveBadge
 app/api/symbols   GET ?q= → ≤8 mã (mã/tên công ty, bỏ dấu) cho StockSearch
                trên Nav ("/" để focus) → /stock/[ticker]
+app/api/events    GET ?ticker= → CorpEvent[] (cache 30ph) — trống = toàn TT
+app/api/news      GET ?ticker=&type= → tin theo mã/loại (cache 1h); không
+               ticker bắt buộc type. Loại hợp lệ = keys(NEWS_TYPE)
 app/api/telegram/webhook  production bot endpoint (secret header check)
 app/api/telegram/commands POST → setMyCommands (menu "/" của bot) — gọi
                từ Vercel vì mạng local chặn api.telegram.org
@@ -206,6 +216,9 @@ app/components/Fundamentals.tsx  useFundamentals (cache promise, lazy IO),
                FundBadge/BusinessBox/NewsList; PickCard.tsx thẻ gợi ý live
 lib/fees.ts    BUY_FEE/SELL_FEE_TAX/netPnl/netPnlPct — dùng chung server+client
 Trang: / (tổng quan), /signals (chip ngày + tab trạng thái), /journal,
+               /su-kien (sự kiện doanh nghiệp + tin cổ tức + bảng giá chứng
+               chỉ quỹ; lọc theo mã; /stock cũng có thẻ Sự kiện + chip lọc
+               loại tin ở NewsList),
                /sectors, /backtest, /settings (cấu hình, chiến lược, theo dõi),
                /stock/[ticker] (giá live, biểu đồ, setup+lý do, ngành, vị thế,
                tín hiệu, kinh doanh/tin, nút theo dõi)

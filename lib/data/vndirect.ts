@@ -12,6 +12,7 @@ export const BAND_PCT: Record<string, number> = {
 /**
  * List theo từng sàn, size=1000 → mỗi sàn 1 request, tránh pagination
  * drift của VNDirect (mất/trùng record khi lật nhiều page).
+ * Gồm cả chứng chỉ quỹ (ETF + IFC, ~31 mã, hầu hết HOSE) → kind "fund".
  */
 export async function listListedSymbols(): Promise<ListedSymbol[]> {
   const byTicker = new Map<string, ListedSymbol>();
@@ -26,8 +27,22 @@ export async function listListedSymbols(): Promise<ListedSymbol[]> {
           ticker: s.code,
           exchange: s.floor,
           companyName: s.companyName ?? null,
+          kind: "stock",
         });
       }
+    }
+  }
+  const funds = await fetchJson<{
+    data: { code: string; floor: string; companyName?: string }[];
+  }>(`${BASE}/stocks?q=type:ETF,IFC~status:LISTED&size=200`).catch(() => null);
+  for (const s of funds?.data ?? []) {
+    if (BAND_PCT[s.floor]) {
+      byTicker.set(s.code, {
+        ticker: s.code,
+        exchange: s.floor,
+        companyName: s.companyName ?? null,
+        kind: "fund",
+      });
     }
   }
   return [...byTicker.values()];

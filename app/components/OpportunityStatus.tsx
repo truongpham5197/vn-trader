@@ -26,10 +26,10 @@ const toneOf = (a: OpportunityAssessment) =>
   a.actionable ? "text-gain" : ["invalid", "expired"].includes(a.state) ? "text-loss" : "text-amber-300";
 
 /** Nhãn quyết định hiện luôn; giải thích, R:R, nguồn giá nằm sau "Xem thêm". */
-export default function OpportunityStatus({ ticker, date, latestSession, confirmed = false, buyZone, stop, target, trigger, marketWeak, extra }: {
+export default function OpportunityStatus({ ticker, date, latestSession, confirmed = false, buyZone, stop, target, trigger, marketWeak, extra, lead }: {
   ticker: string; date?: string; latestSession?: string | null; confirmed?: boolean;
   buyZone: [number, number] | null; stop: number; target: number; trigger?: string; marketWeak?: boolean;
-  extra?: ReactNode;
+  extra?: ReactNode; lead?: ReactNode; // nhãn trạng thái gợi ý (Chờ xử lý…) ghép cùng dòng để khỏi chồng 2 tầng
 }) {
   const { ref, quote } = useQuote<HTMLDivElement>(ticker);
   const { style } = useVoice();
@@ -41,7 +41,7 @@ export default function OpportunityStatus({ ticker, date, latestSession, confirm
   const prefix = halt && fresh ? (halt === "lunch" ? "Nghỉ trưa · " : "Sắp đóng cửa · ") : "";
   return (
     <div ref={ref} className="mt-1">
-      <p className={`text-xs font-medium ${toneOf(assessment)}`}>{prefix}{style.opp(assessment.state, assessment.label)}</p>
+      <p className={`text-xs font-medium ${toneOf(assessment)}`}>{lead}{prefix}{style.opp(assessment.state, assessment.label)}</p>
       <More label={style.heads.more}>
         {extra}
         {confirmed && <p className="text-xs text-muted">Đã xác nhận điều kiện kỹ thuật khi đóng nến; chưa phải quyết định mua.</p>}

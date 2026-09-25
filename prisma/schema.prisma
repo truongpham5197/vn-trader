@@ -61,6 +61,7 @@ model Signal {
   rr         Float
   reason     String?
   plan       String? // vì sao target đó + kỳ vọng số phiên
+  params     String? // JSON tham số chiến lược lúc sinh tín hiệu — để tự học quy kết quả về đúng bộ tham số
   buyLow     Float?  // vùng mua an toàn [buyLow, buyHigh]
   buyHigh    Float?
   status     String   @default("new") // new | notified | taken | skipped | expired | filled
@@ -178,6 +179,21 @@ model BacktestRun {
   equity        String // JSON
   trades        String // JSON
   createdAt     DateTime @default(now())
+}
+
+/// Nhật ký tự học (lib/learn.ts): mỗi lần tham số chiến lược đổi — nudge theo
+/// gợi ý đã chấm, kiểm chứng backtest tuần, revert về mặc định, hoặc owner chỉnh tay.
+model StrategyTune {
+  id           Int      @id @default(autoincrement())
+  strategyType String
+  kind         String // nudge | weekly | revert | manual
+  fromParams   String // JSON
+  toParams     String // JSON
+  reason       String
+  evidence     String? // JSON — thống kê/metrics từng bộ tham số đã chấm
+  createdAt    DateTime @default(now())
+
+  @@index([strategyType, createdAt])
 }
 
 model Setting {

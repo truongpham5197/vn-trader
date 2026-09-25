@@ -9,6 +9,7 @@ import { allWatchlists } from "./trades";
 import { fetchFundamentals, formatFundamentalsTg } from "./data/fundamentals";
 import { inVnSession, vnToday } from "./vn-time";
 import { gradeSignals, sendPersonalDigests, strategyRecords } from "./report/accountability";
+import { learnFromOutcomes } from "./learn";
 import { recordLine, type OutcomeStats } from "./report/signal-outcome";
 import {
   avgValueNewest,
@@ -165,6 +166,7 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
           rr: cand.rr,
           reason: cand.reason,
           plan: cand.plan,
+          params: JSON.stringify(params), // snapshot — tự học quy outcome về đúng bộ tham số
           buyLow: cand.buyZone?.[0],
           buyHigh: cand.buyZone?.[1],
           status: "new",
@@ -224,6 +226,8 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
   // Mỗi user 1 tin riêng: giọng riêng, xếp theo rổ đang giữ, trả bài gợi ý cũ
   if (notify && completed) {
     await sendPersonalDigests(completed, today, graded, records).catch((e) => console.error("[scan] digest", e));
+    // Tự học: mô phỏng bộ tham số lân cận trên chính gợi ý đã chấm → dịch 1 bậc nếu tốt hơn rõ
+    await learnFromOutcomes(completed).catch((e) => (console.error("[scan] learn", e), [] as string[]));
   }
 
   return { scanned: symbols.length, filtered, signals, notified };

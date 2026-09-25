@@ -27,6 +27,8 @@ async function handle(req: Request, notify: boolean) {
   if (dow === "Sun") {
     const { weeklyReport } = await import("@/lib/journal/report");
     await weeklyReport().catch((e) => console.error("[scan] weekly", e));
+    const { learnWeekly } = await import("@/lib/learn");
+    await learnWeekly().catch((e) => console.error("[scan] learn-weekly", e));
   }
 
   return NextResponse.json({ ...r, expired });

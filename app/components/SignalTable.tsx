@@ -102,14 +102,14 @@ export default function SignalTable({
                     <div className="font-semibold">
                       {s.symbol.ticker}{" "}
                       <span className="text-[10px] font-normal text-accent">
-                        {expanded ? "▾ ẩn" : "▸ vì sao?"}
+                        {expanded ? "▾ ẩn" : "▸ chi tiết"}
                       </span>
                     </div>
                     <div className="max-w-32 truncate text-[11px] text-muted">
                       {s.symbol.sector ?? ""}
                     </div>
                   </td>
-                  <td className="p-3 text-muted">{strategyLabel(s.strategy.name)}</td>
+                  <td className="whitespace-nowrap p-3 text-muted">{strategyLabel(s.strategy.name)}</td>
                   <td className="num p-3 text-right">
                     {s.buyLow && s.buyHigh
                       ? `${f2(s.buyLow)}–${f2(s.buyHigh)}`
@@ -128,9 +128,9 @@ export default function SignalTable({
                     <span className="text-muted">+{up.toFixed(1)}%</span>
                   </td>
                   <td className="num p-3 text-right">{s.rr.toFixed(1)}</td>
-                  <td className="p-3">
-                    <span className={cls}>{label}</span>
+                  <td className="min-w-40 p-3">
                     <OpportunityStatus ticker={s.symbol.ticker} date={s.date} latestSession={latestSession} confirmed
+                      lead={<span className={`font-normal ${cls}`}>{label} · </span>}
                       buyZone={s.buyLow !== null && s.buyHigh !== null ? [s.buyLow, s.buyHigh] : null}
                       stop={s.stop} target={s.target} marketWeak={marketWeak} />
                   </td>
@@ -240,7 +240,7 @@ function SignalActions({ s }: { s: SignalRow }) {
   const url = `/api/signals/${s.id}`;
   const pending = s.status === "new" || s.status === "notified";
   return (
-    <div className="flex flex-wrap justify-end gap-1">
+    <div className="flex flex-nowrap items-center justify-end gap-1 whitespace-nowrap">
       {pending ? (
         <>
           <Button size="sm" tone="gain" onClick={() => setBuy(true)}>

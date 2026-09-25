@@ -1,6 +1,6 @@
 import { prisma } from "./prisma";
 import { STRATEGIES } from "./strategy";
-import { getSetting, setSetting } from "./settings";
+import { getBool, getSetting, setSetting } from "./settings";
 import { esc, sendTelegram } from "./telegram/notify";
 import { addCalendarDays } from "./report/signal-evidence";
 import { FILL_SESSIONS, HOLD_SESSIONS, outcomeStats, resolveOutcome } from "./report/signal-outcome";
@@ -305,7 +305,7 @@ async function nudgeStrategy(st: StrategyRow, def: StrategyDef, today: string): 
 
 /** Sau gradeSignals mỗi phiên — 1 lần/phiên nến (Setting learnDate). Trả về các chiến lược vừa tự đổi. */
 export async function learnFromOutcomes(completed: string): Promise<string[]> {
-  if ((await getSetting("learnDate")) === completed) return [];
+  if (!(await getBool("learnEnabled")) || (await getSetting("learnDate")) === completed) return [];
   await setSetting("learnDate", completed);
   const today = vnToday();
   const tuned: string[] = [];
@@ -323,6 +323,7 @@ export async function learnFromOutcomes(completed: string): Promise<string[]> {
 
 /** Chủ nhật: backtest kiểm chứng bộ tham số hiện tại vs mặc định vs lân cận đáng thử nhất. */
 export async function learnWeekly(): Promise<{ tuned: string[] }> {
+  if (!(await getBool("learnEnabled"))) return { tuned: [] };
   const today = vnToday();
   const fromDate = addCalendarDays(today, -WEEKLY_BT_DAYS);
   const deadline = Date.now() + WEEKLY_DEADLINE_MS;

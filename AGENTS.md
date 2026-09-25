@@ -198,7 +198,8 @@ app/api/telegram/commands POST → setMyCommands (menu "/" của bot) — gọi
                từ Vercel vì mạng local chặn api.telegram.org
 app/api/settings  POST {key,value} — web dashboard chỉnh: navVnd, riskPct
                (TỶ LỆ 0.01=1%, chặn ≤0.03), universe, universeMinValueVnd,
-               scanEnabled, killSwitch (bật → tắt scan, báo Telegram).
+               scanEnabled, learnEnabled (tắt = giữ nguyên tham số, học
+               không chạy), killSwitch (bật → tắt scan, báo Telegram).
                paperTrading KHÔNG sửa từ web. KHÔNG auth — user chọn
                2026-09-22 (UI không cần password); an toàn dựa vào validate
                + báo Telegram mỗi lần đổi scanner/kill

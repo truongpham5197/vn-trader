@@ -15,7 +15,7 @@ export default async function SettingsPage() {
   await ensureStrategies(prisma);
   const u = (await currentUser()) ?? GUEST;
   const since = new Date(Date.now() - 30 * 86400e3).toISOString().slice(0, 10);
-  const [strategies, counts, watchlist, nav, riskPct, universe, minValue, scanEnabled, kill, paper] = await Promise.all([
+  const [strategies, counts, watchlist, nav, riskPct, universe, minValue, scanEnabled, learnEnabled, kill, paper] = await Promise.all([
     prisma.strategy.findMany({ orderBy: { id: "asc" } }),
     prisma.signal.groupBy({ by: ["strategyId"], where: { date: { gte: since } }, _count: { _all: true } }),
     u.watchlist,
@@ -24,6 +24,7 @@ export default async function SettingsPage() {
     getSetting("universe"),
     getNum("universeMinValueVnd"),
     getBool("scanEnabled"),
+    getBool("learnEnabled"),
     getBool("killSwitch"),
     getBool("paperTrading"),
   ]);
@@ -45,6 +46,7 @@ export default async function SettingsPage() {
           universe={universe}
           minValue={minValue}
           scanEnabled={scanEnabled}
+          learnEnabled={learnEnabled}
           kill={kill}
           paper={paper}
           owner={u.owner}

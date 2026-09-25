@@ -46,6 +46,7 @@ export default function SettingsPanel(p: {
   universe: string;
   minValue: number;
   scanEnabled: boolean;
+  learnEnabled: boolean;
   kill: boolean;
   paper: boolean;
   owner: boolean;
@@ -71,7 +72,7 @@ export default function SettingsPanel(p: {
         Lưu ngay khi sửa (bấm ra ngoài ô). Vốn + rủi ro là của riêng{" "}
         <b className="text-foreground">{p.username}</b>.{" "}
         {p.owner
-          ? "Đổi Kill switch / Quét tín hiệu sẽ báo Telegram."
+          ? "Đổi Kill switch / Quét tín hiệu / Tự học sẽ báo Telegram."
           : "Mục hệ thống (quét, kill switch, danh sách quét) chỉ chủ app đổi được."}
       </div>
       <div className="mt-2 flex flex-wrap items-end gap-3 text-xs">
@@ -83,6 +84,15 @@ export default function SettingsPanel(p: {
             offText="⏸ Đang tắt"
             onChange={(v) => save("scanEnabled", String(v))}
           />
+          <div title="App tự đổi tham số chiến lược theo kết quả gợi ý + kiểm chứng backtest tuần. Tắt = giữ nguyên tham số hiện tại, vẫn quét bình thường.">
+            <Toggle
+              label="Tự học chiến lược"
+              on={p.learnEnabled}
+              onText="🧠 Đang học"
+              offText="⏸ Đang tắt"
+              onChange={(v) => save("learnEnabled", String(v))}
+            />
+          </div>
           <Toggle
             label="Kill switch"
             danger

@@ -16,6 +16,7 @@ const EDITABLE: Record<string, (v: string) => boolean> = {
   universe: (v) => ["vn30", "liquid", "all"].includes(v),
   universeMinValueVnd: (v) => Number(v) >= 0,
   scanEnabled: bool,
+  learnEnabled: bool,
   killSwitch: bool,
 };
 
@@ -36,11 +37,13 @@ export async function POST(req: Request) {
   await setSetting(key, value);
   // Giống /kill: bật kill switch thì dừng luôn scanner
   if (key === "killSwitch" && value === "true") await setSetting("scanEnabled", "false");
-  if (key === "killSwitch" || key === "scanEnabled") {
+  if (key === "killSwitch" || key === "scanEnabled" || key === "learnEnabled") {
     const msg =
       key === "killSwitch"
         ? value === "true" ? "🛑 KILL SWITCH ON (từ web) — scanner dừng, mọi order bị chặn." : "✅ Kill switch OFF (từ web)"
-        : value === "true" ? "▶️ Scanner ON (từ web)" : "⏸ Scanner OFF (từ web)";
+        : key === "learnEnabled"
+          ? value === "true" ? "🧠 Tự học chiến lược ON (từ web)" : "⏸ Tự học chiến lược OFF (từ web) — giữ nguyên tham số hiện tại"
+          : value === "true" ? "▶️ Scanner ON (từ web)" : "⏸ Scanner OFF (từ web)";
     await sendTelegram(msg, undefined, { kind: "system", level: key === "killSwitch" && value === "true" ? "danger" : "info", userId: null }).catch(() => false);
   }
   return NextResponse.json({ ok: true });

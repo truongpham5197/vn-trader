@@ -1,6 +1,7 @@
 import { px } from "../format";
 import { netPnl } from "../fees";
 import { levelState } from "./levels";
+import { ADVICE_DEFAULTS, type AdviceParams } from "../advice-params";
 import type { AdviceStyle, LineKey } from "../persona-style";
 
 export type AdviceTone = "loss" | "gain" | "neutral";
@@ -29,14 +30,14 @@ const LINE = {
   flat: "Vẫn trong vùng, thở đi",
 } as const;
 
-/** Lời khuyên vị thế đang giữ. Vui, hơi mỉa — là gợi ý, không phải lệnh, không hứa lãi. */
+/** Lời khuyên vị thế đang giữ. Vui, hơi mỉa — là gợi ý, không phải lệnh, không hứa lãi. Ngưỡng theo AdviceParams (tự học). */
 export function positionAdvice(p: {
   price: number | null;
   stop: number | null;
   target: number | null;
   pnlPct: number | null;
   sessionsHeld: number;
-}): PositionAdvice {
+}, ap: AdviceParams = ADVICE_DEFAULTS): PositionAdvice {
   const locked = p.sessionsHeld < 2;
   const wait = locked ? ` Hàng chưa về (T+${p.sessionsHeld}), từ từ. App không bán hộ.` : "";
   if (p.price === null || !(p.price > 0)) {
@@ -49,7 +50,7 @@ export function positionAdvice(p: {
       tone: "loss",
     };
   }
-  const lv = levelState(p.price, p.stop, p.target);
+  const lv = levelState(p.price, p.stop, p.target, ap.nearPct);
   if (lv?.kind === "stop-broken") {
     return {
       line: locked ? LINE.stopLater : LINE.stopNow,
@@ -86,14 +87,14 @@ export function positionAdvice(p: {
     };
   }
   const pnl = p.pnlPct;
-  if (pnl !== null && pnl >= 3) {
+  if (pnl !== null && pnl >= ap.pnlUp) {
     return {
       line: LINE.green,
       detail: `Đang lãi ${pnl.toFixed(1)}%, chưa tới chốt. Lời khuyên: chưa bán chỉ vì đã xanh. Muốn khóa thì tự nâng cắt lỗ lên trên giá vốn.`,
       tone: "gain",
     };
   }
-  if (pnl !== null && pnl <= -3) {
+  if (pnl !== null && pnl <= -ap.pnlDown) {
     return {
       line: LINE.red,
       detail: `Đang lỗ ${pnl.toFixed(1)}% nhưng chưa chạm cắt lỗ. Lời khuyên: giữ đến mức đã đặt, hoặc bán bớt nếu muốn giảm rủi ro. Không mua thêm để gỡ.`,
@@ -369,9 +370,9 @@ const join = (xs: string[]) => xs.join(", ");
 const short = (xs: string[]) => (xs.length <= 4 ? join(xs) : `${xs.slice(0, 3).join(", ")} và ${xs.length - 3} mã nữa`);
 
 /** Tâm sự cả rổ. Vui cho đỡ căng — lời khuyên theo kế hoạch đã đặt, không phải lệnh. */
-export function bookAdvice(rows: BookPosition[]): BookAdvice | null {
+export function bookAdvice(rows: BookPosition[], ap: AdviceParams = ADVICE_DEFAULTS): BookAdvice | null {
   if (!rows.length) return null;
-  const tagged = rows.map((p) => ({ ...p, line: positionAdvice(p).line }));
+  const tagged = rows.map((p) => ({ ...p, line: positionAdvice(p, ap).line }));
   const of = (line: string) => tagged.filter((p) => p.line === line).map((p) => p.ticker);
   const sellNow = of(LINE.stopNow);
   const sellLater = of(LINE.stopLater);
@@ -389,7 +390,7 @@ export function bookAdvice(rows: BookPosition[]): BookAdvice | null {
   const total = values.reduce((s, x) => s + x.v, 0);
   const biggest = [...values].sort((a, b) => b.v - a.v)[0];
   const share = total > 0 && biggest ? biggest.v / total : 0;
-  const heavy = biggest && share >= 0.5 && (rows.length >= 3 || share >= 0.6) ? biggest.ticker : null;
+  const heavy = biggest && share >= ap.heavyShare && (rows.length >= 3 || share >= ap.heavyShare + 0.1) ? biggest.ticker : null;
 
   const steps: string[] = [];
   if (sellNow.length) steps.push(`Lời khuyên: cân nhắc bán ${join(sellNow)}. Thủng cắt lỗ rồi. App không bán hộ.`);
@@ -459,14 +460,14 @@ export function bookAdvice(rows: BookPosition[]): BookAdvice | null {
 export const adviceKey = (line: string): LineKey | undefined => (Object.keys(LINE) as LineKey[]).find((k) => LINE[k] === line);
 
 /** Lời khuyên 1 mã theo giọng user — cùng nội dung, khác văn phong. */
-export function voicedPositionAdvice(p: Parameters<typeof positionAdvice>[0], st: AdviceStyle): PositionAdvice {
-  const a = positionAdvice(p);
+export function voicedPositionAdvice(p: Parameters<typeof positionAdvice>[0], st: AdviceStyle, ap: AdviceParams = ADVICE_DEFAULTS): PositionAdvice {
+  const a = positionAdvice(p, ap);
   return { ...a, line: st.pos(adviceKey(a.line), a.line), detail: st.text(a.detail) };
 }
 
 /** Thẻ cả rổ theo giọng user — mọi câu khuyên + giải thích đổi văn phong, số liệu giữ nguyên. */
-export function voicedBookAdvice(rows: BookPosition[], st: AdviceStyle): BookAdvice | null {
-  const a = bookAdvice(rows);
+export function voicedBookAdvice(rows: BookPosition[], st: AdviceStyle, ap: AdviceParams = ADVICE_DEFAULTS): BookAdvice | null {
+  const a = bookAdvice(rows, ap);
   if (!a) return null;
   return {
     ...a,

@@ -6,6 +6,7 @@ import { vnNow } from "../vn-time";
 import { latestSignalDate } from "../signals";
 import { quoteFresh, signalExpired } from "../quote-quality";
 import { assessOpportunity } from "../analysis/opportunity";
+import { getAdviceParams } from "../advice-learn";
 
 export interface Pick {
   ticker: string;
@@ -43,7 +44,7 @@ export function zoneDistancePct(last: number, zone: [number, number]): number {
 export async function collectTopPicks(
   limit = 5,
 ): Promise<{ picks: Pick[]; signalDate: string | null }> {
-  const signalDate = await latestSignalDate();
+  const [signalDate, ap] = await Promise.all([latestSignalDate(), getAdviceParams()]);
   if (!signalDate || signalExpired(signalDate, signalDate)) return { picks: [], signalDate };
 
   const held = new Set(
@@ -79,6 +80,7 @@ export async function collectTopPicks(
     const assessment = assessOpportunity({
       confirmed: true, price: q.last, stop: s.stop, target: s.target, buyZone,
       fresh: quoteFresh(q, new Date(), signalDate), expired: signalExpired(s.date, signalDate),
+      minNetRR: ap.minNetRR,
     });
     if (!assessment.actionable) continue;
     picks.push({

@@ -1,4 +1,4 @@
-/** Khoảng "sát" cắt lỗ / chốt lời: giá còn cách mốc ≤3%. */
+/** Khoảng "sát" cắt lỗ / chốt lời mặc định: giá còn cách mốc ≤3% — tự học đổi qua tham số AdviceParams.nearPct. */
 export const NEAR_PCT = 3;
 
 export type LevelKind = "stop-broken" | "near-stop" | "target-hit" | "near-target";
@@ -16,10 +16,10 @@ const f = (v: number) => String(+v.toFixed(2));
 const p1 = (v: number) => v.toFixed(1);
 
 /**
- * Giá so với cắt lỗ/chốt lời — tách rõ "đã thủng" (giá ≤ cắt lỗ) với "sát" (giá còn trên cắt lỗ ≤3%).
+ * Giá so với cắt lỗ/chốt lời — tách rõ "đã thủng" (giá ≤ cắt lỗ) với "sát" (giá còn trên cắt lỗ ≤nearPct%).
  * Trước đây gộp chung `giá ≤ SL×1.02` → giá 85.3 dưới SL 92.5 vẫn ghi "sát cắt lỗ".
  */
-export function levelState(price: number | null, stop: number | null, target: number | null): LevelState | null {
+export function levelState(price: number | null, stop: number | null, target: number | null, nearPct = NEAR_PCT): LevelState | null {
   if (price === null || !(price > 0)) return null;
   if (stop && price <= stop) {
     const under = (1 - price / stop) * 100;
@@ -39,7 +39,7 @@ export function levelState(price: number | null, stop: number | null, target: nu
       tone: "gain",
     };
   }
-  if (stop && price <= stop * (1 + NEAR_PCT / 100)) {
+  if (stop && price <= stop * (1 + nearPct / 100)) {
     const gap = (price / stop - 1) * 100;
     return {
       kind: "near-stop",
@@ -48,7 +48,7 @@ export function levelState(price: number | null, stop: number | null, target: nu
       tone: "loss",
     };
   }
-  if (target && price >= target * (1 - NEAR_PCT / 100)) {
+  if (target && price >= target * (1 - nearPct / 100)) {
     const gap = (1 - price / target) * 100;
     return {
       kind: "near-target",

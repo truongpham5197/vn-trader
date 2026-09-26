@@ -47,8 +47,8 @@ const tradeOf = (p: PositionLine) => ({
 const sticky = "sticky right-0 z-10 bg-card shadow-[-6px_0_8px_-6px_rgba(0,0,0,.45)]";
 
 function BookGuide({ rows }: { rows: PositionLine[] }) {
-  const { style } = useVoice();
-  const a = voicedBookAdvice(rows, style);
+  const { style, params } = useVoice();
+  const a = voicedBookAdvice(rows, style, params);
   if (!a) return null;
   const h = style.heads;
   const cls = a.tone === "gain" ? "border-gain/40" : a.tone === "loss" ? "border-loss/40" : "";
@@ -91,8 +91,8 @@ function BookGuide({ rows }: { rows: PositionLine[] }) {
 }
 
 function AdviceLine({ p }: { p: PositionLine }) {
-  const { style } = useVoice();
-  const a = voicedPositionAdvice(p, style);
+  const { style, params } = useVoice();
+  const a = voicedPositionAdvice(p, style, params);
   const cls = a.tone === "gain" ? "text-gain" : a.tone === "loss" ? "text-loss" : "text-amber-300";
   return (
     <div className="mt-1 max-w-56">

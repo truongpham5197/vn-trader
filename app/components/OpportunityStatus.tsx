@@ -32,12 +32,12 @@ export default function OpportunityStatus({ ticker, date, latestSession, confirm
   extra?: ReactNode; lead?: ReactNode; // nhãn trạng thái gợi ý (Chờ xử lý…) ghép cùng dòng để khỏi chồng 2 tầng
 }) {
   const { ref, quote } = useQuote<HTMLDivElement>(ticker);
-  const { style } = useVoice();
+  const { style, params } = useVoice();
   const now = new Date();
   const fresh = quoteFresh(quote, now, latestSession ?? date);
   const halt = quoteHalt(now);
   const assessment = assessOpportunity({ confirmed, price: quote?.last ?? null, stop, target, buyZone, marketWeak,
-    fresh, expired: !!date && signalExpired(date, latestSession, now) });
+    fresh, expired: !!date && signalExpired(date, latestSession, now), minNetRR: params.minNetRR });
   const prefix = halt && fresh ? (halt === "lunch" ? "Nghỉ trưa · " : "Sắp đóng cửa · ") : "";
   return (
     <div ref={ref} className="mt-1">

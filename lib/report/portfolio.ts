@@ -1,6 +1,7 @@
 import { prisma } from "../prisma";
 import { ownerId, userNum, type AppUser } from "../user";
 import { formatPositionsReport, positionsReport, type PositionLine } from "./positions";
+import { getAdviceParams } from "../advice-learn";
 import { BUY_FEE, SELL_FEE_TAX } from "../fees";
 
 export interface Portfolio {
@@ -99,7 +100,7 @@ export function formatPortfolio(p: Portfolio): string {
 export async function positionsMessage(lines?: PositionLine[], user?: AppUser): Promise<string> {
   const ls = lines ?? (await positionsReport(user?.id));
   const { voiceOf, moversLine, styleOf } = await import("./voice");
-  const v = await voiceOf(user?.id);
+  const [v, ap] = await Promise.all([voiceOf(user?.id), getAdviceParams()]);
   const head = ls.length ? moversLine(v, ls) : "";
-  return `${head ? `${head}\n\n` : ""}${formatPositionsReport(ls, styleOf(v))}\n\n${formatPortfolio(await loadPortfolio(ls, user))}`;
+  return `${head ? `${head}\n\n` : ""}${formatPositionsReport(ls, styleOf(v), ap)}\n\n${formatPortfolio(await loadPortfolio(ls, user))}`;
 }

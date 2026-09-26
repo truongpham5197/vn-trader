@@ -228,6 +228,9 @@ export async function runScan(opts?: { notify?: boolean }): Promise<ScanResult> 
     await sendPersonalDigests(completed, today, graded, records).catch((e) => console.error("[scan] digest", e));
     // Tự học: mô phỏng bộ tham số lân cận trên chính gợi ý đã chấm → dịch 1 bậc nếu tốt hơn rõ
     await learnFromOutcomes(completed).catch((e) => (console.error("[scan] learn", e), [] as string[]));
+    // Tự học tham số lời khuyên/nhãn trên web (vị thế + gợi ý) — cùng cổng learnEnabled
+    const { learnAdvice } = await import("./advice-learn");
+    await learnAdvice(completed).catch((e) => (console.error("[scan] learn-advice", e), [] as string[]));
   }
 
   return { scanned: symbols.length, filtered, signals, notified };

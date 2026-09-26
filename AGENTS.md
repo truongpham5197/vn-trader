@@ -81,6 +81,30 @@ lib/learn.ts   TỰ HỌC chiến lược (sau gradeSignals trong scan, 1 lần/
                thắng → revert. MỌI thay đổi → model StrategyTune (kind nudge|
                weekly|revert|manual) + Telegram owner kind system. PATCH
                /api/strategies/[id] chỉnh tay cũng ghi StrategyTune manual.
+lib/advice-params.ts  THUẦN (không import prisma — client dùng được):
+               AdviceParams {nearPct, pnlUp, pnlDown, minNetRR, heavyShare}
+               + ADVICE_DEFAULTS + ADVICE_LADDER (thang giới hạn) +
+               ADVICE_LEARNABLE (heavyShare chỉ tay — không có đáp án đúng).
+               Giá trị hiện dùng ở Setting "adviceParams" (JSON, cache 60s).
+lib/advice-learn.ts  TỰ HỌC LỜI KHUYÊN/NHÃN (sau learnFromOutcomes trong
+               scan, 1 lần/phiên — Setting adviceLearnDate, cùng cổng
+               learnEnabled). Thước đo khác learn.ts: nhãn/lời khuyên chấm
+               như bài toán tách đôi — nhãn hiện khi nào thì kết quả cuối đi
+               đúng hướng nhãn (bandStat → precision/recall/F1). Ground truth:
+               Trade đã đóng + DailyBar kỳ giữ (minLow/maxHigh = lúc nhãn đáng
+               lẽ hiện) cho nearPct/pnlUp/pnlDown; Signal đã chấm → R:R sau phí
+               tại giá vào cho minNetRR. Mỗi tham số chỉ dịch ±1 bậc khi đủ
+               ≥15 mẫu + F1 hơn ≥0.05 + ≥6 lần nhãn hiện + ≥5 mẫu mới sau lần
+               chỉnh trước. Mọi đổi → model AdviceTune (kind nudge|manual) +
+               Telegram owner. Nhầm thì nhịp sau tự dịch lại (hill-climb 2
+               chiều). getAdviceParams()/setAdviceParams() cũng nằm file này.
+               Dùng params: levels.ts levelState(nearPct), advice.ts
+               positionAdvice/bookAdvice/voiced*(ap), positions.ts
+               formatPositionsReport(ap), portfolio.ts positionsMessage,
+               top-picks.ts + OpportunityStatus (minNetRR). Client lấy qua
+               VoiceProvider: useVoice() → {style, params, setVoice} — layout
+               nạp getAdviceParams() 1 lần, áp toàn web (PositionsTable,
+               OpportunityStatus/PickCard…).
 lib/persona.ts + lib/report/voice.ts  giọng thông báo: 10 phong cách (User.persona,
                mặc định trải đều, user tự chọn ở /settings#thong-bao, ĐƯỢC trùng
                cả với owner). Cùng phong cách → variantOf (thứ tự id) đổi câu +
@@ -100,8 +124,8 @@ lib/corp-action.ts  GDKHQ: detectAdjustment (fresh/stored factor) +
                applyCorporateAction (×factor vào bars cũ + Trade/Signal mở)
 lib/risk/      sizing.ts (1% NAV, lot 100), suggest.ts (/plan gợi ý SL/TP),
                plan.ts + personal.ts (KL theo từng user — xem mục scan ở trên)
-               levels.ts — levelState(giá, SL, TP): "đã thủng cắt lỗ −X%" (giá ≤ SL)
-               tách khỏi "sát cắt lỗ" (còn trên SL ≤3%), tương tự chốt lời —
+               levels.ts — levelState(giá, SL, TP, nearPct): "đã thủng cắt lỗ −X%" (giá ≤ SL)
+               tách khỏi "sát cắt lỗ" (còn trên SL ≤nearPct%, tự học), tương tự chốt lời —
                dùng chung badge web, báo cáo vị thế Telegram, cảnh báo watcher.
                advice.ts — thẻ gợi ý cả rổ chỉ cảnh báo theo SL/TP đã đặt
                (trung bình giá / lỗ / chốt lời), giọng vui. Có thể khuyên bán

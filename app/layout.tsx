@@ -7,6 +7,7 @@ import { Toaster } from "./components/ui";
 import { QuotesProvider } from "./components/live";
 import { VoiceProvider } from "./components/VoiceProvider";
 import { voiceOf } from "@/lib/report/voice";
+import { getAdviceParams } from "@/lib/advice-learn";
 import "./globals.css";
 
 const themeBoot = `(function(){try{if(localStorage.getItem("vt_theme")==="light")document.documentElement.classList.add("light")}catch(e){}})()`;
@@ -35,7 +36,10 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = await currentUser().catch(() => null);
-  const voice = user ? await voiceOf(user.id).catch(() => null) : null;
+  const [voice, adviceParams] = await Promise.all([
+    user ? voiceOf(user.id).catch(() => null) : null,
+    getAdviceParams().catch(() => undefined),
+  ]);
   return (
     <html
       lang="vi"
@@ -46,7 +50,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         {themeBoot}
       </Script>
       <body className="min-h-full flex flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] sm:pb-0">
-        <VoiceProvider initial={{ persona: voice?.p.id ?? null, variant: voice?.variant ?? 0 }}>
+        <VoiceProvider initial={{ persona: voice?.p.id ?? null, variant: voice?.variant ?? 0 }} params={adviceParams}>
           <QuotesProvider>
             <Nav username={user?.username ?? null} />
             {children}

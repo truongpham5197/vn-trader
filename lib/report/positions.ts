@@ -5,6 +5,7 @@ import { px } from "../format";
 import { BUY_FEE, SELL_FEE_TAX } from "../fees";
 import { levelState } from "../risk/levels";
 import { voicedPositionAdvice } from "../risk/advice";
+import { ADVICE_DEFAULTS, type AdviceParams } from "../advice-params";
 import { esc } from "../telegram/notify";
 import type { AdviceStyle } from "../persona-style";
 
@@ -85,17 +86,17 @@ export async function positionsReport(userId?: number): Promise<PositionLine[]> 
 
 const LEVEL_ICON = { "stop-broken": "🛑", "near-stop": "⚠️", "target-hit": "🎯", "near-target": "🎯" } as const;
 
-/** Dòng trạng thái so với cắt lỗ/chốt lời — "ĐÃ THỦNG" khi giá ≤ cắt lỗ, "sát" chỉ khi còn trên ≤3%. */
-function level(l: PositionLine, st?: AdviceStyle): string {
-  const s = levelState(l.price, l.stop, l.target);
+/** Dòng trạng thái so với cắt lỗ/chốt lời — "ĐÃ THỦNG" khi giá ≤ cắt lỗ, "sát" chỉ khi còn trên ≤nearPct%. */
+function level(l: PositionLine, st: AdviceStyle | undefined, ap: AdviceParams): string {
+  const s = levelState(l.price, l.stop, l.target, ap.nearPct);
   if (!s) return "";
   const head = s.kind === "stop-broken" || s.kind === "target-hit" ? `<b>${s.label.toUpperCase()}</b>` : s.label;
   const t2 = s.kind === "stop-broken" && l.sessionsHeld < 2 ? " (Chưa đủ T+2 — CP về tài khoản mới bán được.)" : "";
   return `\n  ${LEVEL_ICON[s.kind]} ${head}: ${esc(st ? st.text(s.detail) : s.detail)}${t2}`;
 }
 
-/** `st` = giọng user → mỗi mã thêm 1 dòng lời khuyên theo văn phong đó. */
-export function formatPositionsReport(lines: PositionLine[], st?: AdviceStyle): string {
+/** `st` = giọng user → mỗi mã thêm 1 dòng lời khuyên theo văn phong đó. `ap` = tham số nhận xét (tự học). */
+export function formatPositionsReport(lines: PositionLine[], st?: AdviceStyle, ap: AdviceParams = ADVICE_DEFAULTS): string {
   if (!lines.length) return "📊 Không có vị thế đang mở.";
   const rows = lines.map((l) => {
     const pnlIcon = (l.pnlPct ?? 0) >= 0 ? "🟢" : "🔴";
@@ -115,8 +116,8 @@ export function formatPositionsReport(lines: PositionLine[], st?: AdviceStyle): 
       `\n  ${pnlIcon} P&L ${s(l.pnlPct)}${l.pnlPct?.toFixed(2) ?? "?"}%` +
       `${l.pnlVnd != null ? ` (${s(l.pnlVnd)}${(l.pnlVnd / 1e6).toFixed(1)}tr)` : ""}` +
       ` · ${stop} · ${tgt}${t2}` +
-      level(l, st) +
-      (st ? `\n  💬 ${esc(voicedPositionAdvice(l, st).line)}` : "")
+      level(l, st, ap) +
+      (st ? `\n  💬 ${esc(voicedPositionAdvice(l, st, ap).line)}` : "")
     );
   });
   return [`📊 <b>VỊ THẾ ĐANG GIỮ</b> (${lines.length})`, ...rows].join("\n\n");

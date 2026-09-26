@@ -196,6 +196,22 @@ model StrategyTune {
   @@index([strategyType, createdAt])
 }
 
+/// Nhật ký tự học nhận xét/đề xuất (lib/advice-learn.ts) — mỗi lần 1 tham số
+/// lời khuyên dịch 1 bậc trên thang ADVICE_LADDER, hoặc chỉnh tay.
+model AdviceTune {
+  id        Int      @id @default(autoincrement())
+  param     String   // nearPct | pnlUp | pnlDown | minNetRR | heavyShare
+  kind      String   // nudge | manual
+  fromValue Float
+  toValue   Float
+  params    String // snapshot JSON AdviceParams sau đổi
+  reason    String
+  evidence  String? // JSON — stat từng giá trị ứng viên đã chấm
+  createdAt DateTime @default(now())
+
+  @@index([param, createdAt])
+}
+
 model Setting {
   key   String @id
   value String

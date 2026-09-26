@@ -10,7 +10,7 @@ import SignalTable from "./components/SignalTable";
 import PositionsTable from "./components/PositionsTable";
 import { AddTradeButton } from "./components/TradeActions";
 import AutoRefresh from "./components/AutoRefresh";
-import { LivePrice } from "./components/live";
+import { LivePrice, PinQuotes } from "./components/live";
 import OpportunityStatus from "./components/OpportunityStatus";
 import { More } from "./components/More";
 
@@ -161,6 +161,7 @@ export default async function Home() {
 
       <section className="mb-6">
         <h2 className="mb-2 font-semibold">VN30 — đang theo dõi, chưa phải lệnh mua</h2>
+        <PinQuotes tickers={vn30.slice(0, 12).map((r) => r.ticker)} />
         <div className="flex flex-col gap-2 sm:hidden">
           {vn30.slice(0, 12).map((r) => (
             <div key={r.ticker} className="card p-3 text-xs">

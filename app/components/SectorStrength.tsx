@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { liveTime, type SectorStrength as Data, type SectorTrend } from "@/lib/analysis/sector-strength";
 import PickCard from "./PickCard";
-import { LiveBadge } from "./live";
+import { LiveBadge, PinQuotes } from "./live";
 
 const TREND: Record<SectorTrend, { label: string; cls: string }> = {
   lead: { label: "🚀 Dẫn đầu", cls: "border-gain/40 bg-gain/15 text-gain" },
@@ -30,8 +30,15 @@ export default function SectorStrength({ data }: { data: Data }) {
   const { market, sectors, topPicks } = data;
   if (!sectors.length) return <p className="card p-4 text-muted">Chưa đủ dữ liệu để xếp hạng ngành.</p>;
 
+  const pickTickers = [
+    ...new Set([
+      ...topPicks.map((p) => p.ticker),
+      ...sectors.flatMap((s) => s.picks.map((p) => p.ticker)),
+    ]),
+  ];
   return (
     <div className="space-y-6">
+      <PinQuotes tickers={pickTickers} />
       {/* Thị trường chung */}
       <section className="card p-4">
         <div className="text-xs text-muted">

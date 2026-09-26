@@ -1,11 +1,11 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button, Field, Modal, ModalForm, inputCls, useApi } from "./ui";
 import SignalDetail from "./SignalDetail";
 import SignalPlan from "./SignalPlan";
-import { LivePrice } from "./live";
+import { LivePrice, useQuotes } from "./live";
 import OpportunityStatus from "./OpportunityStatus";
 import { strategyLabel } from "@/lib/strategy/labels";
 
@@ -50,6 +50,8 @@ export default function SignalTable({
   marketWeak?: boolean;
 }) {
   const [open, setOpen] = useState<number | null>(null);
+  // Pin cả bảng giống PositionsTable — không để giá/nhãn trễ theo từng dòng cuộn tới.
+  useQuotes(useMemo(() => [...new Set(signals.map((s) => s.symbol.ticker))], [signals]));
   return (
     <>
       <div className="flex flex-col gap-2 sm:hidden">

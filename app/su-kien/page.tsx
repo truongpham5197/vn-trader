@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { LivePrice } from "../components/live";
+import { LivePrice, PinQuotes } from "../components/live";
 import EventsBoard from "../components/EventsBoard";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +41,8 @@ async function FundRows() {
     })
     .sort((a, b) => b.v20 - a.v20);
   return (
+    <>
+    <PinQuotes tickers={rows.map((f) => f.ticker)} />
     <table className="w-full border-collapse text-xs">
       <thead>
         <tr className="border-b border-border text-left text-muted">
@@ -71,6 +73,7 @@ async function FundRows() {
         ))}
       </tbody>
     </table>
+    </>
   );
 }
 

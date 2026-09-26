@@ -118,6 +118,16 @@ export function useQuotesAt() {
   return useStore()?.at ?? null;
 }
 
+/**
+ * Ghim theo dõi giá cho cả danh sách mã trong list/bảng — render vô hình, dùng
+ * được trong server component. Item trong list vẫn dùng useQuote bình thường;
+ * pin giữ mã trong refs nên nội dung list không trễ/nhảy theo cuộn.
+ */
+export function PinQuotes({ tickers }: { tickers: string[] }) {
+  useQuotes(tickers);
+  return null;
+}
+
 /** Nháy nền xanh/đỏ khi giá đổi. */
 function useFlash(v: number | null) {
   const prev = useRef(v);

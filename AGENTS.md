@@ -187,7 +187,11 @@ app/api/quotes    GET ?tickers=A,B → giá nến 1m DNSE (cache 30s trong
                getQuote) — client KHÔNG tự poll: dùng app/components/live.tsx
                (QuotesProvider trong layout, gom mã đang hiện trên màn hình,
                20s trong phiên / 5ph ngoài, tab ẩn thì dừng): useQuote/
-               useQuotes/LivePrice/LiveBadge
+               useQuotes/LivePrice/LiveBadge. List/bảng phải pin cả list
+               bằng useQuotes/PinQuotes ở cấp list (PositionsTable, SignalTable,
+               SectorBoard, VN30/fund rows, SectorStrength) — useQuote per-item
+               theo IntersectionObserver chỉ cho mục lẻ, để list không đổi
+               nội dung khi cuộn xuống/lên.
 app/api/symbols   GET ?q= → ≤8 mã (mã/tên công ty, bỏ dấu) cho StockSearch
                trên Nav ("/" để focus) → /stock/[ticker]
 app/api/events    GET ?ticker= → CorpEvent[] (cache 30ph) — trống = toàn TT

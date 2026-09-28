@@ -1,4 +1,4 @@
-import { pushAlert, type WebAlert } from "../alerts";
+import { ownerTgEnabled, pushAlert, type WebAlert } from "../alerts";
 import { tgSend, tgToken as TOKEN, type TgButtons } from "./send";
 
 const CHAT_ID = () => process.env.TELEGRAM_CHAT_ID ?? "";
@@ -17,6 +17,8 @@ export async function sendTelegram(
     console.log("[telegram:dry]", text);
     return true;
   }
+  // Tin broadcast (có web) lọc theo kênh Telegram của owner — tin trả lời lệnh/đặt lệnh vẫn gửi
+  if (web && !(await ownerTgEnabled(web.kind))) return true;
   return (await tgSend(CHAT_ID(), text, buttons)).ok;
 }
 

@@ -6,7 +6,8 @@ import { Button, toast } from "./ui";
 import { useVoice } from "./VoiceProvider";
 
 type Persona = { id: string; name: string; emoji: string; sample: string; shared: number };
-type Me = { owner: boolean; alertKinds: string[]; telegramLinked: boolean; persona: string | null; variant: number; personas: Persona[]; pushEnabled: boolean };
+type Me = { owner: boolean; alertKinds: string[]; tgAlertKinds: string[]; telegramLinked: boolean; persona: string | null; variant: number; personas: Persona[]; pushEnabled: boolean };
+type Channel = "alertKinds" | "tgAlertKinds";
 
 const json = (method: string, body?: unknown) => ({
   method,
@@ -139,11 +140,11 @@ export default function PushSettings({ username }: { username: string }) {
     }
   };
 
-  const setKinds = async (k: AlertKind) => {
+  const setKinds = async (k: AlertKind, ch: Channel) => {
     if (!me) return;
-    const kinds = me.alertKinds.includes(k) ? me.alertKinds.filter((x) => x !== k) : [...me.alertKinds, k];
-    setMe({ ...me, alertKinds: kinds });
-    const r = await fetch("/api/me", json("PATCH", { alertKinds: kinds }));
+    const kinds = me[ch].includes(k) ? me[ch].filter((x) => x !== k) : [...me[ch], k];
+    setMe({ ...me, [ch]: kinds });
+    const r = await fetch("/api/me", json("PATCH", { [ch]: kinds }));
     if (r.ok) setMe((await r.json()) as Me);
     else toast("Lưu thất bại", false);
   };
@@ -170,13 +171,23 @@ export default function PushSettings({ username }: { username: string }) {
 
   return (
     <div className="card p-4 text-xs">
-      <div className="font-medium">Loại được đẩy về điện thoại / Telegram</div>
-      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+      <div className="font-medium">Loại thông báo nhận — tick riêng theo kênh</div>
+      <div className="mt-2 grid gap-1.5">
+        <div className="grid grid-cols-[1fr_3.5rem_4.5rem] items-center gap-2 text-muted">
+          <span />
+          <span className="text-center">📲 App</span>
+          <span className="text-center">✈️ Telegram</span>
+        </div>
         {(Object.keys(ALERT_KINDS) as AlertKind[]).map((k) => (
-          <label key={k} className="flex cursor-pointer items-center gap-2">
-            <input type="checkbox" disabled={!me} checked={me?.alertKinds.includes(k) ?? false} onChange={() => void setKinds(k)} className="accent-[var(--color-accent)]" />
-            {ALERT_KINDS[k]}
-          </label>
+          <div key={k} className="grid grid-cols-[1fr_3.5rem_4.5rem] items-center gap-2">
+            <span>{ALERT_KINDS[k]}</span>
+            <span className="text-center">
+              <input type="checkbox" disabled={!me} checked={me?.alertKinds.includes(k) ?? false} onChange={() => void setKinds(k, "alertKinds")} className="accent-[var(--color-accent)]" />
+            </span>
+            <span className="text-center">
+              <input type="checkbox" disabled={!me} checked={me?.tgAlertKinds.includes(k) ?? false} onChange={() => void setKinds(k, "tgAlertKinds")} className="accent-[var(--color-accent)]" />
+            </span>
+          </div>
         ))}
       </div>
 
@@ -232,7 +243,7 @@ export default function PushSettings({ username }: { username: string }) {
         {!me ? (
           <span className="text-muted">…</span>
         ) : me.owner ? (
-          <span className="text-muted">Chủ app nhận qua bot chính (TELEGRAM_CHAT_ID) — đủ mọi loại, không lọc ở đây.</span>
+          <span className="text-muted">Chủ app nhận qua bot chính (TELEGRAM_CHAT_ID) — cột Telegram ở trên lọc tin tự động; tin trả lời lệnh/kết quả đặt lệnh vẫn gửi.</span>
         ) : me.telegramLinked ? (
           <>
             <span className="text-gain">đã kết nối</span>
@@ -268,7 +279,7 @@ export default function PushSettings({ username }: { username: string }) {
       <p className="mt-3 text-muted">
         Thông báo đẩy hiện khi web đang đóng hoặc chạy nền (đang mở web thì hiện nổi trong trang); Tắt ở đây ngắt trên mọi thiết bị của tài khoản (web lẫn PWA điện
         thoại) — bật lại thì bấm trên từng máy. Android/máy tính dùng được ngay, iPhone cần thêm vào màn hình
-        chính. Chỉ gửi khi có sự kiện thuộc loại đã tick ở trên — tín hiệu mua ra sau khi chốt dữ liệu phiên (khoảng 15h30–17h), cơ hội trong phiên 9h–15h; muốn nhận báo cáo vị thế mỗi
+        chính. Mỗi loại chỉ gửi qua kênh đã tick ở trên — tín hiệu mua ra sau khi chốt dữ liệu phiên (khoảng 15h30–17h), cơ hội trong phiên 9h–15h; muốn nhận báo cáo vị thế mỗi
         30 phút thì tick “Báo cáo vị thế định kỳ”. Tín hiệu mua gửi cho mọi người; cắt lỗ/chốt lời chỉ gửi cho chủ vị thế. Tín hiệu dựa trên giá + khối lượng, chỉ để tham khảo — không phải khuyến nghị.
       </p>
     </div>

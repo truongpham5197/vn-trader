@@ -28,7 +28,7 @@ export interface AlertItem {
   ticker: string | null;
 }
 
-/** Loại mặc định cho Telegram riêng + thông báo đẩy (khớp default ở schema User.alertKinds). */
+/** Loại mặc định cho cả 2 kênh (khớp default ở schema User.alertKinds + User.tgAlertKinds). */
 export const DEFAULT_PUSH_KINDS: AlertKind[] = ["signal", "sector", "stop", "target", "system"];
 
 /** Trang liên quan tới thông báo — dùng chung chuông web + thông báo đẩy. */

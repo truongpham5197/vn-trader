@@ -48,28 +48,45 @@ export async function pushAlert(html: string, a: WebAlert): Promise<void> {
   }
 }
 
+let ownerTg: { at: number; kinds: string[] } | null = null;
+/** Owner có nhận loại thông báo này qua Telegram bot chính không (User.tgAlertKinds, cache 60s). */
+export async function ownerTgEnabled(kind: string): Promise<boolean> {
+  if (!ownerTg || Date.now() - ownerTg.at > 60e3) {
+    const u = await prisma.user.findUnique({ where: { id: await ownerId() }, select: { tgAlertKinds: true } });
+    ownerTg = { at: Date.now(), kinds: u?.tgAlertKinds ?? [] };
+  }
+  return ownerTg.kinds.includes(kind);
+}
+
 /**
- * Đẩy thông báo ra ngoài web: Telegram riêng (user khác owner đã liên kết — owner đã nhận
- * qua TELEGRAM_CHAT_ID) + web push mọi thiết bị đã bật. Lọc theo User.alertKinds.
+ * Đẩy thông báo ra ngoài web: Telegram riêng (user khác owner đã liên kết — owner nhận
+ * qua TELEGRAM_CHAT_ID trong sendTelegram) + web push mọi thiết bị đã bật.
+ * Lọc riêng từng kênh: App theo User.alertKinds, Telegram theo User.tgAlertKinds.
  */
 async function fanOut(row: { id: number; kind: string; level: string; title: string; body: string; ticker: string | null; userId: number | null }, html: string) {
   const users = await prisma.user.findMany({
-    where: { ...(row.userId === null ? {} : { id: row.userId }), alertKinds: { has: row.kind }, OR: [{ tgChatId: { not: null } }, { pushSubs: { some: {} } }] },
-    select: { id: true, owner: true, tgChatId: true, pushSubs: true },
+    where: {
+      ...(row.userId === null ? {} : { id: row.userId }),
+      OR: [
+        { owner: false, tgChatId: { not: null }, tgAlertKinds: { has: row.kind } },
+        { alertKinds: { has: row.kind }, pushSubs: { some: {} } },
+      ],
+    },
+    select: { id: true, owner: true, tgChatId: true, alertKinds: true, tgAlertKinds: true, pushSubs: true },
   });
   if (!users.length) return;
   // Tag gom theo loại+mã: tin mới thay tin cũ cùng loại trên máy (báo cáo vị thế 30ph/lần không chất chồng).
   const payload = { title: row.title, body: row.body.slice(0, 1000), url: alertHref(row), tag: `vt-${row.kind}${row.ticker ? `-${row.ticker}` : ""}`, kind: row.kind, level: row.level };
   const jobs: Promise<unknown>[] = [];
   for (const u of users) {
-    if (u.tgChatId && !u.owner && process.env.TELEGRAM_BOT_TOKEN)
+    if (u.tgChatId && !u.owner && u.tgAlertKinds.includes(row.kind) && process.env.TELEGRAM_BOT_TOKEN)
       jobs.push(
         tgSend(u.tgChatId, html).then(async (r) => {
           // 403 = user chặn bot / rời chat → bỏ liên kết
           if (r.status === 403) await prisma.user.update({ where: { id: u.id }, data: { tgChatId: null } });
         }),
       );
-    for (const s of u.pushSubs) jobs.push(sendPush(s, payload));
+    if (u.alertKinds.includes(row.kind)) for (const s of u.pushSubs) jobs.push(sendPush(s, payload));
   }
   await Promise.allSettled(jobs);
 }

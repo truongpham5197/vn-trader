@@ -109,8 +109,11 @@ model User {
   // Telegram riêng (user khác owner — owner dùng TELEGRAM_CHAT_ID): liên kết qua /start <code>
   tgChatId   String?   @unique
   tgLinkCode String?   @unique
-  // Loại thông báo nhận qua Telegram riêng + thông báo đẩy (web push)
+  // Loại thông báo nhận qua App (thông báo đẩy web push) — tách kênh với tgAlertKinds
   alertKinds String[]  @default(["signal", "sector", "stop", "target", "system"])
+  // Loại nhận qua Telegram: user thường = bot riêng (tgChatId), owner = bot chính
+  // (chỉ lọc tin broadcast có web — trả lời lệnh/kết quả đặt lệnh vẫn gửi)
+  tgAlertKinds String[] @default(["signal", "sector", "stop", "target", "system"])
   // Tắt đẩy là của tài khoản (mọi thiết bị): false → xóa hết PushSub, resync không hồi sinh
   pushEnabled Boolean   @default(true)
   pushSubs   PushSub[]

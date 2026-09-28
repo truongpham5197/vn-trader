@@ -8,7 +8,7 @@ import { ensurePersonas } from "@/lib/report/accountability";
 
 export const dynamic = "force-dynamic";
 
-type Row = { id: number; owner: boolean; alertKinds: string[]; tgChatId: string | null; persona: string | null; pushEnabled: boolean };
+type Row = { id: number; owner: boolean; alertKinds: string[]; tgAlertKinds: string[]; tgChatId: string | null; persona: string | null; pushEnabled: boolean };
 
 /** Số người khác đang dùng từng phong cách — được trùng, chỉ để user biết. Cùng phong cách vẫn khác câu (variantOf). */
 async function others(id: number) {
@@ -24,6 +24,7 @@ async function me(u: Row) {
   return {
     owner: u.owner,
     alertKinds: u.alertKinds,
+    tgAlertKinds: u.tgAlertKinds,
     pushEnabled: u.pushEnabled,
     telegramLinked: u.owner ? Boolean(process.env.TELEGRAM_CHAT_ID) : Boolean(u.tgChatId),
     persona: u.persona,
@@ -32,7 +33,7 @@ async function me(u: Row) {
   };
 }
 
-// GET → cấu hình thông báo của user hiện tại (loại nhận qua Telegram riêng + thông báo đẩy + giọng thông báo)
+// GET → cấu hình thông báo của user hiện tại (loại nhận theo kênh App / Telegram riêng + giọng thông báo)
 export async function GET() {
   const u = await currentUser();
   if (!u) return bad(NEED_USER, 401);
@@ -44,15 +45,19 @@ export async function GET() {
   return NextResponse.json(await me(row));
 }
 
-// PATCH {alertKinds?: string[], persona?: string}
+// PATCH {alertKinds?: string[], tgAlertKinds?: string[], persona?: string}
 export async function PATCH(req: Request) {
   const u = await currentUser();
   if (!u) return bad(NEED_USER, 401);
-  const { alertKinds, persona } = await body<{ alertKinds?: string[]; persona?: string }>(req);
-  const data: { alertKinds?: string[]; persona?: string } = {};
-  if (alertKinds !== undefined) {
-    if (!Array.isArray(alertKinds) || alertKinds.some((k) => !(k in ALERT_KINDS))) return bad("Loại thông báo không hợp lệ");
-    data.alertKinds = [...new Set(alertKinds)];
+  const { alertKinds, tgAlertKinds, persona } = await body<{ alertKinds?: string[]; tgAlertKinds?: string[]; persona?: string }>(req);
+  const data: { alertKinds?: string[]; tgAlertKinds?: string[]; persona?: string } = {};
+  for (const [key, val] of [
+    ["alertKinds", alertKinds],
+    ["tgAlertKinds", tgAlertKinds],
+  ] as const) {
+    if (val === undefined) continue;
+    if (!Array.isArray(val) || val.some((k) => !(k in ALERT_KINDS))) return bad("Loại thông báo không hợp lệ");
+    data[key] = [...new Set(val)];
   }
   if (persona !== undefined) {
     if (!PERSONAS.some((p) => p.id === persona)) return bad("Phong cách không hợp lệ");

@@ -164,7 +164,10 @@ lib/alerts.ts  model Alert, pushAlert/listAlerts/htmlToAlert; pruneAlerts xóa
                pushAlert → fanOut: Telegram riêng (user khác owner có
                User.tgChatId; 403 → gỡ liên kết) + Web Push (PushSub, lib/push.ts,
                VAPID tự sinh lưu Setting "vapidKeys" — không cần env; 404/410 →
-               xóa sub), lọc theo User.alertKinds. Push: tag gom vt-kind-ticker
+               xóa sub), lọc theo kênh: App = User.alertKinds, Telegram =
+               User.tgAlertKinds; Telegram owner (bot chính) lọc trong
+               sendTelegram qua ownerTgEnabled (chỉ tin có web — trả lời lệnh
+               vẫn gửi). Push: tag gom vt-kind-ticker
                (tin mới thay tin cũ cùng loại — báo cáo 30ph không chất chồng),
                TTL theo loại (positions 15ph, sector 1h, stop/target 6h,
                signal/system 12h), danger → urgency high + renotify +
@@ -188,7 +191,8 @@ app/api/push   GET {publicKey} · POST PushSubscription.toJSON() + {sync?} (upse
                Chia sẻ), ẩn khi standalone; InstallCard ở /settings#thong-bao.
                Bảng chuông 🔔 = portal fixed (header backdrop-blur + chuông không
                sát mép phải → trước đây bị cắt trên điện thoại)
-app/api/me     GET/PATCH {alertKinds} — loại thông báo đẩy/Telegram riêng
+app/api/me     GET/PATCH {alertKinds, tgAlertKinds} — loại thông báo theo
+               kênh: App (đẩy) vs Telegram riêng/bot chính
 app/api/telegram/link  POST → mã 1 lần + t.me/<bot>?start=<mã>; DELETE gỡ.
                Bot /start <mã> gắn chat với user, /stop gỡ — 2 lệnh này KHÔNG
                check allowed(); mọi lệnh khác vẫn chỉ owner chat.

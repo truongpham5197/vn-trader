@@ -61,8 +61,14 @@ async function handle(req: Request, body: Record<string, unknown>) {
   }
   if (!Number.isFinite(offset)) offset = 0;
 
-  // URL của chính route này để chain — copy auth header cho hop sau
-  const selfUrl = new URL(req.url).toString();
+  // URL của chính route này để chain — copy auth header cho hop sau.
+  // Self-host (VPS sau Caddy): req.url có thể lệch scheme (proxy https nhưng
+  // upstream http) → chain thẳng vào process local qua localhost:PORT,
+  // không phụ thuộc DNS public/hairpin NAT. Vercel giữ nguyên public URL.
+  const reqUrl = new URL(req.url);
+  const selfUrl = process.env.VERCEL
+    ? reqUrl.toString()
+    : `http://localhost:${process.env.PORT ?? "3000"}${reqUrl.pathname}`;
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (process.env.CRON_SECRET) {
     headers.authorization = `Bearer ${process.env.CRON_SECRET}`;

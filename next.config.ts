@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Self-host VPS (deploy/vps): image chạy `.next/standalone/server.js`.
+  output: "standalone",
   // Bấm tab không được dùng bản prefetch cũ — trang cá nhân, dữ liệu phải mới.
   experimental: {
     staleTimes: { dynamic: 0 },

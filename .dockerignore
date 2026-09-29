@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.env
+.env.*
+docker-compose.yml
+Dockerfile
+deploy
+tsconfig.tsbuildinfo
+*.md
+.hermes-tmp.*
+.pnpm-store
+docs

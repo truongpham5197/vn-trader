@@ -6,9 +6,13 @@ Web app cá nhân hỗ trợ trading cổ phiếu cơ sở VN: EOD scanner → T
 
 ## Stack
 
-Next.js 16 + TypeScript + Prisma/SQLite + grammY + node-cron. Package manager:
+Next.js 16 + TypeScript + Prisma/Postgres + grammY + node-cron. Package manager:
 **pnpm** (npm 9.6 của máy crash khi resolve peer deps vitest — dùng
 `npm exec --yes pnpm@latest -- <cmd>` nếu chưa cài pnpm global).
+
+Production self-host trên VPS: `https://vn-trader.36.50.55.41.sslip.io` —
+Next standalone trong Docker sau Caddy chung, DB trong infra-postgres,
+node-cron + watcher chạy in-process. Deploy: `deploy/vps/README.md`.
 
 ## Nguồn dữ liệu (public, không cần key)
 

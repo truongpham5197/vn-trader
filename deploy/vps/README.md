@@ -42,7 +42,10 @@ curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
 
 Đổi domain → sửa Caddyfile + setWebhook lại.
 
-## Vercel cũ
+## Vercel — frontend phụ
 
-Đã tắt: `vercel.json` xóa (không còn Vercel cron), cron-job.org đã disable,
-project nên pause trên dashboard. DNS sslip.io trỏ thẳng IP — không qua Vercel.
+`vn-trader.vercel.app` vẫn deploy từ `main` nhưng chỉ là frontend dự phòng:
+env `DATABASE_URL` trỏ Postgres VPS (`36.50.55.41:5432?sslmode=require` —
+pg_hba ép hostssl cho IP ngoài docker). Không còn cron trên Vercel
+(`vercel.json` xóa) + cron-job.org đã disable — mọi job chỉ chạy
+node-cron in-process trong container này. Neon đã migrate + bỏ hẳn.

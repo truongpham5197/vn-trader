@@ -4,9 +4,12 @@ Trading assistant cá nhân cho cổ phiếu VN (TCBS). Next.js 16 + TypeScript 
 Prisma/Postgres + grammy. Production (2026-09-29+): self-host VPS
 36.50.55.41 — `https://vn-trader.36.50.55.41.sslip.io` — container
 `vn-trader` (Next standalone) sau Caddy chung, DB `vntrader` trong
-infra-postgres. Deploy: `./deploy/vps/deploy.sh` trên `/opt/vn-trader`
-(pull `main` + docker build + up; chi tiết `deploy/vps/README.md`).
-Vercel + cron-job.org đã tắt — node-cron chạy in-process.
+infra-postgres (5432 public, hostssl bắt buộc cho IP ngoài docker).
+Deploy: `./deploy/vps/deploy.sh` trên `/opt/vn-trader` (pull `main` +
+docker build + up; chi tiết `deploy/vps/README.md`). Vercel
+`vn-trader.vercel.app` = frontend phụ trỏ CÙNG DB VPS (không cron —
+vercel.json đã xóa); cron-job.org + Neon đã bỏ. Mọi job chỉ chạy
+node-cron in-process trên VPS.
 Repo: `github.com/truongpham5197/vn-trader`.
 
 ## 1. Lệnh dev (bắt buộc verify trước khi báo xong)
@@ -22,10 +25,10 @@ npx next build            # typecheck+build — PHẢI xanh trước khi commit
 npx prisma db push        # sync schema → DB trong DATABASE_URL (không có migration files)
 ```
 
-Build local cần `DATABASE_URL` hợp lệ — `.env` local đang trỏ Neon cũ
-(sau migrate 2026-09-29 DB prod = `vntrader` trên infra-postgres VPS;
-đổi `.env` local nếu cần đụng DB prod). Dùng URL dummy
-`postgresql://u:p@127.0.0.1:5432/x` khi chỉ cần build (build không connect).
+Build local cần `DATABASE_URL` hợp lệ — `.env` local trỏ DB prod
+(`vntrader` trên infra-postgres VPS, qua 36.50.55.41:5432 sslmode=require).
+Dùng URL dummy `postgresql://u:p@127.0.0.1:5432/x` khi chỉ cần build
+(build không connect).
 
 ## 2. Kiến trúc nhanh
 
@@ -292,11 +295,14 @@ Jobs chạy in-process trên VPS qua `lib/jobs.ts` (node-cron, TZ
 Asia/Ho_Chi_Minh — instrumentation startJobs vì VERCEL unset): eod-sync
 15:20 + scan 15:40 + watcher */1 9-11,13-14 + positions */30 9-14 +
 weekly 20:00 CN. Route `/api/cron/*` vẫn tồn tại để trigger tay qua
-curl (có cron-auth) — chain after() + cursor eodSyncCursor giữ nguyên
-cho trường hợp bị gián đoạn. Lịch sử: trước 2026-09-29 host Vercel
+curl (có cron-auth) — chain after() gọi `localhost:PORT` khi non-Vercel
+(req.url sau proxy lệch scheme), cursor eodSyncCursor giữ nguyên cho
+trường hợp bị gián đoạn. Lịch sử: trước 2026-09-29 host Vercel
 Hobby — function ≤60s, cron 1 lần/ngày → mọi job nặng phải chunked +
 self-chain, watcher intraday ping ngoài bằng cron-job.org (đã tắt;
-`CRON_JOB_API_KEY` chỉ còn để tra cứu job cũ).
+`CRON_JOB_API_KEY` chỉ còn để tra cứu job cũ). Vercel giờ chỉ là
+frontend phụ — env DATABASE_URL trỏ VPS Postgres (sslmode=require),
+mọi job nặng do VPS node-cron lo, không deploy cron nữa.
 
 ## 3. Quy tắc an toàn (không phá)
 

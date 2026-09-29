@@ -1,0 +1,38 @@
+name: vntrader
+
+# Next.js self-host phía sau Caddy chung của VPS (network `infra_internal`
+# do stack /opt/cotyphu/deploy/vps tạo). DB = database `vntrader` trong
+# infra-postgres chung — KHÔNG expose 5432 ra ngoài.
+#
+#   cp .env.example .env   # điền giá trị thật (chmod 600)
+#   docker compose --env-file .env build
+#   docker compose --env-file .env up -d
+#
+# Caddy: block domain trỏ `reverse_proxy vn-trader:3000` nằm trong
+# /opt/cotyphu/deploy/vps/Caddyfile — sửa xong `docker exec infra-caddy-1
+# caddy reload --config /etc/caddy/Caddyfile`.
+#
+# VERCEL unset → instrumentation.ts startJobs(): node-cron + watcher +
+# positions-report chạy in-process. Telegram nhận lệnh qua webhook
+# (TELEGRAM_POLLING=false), KHÔNG cần cron-job.org ngoài nữa.
+
+networks:
+  internal:
+    external: true
+    name: infra_internal
+
+services:
+  web:
+    container_name: vn-trader
+    build:
+      context: ../..
+    env_file: .env
+    restart: unless-stopped
+    networks: [internal]
+    # scan/watcher in-process nặng hơn web tĩnh — 2g cho headroom Node heap
+    mem_limit: 2g
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

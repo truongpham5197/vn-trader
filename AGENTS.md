@@ -1,8 +1,16 @@
 # AGENTS.md — vn-trader
 
 Trading assistant cá nhân cho cổ phiếu VN (TCBS). Next.js 16 + TypeScript +
-Prisma/Postgres (Neon) + grammy. Production: Vercel `vn-trader.vercel.app`,
-auto-deploy từ `main`. Repo: `github.com/truongpham5197/vn-trader`.
+Prisma/Postgres + grammy. Production (2026-09-29+): self-host VPS
+36.50.55.41 — `https://vn-trader.36.50.55.41.sslip.io` — container
+`vn-trader` (Next standalone) sau Caddy chung, DB `vntrader` trong
+infra-postgres (5432 public, hostssl bắt buộc cho IP ngoài docker).
+Deploy: `./deploy/vps/deploy.sh` trên `/opt/vn-trader` (pull `main` +
+docker build + up; chi tiết `deploy/vps/README.md`). Vercel
+`vn-trader.vercel.app` = frontend phụ trỏ CÙNG DB VPS (không cron —
+vercel.json đã xóa); cron-job.org + Neon đã bỏ. Mọi job chỉ chạy
+node-cron in-process trên VPS.
+Repo: `github.com/truongpham5197/vn-trader`.
 
 ## 1. Lệnh dev (bắt buộc verify trước khi báo xong)
 
@@ -14,11 +22,13 @@ VERCEL=1 npx next start -p 3100  # prod build local — VERCEL=1 để KHÔNG
 pnpm test                 # vitest run — chạy full chỉ 1 lần ở gate cuối
 pnpm vitest related <file># test liên quan trong lúc code
 npx next build            # typecheck+build — PHẢI xanh trước khi commit
-npx prisma db push        # sync schema → Neon (không có migration files)
+npx prisma db push        # sync schema → DB trong DATABASE_URL (không có migration files)
 ```
 
-Build local cần `DATABASE_URL` hợp lệ — `.env` đang trỏ Neon. Dùng URL dummy
-`postgresql://u:p@127.0.0.1:5432/x` khi chỉ cần build (build không connect).
+Build local cần `DATABASE_URL` hợp lệ — `.env` local trỏ DB prod
+(`vntrader` trên infra-postgres VPS, qua 36.50.55.41:5432 sslmode=require).
+Dùng URL dummy `postgresql://u:p@127.0.0.1:5432/x` khi chỉ cần build
+(build không connect).
 
 ## 2. Kiến trúc nhanh
 
@@ -281,16 +291,18 @@ Trang: / (tổng quan), /signals (chip ngày + tab trạng thái), /journal,
                tín hiệu, kinh doanh/tin, nút theo dõi)
 ```
 
-Vercel Hobby: function ≤60s, không process nền, cron 1 lần/ngày → mọi job nặng
-phải chunked + self-chain, watcher intraday cần ping ngoài
-(cron-job.org, TZ Asia/Ho_Chi_Minh, T2-T6 — xem/sửa qua API bằng
-`CRON_JOB_API_KEY` trong .env:
-watcher mỗi phút 9-11h + 13-14h (bỏ nghỉ trưa 12h);
-positions-report :20/:50 giờ 9-11,13-14 (11:50 = chốt phiên sáng,
-14:50 = sau ATC); eod-sync */2 15-16h — route tự bỏ qua trước 15:10
-(DNSE chưa chốt nến ngày), resume cursor, hết vòng mà HOSE < 80% nến
-phiên trước → quét lại (≤3 lượt), xong thì ping kế tiếp chạy scan.
-Vercel cron: eod-sync 15:20 + scan 16:50 chỉ là fallback — scan idempotent).
+Jobs chạy in-process trên VPS qua `lib/jobs.ts` (node-cron, TZ
+Asia/Ho_Chi_Minh — instrumentation startJobs vì VERCEL unset): eod-sync
+15:20 + scan 15:40 + watcher */1 9-11,13-14 + positions */30 9-14 +
+weekly 20:00 CN. Route `/api/cron/*` vẫn tồn tại để trigger tay qua
+curl (có cron-auth) — chain after() gọi `localhost:PORT` khi non-Vercel
+(req.url sau proxy lệch scheme), cursor eodSyncCursor giữ nguyên cho
+trường hợp bị gián đoạn. Lịch sử: trước 2026-09-29 host Vercel
+Hobby — function ≤60s, cron 1 lần/ngày → mọi job nặng phải chunked +
+self-chain, watcher intraday ping ngoài bằng cron-job.org (đã tắt;
+`CRON_JOB_API_KEY` chỉ còn để tra cứu job cũ). Vercel giờ chỉ là
+frontend phụ — env DATABASE_URL trỏ VPS Postgres (sslmode=require),
+mọi job nặng do VPS node-cron lo, không deploy cron nữa.
 
 ## 3. Quy tắc an toàn (không phá)
 
@@ -334,7 +346,8 @@ Vercel cron: eod-sync 15:20 + scan 16:50 chỉ là fallback — scan idempotent)
 
 - **BẮT BUỘC (user rule 2026-09-21):** làm xong → push nhánh `feat|fix/<slug>`
   → `gh pr create` với summary để user duyệt → **KHÔNG push/merge thẳng `main`**.
-- `main` merge → auto-deploy production Vercel. Commit atomic, message
+- `main` merge → lên production bằng `./deploy/vps/deploy.sh` trên VPS
+  (không còn auto-deploy). Commit atomic, message
   conventional (`fix:`/`feat:`/`perf:`/`chore:`/`docs:`), tiếng Việt ngắn gọn.
 - Không push lộn file tạm. Scratch/screenshot/script tạm →
   `D:\project\BuildLab\scratch\vn-trader\`, không ghi vào repo.
